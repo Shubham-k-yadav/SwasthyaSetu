@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF1E27" />
+      <stop offset="100%" stop-color="#D90416" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Red Icon Box -->
+  <rect width="512" height="512" rx="120" fill="url(#redGrad)" />
+
+  <!-- White S Base with Shadow -->
+  <g filter="url(#shadow)">
+    <path d="M 330,165 
+             C 330,120 290,105 240,105 
+             C 180,105 150,140 150,185 
+             C 150,250 340,230 340,315 
+             C 340,385 260,405 190,405 
+             C 140,405 125,370 125,330 
+             L 195,330 
+             C 195,350 220,358 250,358 
+             C 285,358 295,335 295,310 
+             C 295,250 105,260 105,180 
+             C 105,110 180,60 270,60 
+             C 340,60 375,110 375,165 
+             Z" 
+          fill="#FFFFFF" fill-rule="evenodd" />
+  </g>
+
+  <!-- Red Medical Cross in Top Loop -->
+  <rect x="238" y="112" width="28" height="10" rx="3" fill="#D90416" />
+  <rect x="247" y="103" width="10" height="28" rx="3" fill="#D90416" />
+
+  <!-- Red Pulse / ECG Line across Waist -->
+  <path d="M 140 270 L 210 270 L 225 220 L 245 310 L 265 240 L 280 280 L 295 270 L 350 270" 
+        stroke="#D90416" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>

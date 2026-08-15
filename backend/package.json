@@ -1,0 +1,26 @@
+{
+  "name": "medlink-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MedLink AI Backend - Node.js Express API Server (JavaScript)",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "build": "echo Server build complete",
+    "seed": "node src/scripts/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.6.3",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.2.0"
+  }
+}
