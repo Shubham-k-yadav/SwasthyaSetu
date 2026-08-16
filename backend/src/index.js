@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'http';
+import mongoSanitize from 'express-mongo-sanitize';
+import { apiLimiter, emergencySosLimiter, authLimiter } from './middleware/rateLimiter.js';
 import connectDB from './config/db.js';
 import { initializeSocket } from './services/socket.js';
 
@@ -35,6 +37,15 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// NoSQL Injection Prevention Middleware
+app.use(mongoSanitize());
+
+// Rate Limiting Middlewares
+app.use('/api', apiLimiter);
+app.use('/api/emergency/request', emergencySosLimiter);
+app.use('/api/hospitals/:id/reserve-bed', emergencySosLimiter);
+app.use('/api/auth/login', authLimiter);
 
 // Health check
 app.get('/health', (req, res) => {
