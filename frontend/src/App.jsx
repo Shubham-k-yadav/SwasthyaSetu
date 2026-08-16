@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/lib/auth-context';
+import { LanguageProvider } from '@/lib/language-context';
 import { Toaster } from 'sonner';
 
 import HomePage from '@/pages/HomePage';
@@ -20,30 +21,32 @@ import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Toaster position="top-right" />
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/hospitals" element={<HospitalsPage />} />
-          <Route path="/blood" element={<BloodPage />} />
-          <Route path="/emergency" element={<EmergencyPage />} />
-          <Route path="/contact" element={<ContactPage />} />
+      <LanguageProvider>
+        <AuthProvider>
+          <Toaster position="top-right" />
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/hospitals" element={<HospitalsPage />} />
+            <Route path="/blood" element={<BloodPage />} />
+            <Route path="/emergency" element={<EmergencyPage />} />
+            <Route path="/contact" element={<ContactPage />} />
 
-          {/* Admin Authentication */}
-          <Route path="/admin/login" element={<AdminLoginPage />} />
+            {/* Admin Authentication */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
 
-          {/* Admin Protected Dashboard */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="hospitals" element={<AdminHospitalsPage />} />
-            <Route path="blood" element={<AdminBloodPage />} />
-            <Route path="donors" element={<AdminDonorsPage />} />
-            <Route path="emergencies" element={<AdminEmergenciesPage />} />
-            <Route path="analytics" element={<AdminAnalyticsPage />} />
-          </Route>
-        </Routes>
-      </AuthProvider>
+            {/* Admin Protected Dashboard */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="hospitals" element={<AdminHospitalsPage />} />
+              <Route path="blood" element={<AdminBloodPage />} />
+              <Route path="donors" element={<AdminDonorsPage />} />
+              <Route path="emergencies" element={<AdminEmergenciesPage />} />
+              <Route path="analytics" element={<AdminAnalyticsPage />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

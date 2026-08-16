@@ -11,9 +11,11 @@ import {
   X,
   ShieldAlert,
   LayoutDashboard,
-  Phone
+  Phone,
+  Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/language-context';
 
 const navItems = [
   { href: '/hospitals', label: 'Hospitals', icon: Building2 },
@@ -23,6 +25,7 @@ const navItems = [
 ];
 
 export function Header() {
+  const { language, setLanguage, t } = useLanguage();
   const location = useLocation();
   const pathname = location.pathname;
   const [open, setOpen] = useState(false);
@@ -79,10 +82,19 @@ export function Header() {
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 font-semibold text-xs border-primary/30"
+              onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
+            >
+              <Globe className="h-3.5 w-3.5 text-primary" />
+              {language === 'en' ? 'हिंदी (HI)' : 'English (EN)'}
+            </Button>
             <Link to="/admin/login">
               <Button variant="ghost" size="sm" className="gap-2 font-medium">
                 <LayoutDashboard className="h-4 w-4" />
-                Admin
+                {t('adminLogin')}
               </Button>
             </Link>
             <Link to="/emergency">
