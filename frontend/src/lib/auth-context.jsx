@@ -21,7 +21,7 @@ export function AuthProvider({ children }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('medlink_token');
+      const token = localStorage.getItem('swasthya_setu_token');
       if (!token) {
         setUser(null);
         setIsLoading(false);
@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
       const response = await api.auth.getMe(token);
       setUser(response.user);
     } catch (e) {
-      localStorage.removeItem('medlink_token');
+      localStorage.removeItem('swasthya_setu_token');
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -44,12 +44,12 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const response = await api.auth.login(email, password);
-    localStorage.setItem('medlink_token', response.token);
+    localStorage.setItem('swasthya_setu_token', response.token);
     setUser(response.user);
   };
 
   const logout = () => {
-    localStorage.removeItem('medlink_token');
+    localStorage.removeItem('swasthya_setu_token');
     setUser(null);
     navigate('/admin/login');
   };

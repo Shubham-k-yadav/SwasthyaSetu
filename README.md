@@ -72,7 +72,7 @@ Login at `/admin/login`:
 
 | Role | Email | Password |
 | :--- | :--- | :--- |
-| **Super Admin** | `superadmin@medlink.com` | `MedLink@2024` |
+| **Super Admin** | `superadmin@swasthyasetu.in` | `SwasthyaSetu@2026` |
 | **AIIMS Admin** | `admin@aiims.edu` | `AIIMS@2024` |
 
 ---

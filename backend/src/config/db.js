@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/medlink';
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/swasthya-setu';
     const conn = await mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 1500
     });
@@ -11,7 +11,7 @@ const connectDB = async () => {
   } catch (error) {
     global.isDemoMode = true;
     console.log('💡 Local MongoDB service is offline.');
-    console.log('✨ Activated MedLink Instant Demo Mode (Zero-delay Memory Store)');
+    console.log('✨ Activated SwasthyaSetu Instant Demo Mode (Zero-delay Memory Store)');
   }
 };
 

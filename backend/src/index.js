@@ -41,7 +41,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    service: 'medlink-server'
+    service: 'swasthya-setu-server'
   });
 });
 
@@ -74,7 +74,7 @@ const startServer = async () => {
     console.log('✔ Socket.io initialized');
 
     httpServer.listen(PORT, () => {
-      console.log(`MedLink Server running on port ${PORT}`);
+      console.log(`SwasthyaSetu Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
     });
   } catch (error) {

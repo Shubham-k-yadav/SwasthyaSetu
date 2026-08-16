@@ -95,7 +95,7 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
           <p className="text-muted-foreground">
-            Comprehensive insights into the MedLink emergency network
+            Comprehensive insights into the SwasthyaSetu emergency network
           </p>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>

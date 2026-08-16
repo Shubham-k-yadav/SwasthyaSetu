@@ -139,8 +139,8 @@ const donors = [
 
 const adminUsers = [
   {
-    email: 'superadmin@medlink.com',
-    password: 'MedLink@2024',
+    email: 'superadmin@swasthyasetu.in',
+    password: 'SwasthyaSetu@2026',
     name: 'Super Admin',
     role: 'superadmin'
   },

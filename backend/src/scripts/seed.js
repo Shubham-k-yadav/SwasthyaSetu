@@ -255,8 +255,8 @@ const donors = [
 
 const adminUsers = [
   {
-    email: 'superadmin@medlink.com',
-    password: 'MedLink@2024',
+    email: 'superadmin@swasthyasetu.in',
+    password: 'SwasthyaSetu@2026',
     name: 'Super Admin',
     role: 'superadmin'
   },
@@ -271,7 +271,7 @@ const adminUsers = [
 
 async function seed() {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/medlink';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/swasthya-setu';
 
     await mongoose.connect(mongoUri);
     console.log('Connected to MongoDB');
@@ -323,7 +323,7 @@ async function seed() {
 
     console.log('\n=== Seed Complete ===');
     console.log('\nAdmin Credentials:');
-    console.log('Super Admin: superadmin@medlink.com / MedLink@2024');
+    console.log('Super Admin: superadmin@swasthyasetu.in / SwasthyaSetu@2026');
     console.log('AIIMS Admin: admin@aiims.edu / AIIMS@2024');
 
     await mongoose.disconnect();

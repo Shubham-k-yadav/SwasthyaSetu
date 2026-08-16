@@ -194,7 +194,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="font-medium">Email Support</p>
-                      <p className="text-sm text-muted-foreground">support@medlink.ai</p>
+                      <p className="text-sm text-muted-foreground">support@swasthyasetu.in</p>
                     </div>
                   </div>
                   
@@ -261,7 +261,7 @@ export default function ContactPage() {
                     <div>
                       <h4 className="font-medium text-sm">Is the service available nationwide?</h4>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Yes, MedLink AI covers hospitals across all major cities in India.
+                        Yes, SwasthyaSetu covers hospitals across all major cities in India.
                       </p>
                     </div>
                   </div>

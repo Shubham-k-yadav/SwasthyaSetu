@@ -188,8 +188,8 @@ export const mockEmergencies = [
 export const mockUsers = [
   {
     _id: '66c000000000000000000090',
-    email: 'superadmin@medlink.com',
-    password: 'MedLink@2024',
+    email: 'superadmin@swasthyasetu.in',
+    password: 'SwasthyaSetu@2026',
     name: 'Super Admin',
     role: 'superadmin'
   },

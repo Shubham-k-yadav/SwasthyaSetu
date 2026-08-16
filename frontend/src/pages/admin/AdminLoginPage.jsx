@@ -110,9 +110,9 @@ export default function AdminLoginPage() {
               <p className="text-sm text-muted-foreground text-center">
                 <strong>Demo Credentials:</strong>
                 <br />
-                Email: superadmin@medlink.com
+                Email: superadmin@swasthyasetu.in
                 <br />
-                Password: MedLink@2024
+                Password: SwasthyaSetu@2026
               </p>
             </div>
 

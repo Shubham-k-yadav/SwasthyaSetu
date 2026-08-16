@@ -200,7 +200,7 @@ export default function DonorsAdminPage() {
             <DialogHeader>
               <DialogTitle>Register New Donor</DialogTitle>
               <DialogDescription>
-                Add a new blood donor to the MedLink network
+                Add a new blood donor to the SwasthyaSetu network
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">

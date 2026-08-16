@@ -239,7 +239,7 @@ export default function HospitalsAdminPage() {
             <DialogHeader>
               <DialogTitle>Add New Hospital</DialogTitle>
               <DialogDescription>
-                Register a new hospital in the MedLink network
+                Register a new hospital in the SwasthyaSetu network
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">

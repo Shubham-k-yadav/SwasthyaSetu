@@ -13,7 +13,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7);
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_medlink_2026';
+    const secret = process.env.JWT_SECRET || 'fallback_secret_key_swasthya_setu_2026';
 
     const decoded = jwt.verify(token, secret);
 
@@ -54,7 +54,7 @@ export const authorize = (...roles) => {
 };
 
 export const generateToken = (userOrId) => {
-  const secret = process.env.JWT_SECRET || 'fallback_secret_key_medlink_2026';
+  const secret = process.env.JWT_SECRET || 'fallback_secret_key_swasthya_setu_2026';
   const userId = typeof userOrId === 'object' ? userOrId._id : userOrId;
   const email = typeof userOrId === 'object' ? userOrId.email : undefined;
   const role = typeof userOrId === 'object' ? userOrId.role : undefined;

@@ -143,7 +143,7 @@ export default function HomePage() {
           <div className="container mx-auto max-w-7xl px-4">
             <div className="mx-auto max-w-3xl text-center">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                How MedLink AI Helps
+                How SwasthyaSetu Helps
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
                 A comprehensive platform connecting patients, hospitals, and donors in real-time.
@@ -352,7 +352,7 @@ export default function HomePage() {
                 Every Second Counts in an Emergency
               </h2>
               <p className="mt-4 text-lg text-primary-foreground/80">
-                Do not waste time calling hospitals. Find available beds instantly with MedLink AI.
+                Do not waste time calling hospitals. Find available beds instantly with SwasthyaSetu.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link to="/emergency">

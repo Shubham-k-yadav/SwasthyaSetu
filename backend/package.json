@@ -1,8 +1,8 @@
 {
-  "name": "medlink-backend",
+  "name": "swasthya-setu-backend",
   "version": "1.0.0",
   "type": "module",
-  "description": "MedLink AI Backend - Node.js Express API Server (JavaScript)",
+  "description": "SwasthyaSetu Backend - Node.js Express API Server",
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",

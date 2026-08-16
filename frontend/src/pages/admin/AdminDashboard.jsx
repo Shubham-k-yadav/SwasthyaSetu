@@ -275,7 +275,7 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Real-time overview of the MedLink emergency network
+            Real-time overview of the SwasthyaSetu emergency network
           </p>
         </div>
         <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline">
