@@ -96,9 +96,32 @@ export const mockHospitals = [
       ventilator: { total: 60, available: 14 }
     },
     specialties: ['Trauma', 'Burns', 'Pediatrics', 'Neurosurgery'],
-    emergencyServices: true,
     isVerified: true,
+    verificationStatus: 'approved',
+    registrationCertificate: 'CERT-KEM-2024-8892',
     rating: 4.3,
+    lastUpdated: new Date().toISOString()
+  },
+  {
+    _id: '66c000000000000000000006',
+    name: 'Metro Emergency Care Center',
+    address: 'Sector 62, Noida',
+    city: 'Noida',
+    state: 'Uttar Pradesh',
+    coordinates: { lat: 28.6273, lng: 77.3725 },
+    phone: '+91-120-4567890',
+    email: 'contact@metrocare.org',
+    beds: {
+      icu: { total: 40, available: 10 },
+      general: { total: 200, available: 45 },
+      ventilator: { total: 15, available: 4 }
+    },
+    specialties: ['Cardiology', 'Emergency Care'],
+    emergencyServices: true,
+    isVerified: false,
+    verificationStatus: 'pending',
+    registrationCertificate: 'REG-NOIDA-2026-9912.pdf',
+    rating: 4.0,
     lastUpdated: new Date().toISOString()
   }
 ];

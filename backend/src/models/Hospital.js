@@ -25,7 +25,14 @@ const HospitalSchema = new Schema({
   },
   specialties: [{ type: String }],
   emergencyServices: { type: Boolean, default: true },
-  isVerified: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false, index: true },
+  registrationCertificate: { type: String, default: '' },
+  verificationStatus: { 
+    type: String, 
+    enum: ['pending', 'approved', 'rejected'], 
+    default: 'pending',
+    index: true 
+  },
   rating: { type: Number, default: 0, min: 0, max: 5 },
   lastUpdated: { type: Date, default: Date.now },
   blockchainHash: { type: String },

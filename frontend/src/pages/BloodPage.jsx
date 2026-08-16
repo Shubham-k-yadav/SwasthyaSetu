@@ -1,5 +1,6 @@
  
 import { useState } from 'react';
+import { getFreshnessStatus } from '@/lib/freshness';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Button } from '@/components/ui/button';
@@ -547,10 +548,12 @@ export default function BloodFinderPage() {
 }
 
 function BloodBankCard({ bank }) {
+  const freshness = getFreshnessStatus(bank.lastUpdated);
+
   return (
-    <Card>
+    <Card className={cn(freshness.isExpired && 'opacity-75')}>
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-2">
           <div>
             <CardTitle className="text-lg">{bank.hospitalName}</CardTitle>
             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
@@ -558,9 +561,15 @@ function BloodBankCard({ bank }) {
               {bank.address}
             </div>
           </div>
-          {bank.distance && (
-            <Badge variant="outline">{bank.distance} km</Badge>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            <Badge className={cn('text-xs gap-1 border', freshness.colorClass)}>
+              <Clock className="h-3 w-3" />
+              {freshness.text}
+            </Badge>
+            {bank.distance && (
+              <Badge variant="outline">{bank.distance} km</Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { getFreshnessStatus } from '@/lib/freshness';
 
 
 
@@ -33,11 +34,12 @@ export function HospitalCard({
                         hospital.beds.ventilator.available;
   
   const hasAvailability = totalAvailable > 0;
+  const freshness = getFreshnessStatus(hospital.lastUpdated);
 
   return (
     <Card className={cn(
       'overflow-hidden transition-all hover:shadow-lg',
-      !hasAvailability && 'opacity-75'
+      (!hasAvailability || freshness.isExpired) && 'opacity-75'
     )}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
@@ -49,12 +51,20 @@ export function HospitalCard({
             </div>
           </div>
           <div className="flex flex-col items-end gap-1.5">
-            {hospital.isVerified && (
-              <Badge variant="secondary" className="gap-1">
+            {hospital.isVerified ? (
+              <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">
                 <Shield className="h-3 w-3" />
                 Verified
               </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
+                Unverified
+              </Badge>
             )}
+            <Badge className={cn('text-xs gap-1 border', freshness.colorClass)}>
+              <Clock className="h-3 w-3" />
+              {freshness.text}
+            </Badge>
             {showDistance && hospital.distance && (
               <Badge variant="outline" className="gap-1">
                 <Navigation className="h-3 w-3" />

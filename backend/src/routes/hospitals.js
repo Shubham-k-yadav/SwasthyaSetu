@@ -13,10 +13,13 @@ const router = Router();
 // Get all hospitals with filters
 router.get('/', async (req, res) => {
   try {
-    const { city, state, bedType, hasAvailability, limit = 50, page = 1 } = req.query;
+    const { city, state, bedType, hasAvailability, includeUnverified, limit = 50, page = 1 } = req.query;
     
     if (global.isDemoMode || mongoose.connection.readyState !== 1) {
       let filtered = [...mockHospitals];
+      if (includeUnverified !== 'true') {
+        filtered = filtered.filter(h => h.isVerified !== false);
+      }
       if (city) filtered = filtered.filter(h => h.city.toLowerCase().includes(city.toLowerCase()));
       if (state) filtered = filtered.filter(h => h.state.toLowerCase().includes(state.toLowerCase()));
       if (hasAvailability === 'true' && bedType) {
@@ -29,6 +32,9 @@ router.get('/', async (req, res) => {
     }
 
     const filter = {};
+    if (includeUnverified !== 'true') {
+      filter.isVerified = true;
+    }
     if (city) filter.city = new RegExp(city, 'i');
     if (state) filter.state = new RegExp(state, 'i');
     if (hasAvailability === 'true' && bedType) {
@@ -78,7 +84,8 @@ router.get('/search', async (req, res) => {
     }
 
     const hospitals = await Hospital.find({
-      emergencyServices: true
+      emergencyServices: true,
+      isVerified: true
     }).lean();
 
     const hospitalsWithDistance = hospitals.map(hospital => {
@@ -149,6 +156,66 @@ router.get('/stats/overview', async (req, res) => {
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// Get unverified hospital approval queue (Superadmin only)
+router.get('/pending/queue', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
+      const pending = mockHospitals.filter(h => h.isVerified === false || h.verificationStatus === 'pending');
+      return res.json({ queue: pending });
+    }
+
+    const pending = await Hospital.find({
+      $or: [
+        { isVerified: false },
+        { verificationStatus: 'pending' }
+      ]
+    }).sort({ createdAt: -1 }).lean();
+
+    res.json({ queue: pending });
+  } catch (error) {
+    console.error('Error fetching pending verification queue:', error);
+    res.status(500).json({ error: 'Failed to fetch verification queue' });
+  }
+});
+
+// Verify or reject a hospital registration (Superadmin only)
+router.patch('/:id/verify', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const { status = 'approved' } = req.body;
+    const isApproved = status === 'approved';
+
+    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
+      const target = mockHospitals.find(h => h._id === req.params.id);
+      if (target) {
+        target.isVerified = isApproved;
+        target.verificationStatus = status;
+        target.lastUpdated = new Date().toISOString();
+        return res.json({ message: `Hospital ${status} successfully`, hospital: target });
+      }
+    }
+
+    const hospital = await Hospital.findByIdAndUpdate(
+      req.params.id,
+      {
+        isVerified: isApproved,
+        verificationStatus: status,
+        lastUpdated: new Date()
+      },
+      { new: true }
+    );
+
+    if (!hospital) {
+      res.status(404).json({ error: 'Hospital not found' });
+      return;
+    }
+
+    res.json({ message: `Hospital ${status} successfully`, hospital });
+  } catch (error) {
+    console.error('Error verifying hospital:', error);
+    res.status(500).json({ error: 'Failed to verify hospital' });
   }
 });
 

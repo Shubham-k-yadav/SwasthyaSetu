@@ -320,6 +320,70 @@ export default function HospitalsAdminPage() {
         </Dialog>
       </div>
 
+      {/* Pending Approval Queue Card */}
+      {hospitals.some(h => !h.verified && !h.isVerified) && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-amber-600 animate-pulse" />
+                <h2 className="text-lg font-bold text-amber-900 dark:text-amber-300">
+                  Unverified Hospital Approval Queue
+                </h2>
+                <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40">
+                  {hospitals.filter(h => !h.verified && !h.isVerified).length} Pending Review
+                </Badge>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {hospitals.filter(h => !h.verified && !h.isVerified).map((hospital) => (
+                <div key={hospital.id || hospital._id} className="p-4 rounded-lg border bg-card flex flex-col justify-between gap-3 shadow-xs">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-semibold text-base">{hospital.name}</h3>
+                      <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
+                        Pending Certificate
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-0.5">{hospital.address}, {hospital.city}</p>
+                    <div className="mt-2 text-xs bg-muted p-2 rounded-md font-mono text-muted-foreground">
+                      📄 Document: {hospital.registrationCertificate || 'REG-CERT-2026-PENDING.pdf'}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end pt-2 border-t">
+                    <Button 
+                      size="sm" 
+                      variant="destructive"
+                      onClick={() => {
+                        setHospitals(prev => prev.filter(h => (h.id || h._id) !== (hospital.id || hospital._id)));
+                      }}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Reject
+                    </Button>
+                    <Button 
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => {
+                        setHospitals(prev => prev.map(h => {
+                          if ((h.id || h._id) === (hospital.id || hospital._id)) {
+                            return { ...h, verified: true, isVerified: true, verificationStatus: 'approved' };
+                          }
+                          return h;
+                        }));
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approve & Verify
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -57,7 +57,12 @@ export const hospitalApi = {
 
   getStats: () => apiCall('/api/hospitals/stats/overview'),
 
-  verify: (id) => apiCall(`/api/hospitals/${id}/verify`),
+  getPendingQueue: (token) => apiCall('/api/hospitals/pending/queue', { token }),
+
+  verifyStatus: (id, status, token) =>
+    apiCall(`/api/hospitals/${id}/verify`, { method: 'PATCH', body: { status }, token }),
+
+  verify: (id, token) => apiCall(`/api/hospitals/${id}/verify`, { method: 'PATCH', body: { status: 'approved' }, token }),
 
   updateBeds: (id, beds, token) =>
     apiCall(`/api/hospitals/${id}/beds`, { method: 'PUT', body: { beds }, token }),
