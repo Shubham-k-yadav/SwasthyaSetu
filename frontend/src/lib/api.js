@@ -66,6 +66,15 @@ export const hospitalApi = {
 
   updateBeds: (id, beds, token) =>
     apiCall(`/api/hospitals/${id}/beds`, { method: 'PUT', body: { beds }, token }),
+
+  reserveBed: (hospitalId, payload) =>
+    apiCall(`/api/hospitals/${hospitalId}/reserve-bed`, { method: 'POST', body: payload }),
+
+  confirmReservation: (code) =>
+    apiCall(`/api/hospitals/reservations/${code}/confirm`, { method: 'POST' }),
+
+  releaseReservation: (code) =>
+    apiCall(`/api/hospitals/reservations/${code}/release`, { method: 'POST' }),
 };
 
 // Blood APIs

@@ -171,6 +171,8 @@ export const mockDonors = [
   }
 ];
 
+export const mockReservations = [];
+
 export const mockBloodStock = [];
 mockHospitals.forEach((h, hIdx) => {
   BLOOD_GROUPS.forEach((bg, bgIdx) => {

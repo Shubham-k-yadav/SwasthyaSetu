@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import Hospital from '../models/Hospital.js';
 import BloodStock from '../models/BloodStock.js';
+import BedReservation from '../models/BedReservation.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { emitBedUpdate } from '../services/socket.js';
 import { haversineDistance, calculateHospitalScore } from '../utils/geo.js';
 
-import { mockHospitals } from '../utils/mockStore.js';
+import { mockHospitals, mockReservations } from '../utils/mockStore.js';
 import mongoose from 'mongoose';
 
 const router = Router();
@@ -379,6 +380,187 @@ router.put('/:id/beds', authenticate, authorize('admin', 'superadmin'), async (r
   } catch (error) {
     console.error('Error updating beds:', error);
     res.status(500).json({ error: 'Failed to update bed availability' });
+  }
+});
+
+// Atomic Concurrency-Safe Bed Reservation (10-minute hold)
+router.post('/:id/reserve-bed', async (req, res) => {
+  try {
+    const { bedType = 'icu', patientName, contactPhone, holdMinutes = 10 } = req.body;
+    const hospitalId = req.params.id;
+
+    if (!patientName || !contactPhone) {
+      res.status(400).json({ error: 'Patient name and contact phone are required' });
+      return;
+    }
+
+    if (!['icu', 'general', 'ventilator'].includes(bedType)) {
+      res.status(400).json({ error: 'Invalid bed type specified' });
+      return;
+    }
+
+    const reservationCode = `SS-HOLD-${Math.floor(100000 + Math.random() * 900000)}`;
+    const expiresAt = new Date(Date.now() + holdMinutes * 60 * 1000);
+
+    // DEMO MODE / FALLBACK HANDLER
+    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
+      const targetHospital = mockHospitals.find(h => h._id === hospitalId || h.id === hospitalId);
+      if (!targetHospital || !targetHospital.beds?.[bedType] || targetHospital.beds[bedType].available <= 0) {
+        return res.status(409).json({ 
+          error: 'Bed no longer available. Another patient reserved the last remaining bed.' 
+        });
+      }
+
+      // Decrement bed count atomically in mock store
+      targetHospital.beds[bedType].available -= 1;
+      targetHospital.lastUpdated = new Date().toISOString();
+
+      const newReservation = {
+        _id: `res_${Date.now()}`,
+        hospitalId,
+        hospitalName: targetHospital.name,
+        bedType,
+        patientName,
+        contactPhone,
+        reservationCode,
+        status: 'reserved',
+        expiresAt: expiresAt.toISOString()
+      };
+      mockReservations.push(newReservation);
+      emitBedUpdate(hospitalId, targetHospital.beds);
+
+      return res.status(201).json({
+        message: 'Bed reserved successfully (10-minute hold active)',
+        reservation: newReservation,
+        expiresInSeconds: holdMinutes * 60
+      });
+    }
+
+    // MONGO DB ATOMIC TRANSACTION CHECK
+    // Uses findOneAndUpdate with conditional query: beds.<bedType>.available > 0
+    const filter = {
+      _id: hospitalId,
+      [`beds.${bedType}.available`]: { $gt: 0 } // Guaranteed concurrency safety!
+    };
+    const update = {
+      $inc: { [`beds.${bedType}.available`]: -1 },
+      $set: { lastUpdated: new Date() }
+    };
+
+    const updatedHospital = await Hospital.findOneAndUpdate(filter, update, { new: true });
+
+    if (!updatedHospital) {
+      res.status(409).json({
+        error: 'Bed no longer available. Another patient reserved the last remaining bed.'
+      });
+      return;
+    }
+
+    const reservation = new BedReservation({
+      hospitalId,
+      bedType,
+      patientName,
+      contactPhone,
+      reservationCode,
+      status: 'reserved',
+      expiresAt
+    });
+
+    await reservation.save();
+
+    emitBedUpdate(hospitalId, updatedHospital.beds);
+
+    res.status(201).json({
+      message: 'Bed reserved successfully (10-minute hold active)',
+      reservation: {
+        ...reservation.toObject(),
+        hospitalName: updatedHospital.name
+      },
+      expiresInSeconds: holdMinutes * 60
+    });
+  } catch (error) {
+    console.error('Error reserving bed:', error);
+    res.status(500).json({ error: 'Failed to complete atomic bed reservation' });
+  }
+});
+
+// Confirm Bed Admission (Converts hold into permanent occupied status)
+router.post('/reservations/:code/confirm', async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
+      const resv = mockReservations.find(r => r.reservationCode === code);
+      if (!resv) return res.status(404).json({ error: 'Reservation code not found' });
+      resv.status = 'confirmed';
+      return res.json({ message: 'Bed admission confirmed', reservation: resv });
+    }
+
+    const reservation = await BedReservation.findOneAndUpdate(
+      { reservationCode: code, status: 'reserved' },
+      { status: 'confirmed' },
+      { new: true }
+    );
+
+    if (!reservation) {
+      res.status(404).json({ error: 'Reservation code not found or already processed' });
+      return;
+    }
+
+    res.json({ message: 'Bed admission confirmed', reservation });
+  } catch (error) {
+    console.error('Error confirming reservation:', error);
+    res.status(500).json({ error: 'Failed to confirm bed reservation' });
+  }
+});
+
+// Release Bed Hold (Cancels reservation & restores bed count atomically)
+router.post('/reservations/:code/release', async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
+      const resv = mockReservations.find(r => r.reservationCode === code && r.status === 'reserved');
+      if (!resv) return res.status(404).json({ error: 'Active reservation not found' });
+      
+      resv.status = 'released';
+      const hospital = mockHospitals.find(h => h._id === resv.hospitalId || h.id === resv.hospitalId);
+      if (hospital && hospital.beds[resv.bedType]) {
+        hospital.beds[resv.bedType].available += 1;
+        emitBedUpdate(hospital._id || hospital.id, hospital.beds);
+      }
+      return res.json({ message: 'Bed hold released & bed count restored', reservation: resv });
+    }
+
+    const reservation = await BedReservation.findOneAndUpdate(
+      { reservationCode: code, status: 'reserved' },
+      { status: 'released' },
+      { new: true }
+    );
+
+    if (!reservation) {
+      res.status(404).json({ error: 'Active reservation not found or already processed' });
+      return;
+    }
+
+    // Atomically increment available bed count back
+    const updatedHospital = await Hospital.findByIdAndUpdate(
+      reservation.hospitalId,
+      {
+        $inc: { [`beds.${reservation.bedType}.available`]: 1 },
+        $set: { lastUpdated: new Date() }
+      },
+      { new: true }
+    );
+
+    if (updatedHospital) {
+      emitBedUpdate(updatedHospital._id, updatedHospital.beds);
+    }
+
+    res.json({ message: 'Bed hold released & bed count restored', reservation });
+  } catch (error) {
+    console.error('Error releasing reservation:', error);
+    res.status(500).json({ error: 'Failed to release reservation hold' });
   }
 });
 
