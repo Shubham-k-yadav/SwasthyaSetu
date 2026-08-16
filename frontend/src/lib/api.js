@@ -32,6 +32,11 @@ async function apiCall(endpoint, options = {}) {
   return response.json();
 }
 
+// System Status API
+export const systemApi = {
+  getStatus: () => apiCall('/api/status')
+};
+
 // Hospital APIs
 export const hospitalApi = {
   getAll: (params) => {

@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'http';
+import mongoose from 'mongoose';
 import mongoSanitize from 'express-mongo-sanitize';
 import { apiLimiter, emergencySosLimiter, authLimiter } from './middleware/rateLimiter.js';
 import connectDB from './config/db.js';
@@ -47,12 +48,18 @@ app.use('/api/emergency/request', emergencySosLimiter);
 app.use('/api/hospitals/:id/reserve-bed', emergencySosLimiter);
 app.use('/api/auth/login', authLimiter);
 
-// Health check
-app.get('/health', (req, res) => {
+// Health check & System Status
+app.get(['/health', '/api/status'], (req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
+  const isDemo = global.isDemoMode || !isDbConnected;
+
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    service: 'swasthya-setu-server'
+    service: 'swasthya-setu-server',
+    isDemoMode: isDemo,
+    databaseConnected: isDbConnected,
+    mode: isDemo ? 'degraded_demo' : 'live_production'
   });
 });
 
