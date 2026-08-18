@@ -1,5 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
 import {
   Users,
   Plus,
@@ -74,85 +76,46 @@ import { cn } from '@/lib/utils';
 
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-const mockDonors = [
-  {
-    id: '1',
-    name: 'Rajesh Kumar',
-    email: 'rajesh.kumar@email.com',
-    phone: '+91 98765 43210',
-    bloodType: 'O+',
-    city: 'New Delhi',
-    state: 'Delhi',
-    lastDonation: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    totalDonations: 12,
-    status: 'active',
-    registeredAt: new Date('2024-01-15'),
-    verified: true,
-  },
-  {
-    id: '2',
-    name: 'Priya Sharma',
-    email: 'priya.sharma@email.com',
-    phone: '+91 87654 32109',
-    bloodType: 'A+',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    lastDonation: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000),
-    totalDonations: 8,
-    status: 'active',
-    registeredAt: new Date('2024-03-22'),
-    verified: true,
-  },
-  {
-    id: '3',
-    name: 'Amit Patel',
-    email: 'amit.patel@email.com',
-    phone: '+91 76543 21098',
-    bloodType: 'B+',
-    city: 'Ahmedabad',
-    state: 'Gujarat',
-    lastDonation: null,
-    totalDonations: 0,
-    status: 'pending',
-    registeredAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    verified: false,
-  },
-  {
-    id: '4',
-    name: 'Sunita Reddy',
-    email: 'sunita.reddy@email.com',
-    phone: '+91 65432 10987',
-    bloodType: 'AB-',
-    city: 'Hyderabad',
-    state: 'Telangana',
-    lastDonation: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000),
-    totalDonations: 5,
-    status: 'inactive',
-    registeredAt: new Date('2023-08-10'),
-    verified: true,
-  },
-  {
-    id: '5',
-    name: 'Vikram Singh',
-    email: 'vikram.singh@email.com',
-    phone: '+91 54321 09876',
-    bloodType: 'O-',
-    city: 'Bangalore',
-    state: 'Karnataka',
-    lastDonation: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    totalDonations: 15,
-    status: 'active',
-    registeredAt: new Date('2023-05-20'),
-    verified: true,
-  },
-];
+
 
 export default function DonorsAdminPage() {
-  const [donors, setDonors] = useState(mockDonors);
+  const [donors, setDonors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [bloodTypeFilter, setBloodTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  const fetchDonors = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.donor.search({});
+      const list = res?.donors || res || [];
+      const normalized = list.map((d, i) => ({
+        id: d._id || d.id || String(i + 1),
+        name: d.name || 'Anonymous Donor',
+        email: d.email || `${d.name?.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+        phone: d.phone || '+91 99999 99999',
+        bloodType: d.bloodGroup || d.bloodType || 'O+',
+        city: d.city || 'N/A',
+        state: d.state || 'N/A',
+        lastDonation: d.lastDonation ? new Date(d.lastDonation) : null,
+        totalDonations: d.totalDonations ?? 1,
+        status: d.isAvailable ? 'active' : 'inactive',
+        registeredAt: d.createdAt ? new Date(d.createdAt) : new Date(),
+        verified: true,
+      }));
+      setDonors(normalized);
+    } catch (err) {
+      console.error('Failed to fetch donors:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDonors();
+  }, []);
 
   const filteredDonors = donors.filter((donor) => {
     const matchesSearch =

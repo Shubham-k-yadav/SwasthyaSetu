@@ -1,5 +1,7 @@
  
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
 import {
   AlertTriangle,
   Clock,
@@ -68,108 +70,54 @@ import { cn } from '@/lib/utils';
 
 
 
-const mockEmergencies = [
-  {
-    id: '1',
-    patientName: 'Rahul Sharma',
-    contactNumber: '+91 98765 43210',
-    emergencyType: 'both',
-    bloodType: 'O-',
-    unitsNeeded: 4,
-    bedType: 'icu',
-    bedsNeeded: 1,
-    location: {
-      city: 'New Delhi',
-      address: 'Connaught Place, Central Delhi',
-      lat: 28.6315,
-      lng: 77.2167,
-    },
-    status: 'pending',
-    priority: 'critical',
-    createdAt: new Date(Date.now() - 5 * 60000),
-  },
-  {
-    id: '2',
-    patientName: 'Priya Patel',
-    contactNumber: '+91 87654 32109',
-    emergencyType: 'blood',
-    bloodType: 'AB+',
-    unitsNeeded: 2,
-    location: {
-      city: 'Mumbai',
-      address: 'Andheri West, Mumbai',
-      lat: 19.1364,
-      lng: 72.8296,
-    },
-    status: 'processing',
-    priority: 'high',
-    createdAt: new Date(Date.now() - 15 * 60000),
-    assignedHospital: 'Apollo Hospital Mumbai',
-  },
-  {
-    id: '3',
-    patientName: 'Amit Kumar',
-    contactNumber: '+91 76543 21098',
-    emergencyType: 'bed',
-    bedType: 'emergency',
-    bedsNeeded: 2,
-    location: {
-      city: 'Bangalore',
-      address: 'Koramangala, Bangalore',
-      lat: 12.9352,
-      lng: 77.6245,
-    },
-    status: 'processing',
-    priority: 'medium',
-    createdAt: new Date(Date.now() - 30 * 60000),
-    assignedHospital: 'Fortis Healthcare',
-  },
-  {
-    id: '4',
-    patientName: 'Sunita Devi',
-    contactNumber: '+91 65432 10987',
-    emergencyType: 'blood',
-    bloodType: 'B+',
-    unitsNeeded: 3,
-    location: {
-      city: 'Chennai',
-      address: 'T. Nagar, Chennai',
-      lat: 13.0418,
-      lng: 80.2341,
-    },
-    status: 'resolved',
-    priority: 'high',
-    createdAt: new Date(Date.now() - 60 * 60000),
-    assignedHospital: 'Apollo Hospital Chennai',
-    notes: 'Blood delivered successfully. Patient stable.',
-  },
-  {
-    id: '5',
-    patientName: 'Vikram Singh',
-    contactNumber: '+91 54321 09876',
-    emergencyType: 'both',
-    bloodType: 'A+',
-    unitsNeeded: 2,
-    bedType: 'icu',
-    bedsNeeded: 1,
-    location: {
-      city: 'Kolkata',
-      address: 'Salt Lake, Kolkata',
-      lat: 22.5726,
-      lng: 88.3639,
-    },
-    status: 'cancelled',
-    priority: 'medium',
-    createdAt: new Date(Date.now() - 120 * 60000),
-    notes: 'Patient transferred to private facility.',
-  },
-];
+
 
 export default function EmergenciesAdminPage() {
-  const [emergencies, setEmergencies] = useState(mockEmergencies);
+  const [emergencies, setEmergencies] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+
+  const fetchEmergencies = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.emergency.getAll({});
+      const list = res?.emergencies || res || [];
+      const normalized = list.map((e, i) => ({
+        id: e._id || e.id || String(i + 1),
+        patientName: e.patientName || 'Emergency Patient',
+        contactNumber: e.contactPhone || e.contactNumber || '+91 99999 99999',
+        emergencyType: e.emergencyType || 'both',
+        bloodType: e.bloodType || 'O+',
+        unitsNeeded: e.unitsNeeded || 1,
+        bedType: e.bedType || 'icu',
+        bedsNeeded: e.bedsNeeded || 1,
+        location: typeof e.location === 'object' && e.location !== null
+          ? {
+              city: e.location.city || e.city || 'N/A',
+              address: e.location.address || e.address || 'Emergency Location',
+              lat: e.location.lat || 28.5672,
+              lng: e.location.lng || 77.2100,
+            }
+          : { city: e.city || 'N/A', address: e.address || 'Emergency Location', lat: 28.5672, lng: 77.2100 },
+        status: e.status || 'pending',
+        priority: e.priority || 'high',
+        createdAt: e.createdAt ? new Date(e.createdAt) : new Date(),
+        assignedHospital: e.assignedHospital?.name || e.assignedHospital || null,
+        notes: e.notes || e.description || '',
+      }));
+      setEmergencies(normalized);
+    } catch (err) {
+      console.error('Failed to fetch emergencies:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmergencies();
+  }, []);
 
   const filteredEmergencies = emergencies.filter((e) => {
     if (statusFilter === 'all') return true;

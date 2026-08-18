@@ -230,9 +230,11 @@ export default function AdminDashboard() {
 
   const fetchLiveStats = async () => {
     try {
-      const [hospStats, bloodStats] = await Promise.all([
+      const [hospStats, bloodStats, donorStats, emergStats] = await Promise.all([
         api.hospitals.getStats().catch(() => null),
         api.blood.getStats().catch(() => null),
+        api.donor.getStats().catch(() => null),
+        api.emergency.getStats().catch(() => null),
       ]);
 
       if (hospStats) {
@@ -240,17 +242,20 @@ export default function AdminDashboard() {
         const totalBeds = (beds.totalICU || 0) + (beds.totalGeneral || 0) + (beds.totalVentilator || 0);
         const availBeds = (beds.availableICU || 0) + (beds.availableGeneral || 0) + (beds.availableVentilator || 0);
 
-        setStats(prev => ({
+        setStats((prev) => ({
           ...prev,
-          totalHospitals: hospStats.totalHospitals || prev.totalHospitals,
+          totalHospitals: hospStats.totalHospitals ?? prev.totalHospitals,
           totalBeds: totalBeds || prev.totalBeds,
           availableBeds: availBeds || prev.availableBeds,
-          bloodUnitsAvailable: bloodStats?.totalUnits || prev.bloodUnitsAvailable,
+          bloodUnitsAvailable: bloodStats?.totalUnits ?? prev.bloodUnitsAvailable,
           criticalBloodTypes: bloodStats?.criticalGroups || prev.criticalBloodTypes,
+          activeEmergencies: emergStats?.activeEmergencies ?? prev.activeEmergencies,
+          registeredDonors: donorStats?.totalDonors ?? prev.registeredDonors,
+          todayRequests: emergStats?.todayRequests ?? prev.todayRequests,
         }));
       }
     } catch (err) {
-      console.warn('Backend offline, using fallback admin stats:', err);
+      console.warn('Backend offline, using current admin stats:', err);
     }
   };
 

@@ -1,5 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
 import {
   Droplets,
   Plus,
@@ -58,89 +60,52 @@ import { cn } from '@/lib/utils';
 
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-const mockBloodStock = [
-  {
-    id: '1',
-    hospitalId: 'h1',
-    hospitalName: 'AIIMS Delhi',
-    city: 'New Delhi',
-    bloodType: 'O-',
-    units: 12,
-    minThreshold: 50,
-    maxCapacity: 200,
-    lastUpdated: new Date(Date.now() - 30 * 60000),
-    expiringIn7Days: 5,
-  },
-  {
-    id: '2',
-    hospitalId: 'h1',
-    hospitalName: 'AIIMS Delhi',
-    city: 'New Delhi',
-    bloodType: 'A+',
-    units: 145,
-    minThreshold: 50,
-    maxCapacity: 200,
-    lastUpdated: new Date(Date.now() - 30 * 60000),
-    expiringIn7Days: 12,
-  },
-  {
-    id: '3',
-    hospitalId: 'h2',
-    hospitalName: 'Apollo Hospital',
-    city: 'Mumbai',
-    bloodType: 'B+',
-    units: 78,
-    minThreshold: 30,
-    maxCapacity: 150,
-    lastUpdated: new Date(Date.now() - 45 * 60000),
-    expiringIn7Days: 8,
-  },
-  {
-    id: '4',
-    hospitalId: 'h2',
-    hospitalName: 'Apollo Hospital',
-    city: 'Mumbai',
-    bloodType: 'AB-',
-    units: 8,
-    minThreshold: 20,
-    maxCapacity: 100,
-    lastUpdated: new Date(Date.now() - 45 * 60000),
-    expiringIn7Days: 3,
-  },
-  {
-    id: '5',
-    hospitalId: 'h3',
-    hospitalName: 'Fortis Healthcare',
-    city: 'Bangalore',
-    bloodType: 'O+',
-    units: 92,
-    minThreshold: 40,
-    maxCapacity: 180,
-    lastUpdated: new Date(Date.now() - 60 * 60000),
-    expiringIn7Days: 15,
-  },
-];
 
-const bloodTypeStats = bloodTypes.map((type) => {
-  const stocks = mockBloodStock.filter((s) => s.bloodType === type);
-  const totalUnits = stocks.reduce((sum, s) => sum + s.units, 0);
-  const totalCapacity = stocks.reduce((sum, s) => sum + s.maxCapacity, 0);
-  const criticalCount = stocks.filter((s) => s.units < s.minThreshold).length;
-  return {
-    type,
-    totalUnits,
-    totalCapacity,
-    criticalCount,
-    percentage: totalCapacity > 0 ? (totalUnits / totalCapacity) * 100 : 0,
-  };
-});
 
 export default function BloodAdminPage() {
-  const [stocks, setStocks] = useState(mockBloodStock);
+  const [stocks, setStocks] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
+
+  const fetchBloodData = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.blood.search({ minUnits: 0 });
+      const results = res?.results || [];
+      const flattened = [];
+
+      results.forEach((item) => {
+        const hosp = item.hospital || {};
+        (item.bloodStock || []).forEach((bs, idx) => {
+          flattened.push({
+            id: `${hosp._id || 'h'}-${bs.bloodGroup || idx}`,
+            hospitalId: hosp._id,
+            hospitalName: hosp.name || 'Hospital',
+            city: hosp.city || 'N/A',
+            bloodType: bs.bloodGroup,
+            units: bs.unitsAvailable ?? 0,
+            minThreshold: 10,
+            maxCapacity: 100,
+            lastUpdated: bs.lastUpdated ? new Date(bs.lastUpdated) : new Date(),
+            expiringIn7Days: Math.floor((bs.unitsAvailable || 0) * 0.1),
+          });
+        });
+      });
+
+      setStocks(flattened);
+    } catch (err) {
+      console.error('Failed to fetch blood stocks:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBloodData();
+  }, []);
 
   const filteredStocks = stocks.filter((stock) => {
     const matchesSearch =
