@@ -1,9 +1,13 @@
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
+// Helper: subtract minutes/hours from now for realistic timestamps
+const minsAgo = (minutes) => new Date(Date.now() - minutes * 60 * 1000).toISOString();
+const hoursAgo = (hours) => new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
 export const mockHospitals = [
   {
     _id: '66c000000000000000000001',
-    name: 'AIIMS Delhi',
+    name: 'AIIMS New Delhi',
     address: 'Ansari Nagar East, New Delhi',
     city: 'New Delhi',
     state: 'Delhi',
@@ -11,20 +15,20 @@ export const mockHospitals = [
     phone: '+91-11-26588500',
     email: 'director@aiims.edu',
     beds: {
-      icu: { total: 150, available: 23 },
-      general: { total: 800, available: 156 },
+      icu: { total: 168, available: 23 },
+      general: { total: 1200, available: 156 },
       ventilator: { total: 80, available: 12 }
     },
     specialties: ['Cardiology', 'Neurology', 'Oncology', 'Trauma'],
     emergencyServices: true,
     isVerified: true,
     rating: 4.8,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: minsAgo(18)       // 18 min ago — 🟢 Fresh
   },
   {
     _id: '66c000000000000000000002',
     name: 'Safdarjung Hospital',
-    address: 'Ring Road, Safdarjung Enclave',
+    address: 'Ring Road, Safdarjung Enclave, New Delhi',
     city: 'New Delhi',
     state: 'Delhi',
     coordinates: { lat: 28.5692, lng: 77.2072 },
@@ -32,14 +36,14 @@ export const mockHospitals = [
     email: 'info@safdarjunghospital.nic.in',
     beds: {
       icu: { total: 100, available: 15 },
-      general: { total: 600, available: 89 },
+      general: { total: 1400, available: 89 },
       ventilator: { total: 50, available: 8 }
     },
     specialties: ['General Surgery', 'Orthopedics', 'Burn Unit'],
     emergencyServices: true,
     isVerified: true,
     rating: 4.2,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: minsAgo(95)       // ~1.5 hr ago — 🟡 Stale (warning)
   },
   {
     _id: '66c000000000000000000003',
@@ -52,14 +56,14 @@ export const mockHospitals = [
     email: 'info@sgrh.com',
     beds: {
       icu: { total: 80, available: 18 },
-      general: { total: 400, available: 72 },
+      general: { total: 675, available: 72 },
       ventilator: { total: 40, available: 6 }
     },
     specialties: ['Cardiac Surgery', 'Nephrology', 'Gastroenterology'],
     emergencyServices: true,
     isVerified: true,
     rating: 4.6,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: minsAgo(45)       // 45 min ago — 🟢 Fresh
   },
   {
     _id: '66c000000000000000000004',
@@ -72,18 +76,18 @@ export const mockHospitals = [
     email: 'info@tmc.gov.in',
     beds: {
       icu: { total: 60, available: 5 },
-      general: { total: 500, available: 45 },
+      general: { total: 629, available: 45 },
       ventilator: { total: 35, available: 3 }
     },
     specialties: ['Oncology', 'Radiation Therapy', 'Surgical Oncology'],
     emergencyServices: true,
     isVerified: true,
     rating: 4.9,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: hoursAgo(7.5)     // 7.5 hr ago — 🩶 Very stale (greyed out)
   },
   {
     _id: '66c000000000000000000005',
-    name: 'KEM Hospital',
+    name: 'KEM Hospital Mumbai',
     address: 'Acharya Donde Marg, Parel, Mumbai',
     city: 'Mumbai',
     state: 'Maharashtra',
@@ -92,7 +96,7 @@ export const mockHospitals = [
     email: 'kemhospital@mcgm.gov.in',
     beds: {
       icu: { total: 120, available: 28 },
-      general: { total: 700, available: 134 },
+      general: { total: 1800, available: 134 },
       ventilator: { total: 60, available: 14 }
     },
     specialties: ['Trauma', 'Burns', 'Pediatrics', 'Neurosurgery'],
@@ -100,7 +104,7 @@ export const mockHospitals = [
     verificationStatus: 'approved',
     registrationCertificate: 'CERT-KEM-2024-8892',
     rating: 4.3,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: minsAgo(30)       // 30 min ago — 🟢 Fresh
   },
   {
     _id: '66c000000000000000000006',
@@ -122,7 +126,7 @@ export const mockHospitals = [
     verificationStatus: 'pending',
     registrationCertificate: 'REG-NOIDA-2026-9912.pdf',
     rating: 4.0,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: hoursAgo(3.2)     // 3.2 hr ago — 🟡 Stale
   }
 ];
 
@@ -139,7 +143,7 @@ export const mockDonors = [
     weight: 72,
     isAvailable: true,
     totalDonations: 5,
-    createdAt: new Date().toISOString()
+    createdAt: minsAgo(120)
   },
   {
     _id: '66c000000000000000000011',
@@ -153,7 +157,7 @@ export const mockDonors = [
     weight: 58,
     isAvailable: true,
     totalDonations: 8,
-    createdAt: new Date().toISOString()
+    createdAt: minsAgo(60)
   },
   {
     _id: '66c000000000000000000012',
@@ -167,15 +171,26 @@ export const mockDonors = [
     weight: 68,
     isAvailable: true,
     totalDonations: 3,
-    createdAt: new Date().toISOString()
+    createdAt: minsAgo(200)
   }
 ];
 
 export const mockReservations = [];
 
+// Blood stock ages per hospital (staggered so freshness badges make sense)
+const bloodStockAges = {
+  '66c000000000000000000001': minsAgo(20),    // AIIMS: fresh
+  '66c000000000000000000002': hoursAgo(2.5),  // Safdarjung: borderline stale
+  '66c000000000000000000003': minsAgo(50),    // SGRH: fresh
+  '66c000000000000000000004': hoursAgo(8),    // Tata Memorial: very stale
+  '66c000000000000000000005': minsAgo(35),    // KEM: fresh
+  '66c000000000000000000006': hoursAgo(4),    // Metro: stale
+};
+
 export const mockBloodStock = [];
 mockHospitals.forEach((h, hIdx) => {
   BLOOD_GROUPS.forEach((bg, bgIdx) => {
+    const units = Math.floor(Math.random() * 25) + 3;
     mockBloodStock.push({
       _id: `66c00000000000000000100${hIdx}${bgIdx}`,
       hospitalId: {
@@ -187,10 +202,10 @@ mockHospitals.forEach((h, hIdx) => {
         coordinates: h.coordinates
       },
       bloodGroup: bg,
-      unitsAvailable: Math.floor(Math.random() * 25) + 5,
+      unitsAvailable: units,
       minimumRequired: 5,
-      isLow: false,
-      lastUpdated: new Date().toISOString()
+      isLow: units < 5,
+      lastUpdated: bloodStockAges[h._id] || minsAgo(60)
     });
   });
 });
@@ -206,7 +221,7 @@ export const mockEmergencies = [
     emergencyType: 'Trauma / Cardiac',
     description: 'Chest pain and breathlessness',
     status: 'pending',
-    createdAt: new Date().toISOString()
+    createdAt: minsAgo(8)
   }
 ];
 

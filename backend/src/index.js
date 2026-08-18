@@ -5,9 +5,12 @@ import helmet from 'helmet';
 import { createServer } from 'http';
 import mongoose from 'mongoose';
 import mongoSanitize from 'express-mongo-sanitize';
+import cron from 'node-cron';
 import { apiLimiter, emergencySosLimiter, authLimiter } from './middleware/rateLimiter.js';
 import connectDB from './config/db.js';
 import { initializeSocket } from './services/socket.js';
+import BedReservation from './models/BedReservation.js';
+import Hospital from './models/Hospital.js';
 
 // Routes
 import hospitalRoutes from './routes/hospitals.js';
@@ -90,6 +93,41 @@ const startServer = async () => {
     // Initialize Socket.io
     initializeSocket(httpServer);
     console.log('✔ Socket.io initialized');
+
+    // ─── Auto-Expiry Cron Job (every 5 minutes) ─────────────────────────────
+    // Finds all BedReservations that have passed their expiresAt time,
+    // marks them 'expired', and restores the bed count in the Hospital document.
+    cron.schedule('*/5 * * * *', async () => {
+      if (mongoose.connection.readyState !== 1) return; // Only run in live mode
+      try {
+        const now = new Date();
+
+        // Find all expired-but-still-active reservations
+        const expiredReservations = await BedReservation.find({
+          status: 'reserved',
+          expiresAt: { $lte: now }
+        }).lean();
+
+        if (expiredReservations.length === 0) return;
+
+        // For each expired reservation, atomically restore the bed count
+        for (const reservation of expiredReservations) {
+          const bedField = `beds.${reservation.bedType}.available`;
+
+          await Hospital.findByIdAndUpdate(
+            reservation.hospitalId,
+            { $inc: { [bedField]: 1 }, $set: { lastUpdated: now } }
+          );
+
+          await BedReservation.findByIdAndUpdate(reservation._id, { status: 'expired' });
+        }
+
+        console.log(`[Cron] Auto-expired ${expiredReservations.length} reservation(s) & restored bed count(s)`);
+      } catch (err) {
+        console.error('[Cron] Auto-expiry error:', err.message);
+      }
+    });
+    console.log('✔ Bed reservation auto-expiry cron scheduled (every 5 min)');
 
     httpServer.listen(PORT, () => {
       console.log(`SwasthyaSetu Server running on port ${PORT}`);

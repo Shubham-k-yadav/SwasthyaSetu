@@ -1,5 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { Loader2 } from 'lucide-react';
 import {
   Building2,
   Plus,
@@ -81,98 +83,7 @@ import { cn } from '@/lib/utils';
 
 
 
-const mockHospitals = [
-  {
-    id: '1',
-    name: 'AIIMS Delhi',
-    type: 'government',
-    city: 'New Delhi',
-    state: 'Delhi',
-    address: 'Sri Aurobindo Marg, Ansari Nagar',
-    phone: '+91-11-26588500',
-    email: 'contact@aiims.edu',
-    totalBeds: 2500,
-    availableBeds: 320,
-    icuBeds: 200,
-    icuAvailable: 15,
-    verified: true,
-    blockchainVerified: true,
-    lastUpdated: new Date(Date.now() - 30 * 60000),
-    facilities: ['Emergency', 'ICU', 'Trauma Center', 'Blood Bank'],
-  },
-  {
-    id: '2',
-    name: 'Apollo Hospital',
-    type: 'private',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    address: 'Plot 13, Off Parsik Hill Road, CBD Belapur',
-    phone: '+91-22-33503350',
-    email: 'info@apollohospitals.com',
-    totalBeds: 450,
-    availableBeds: 78,
-    icuBeds: 50,
-    icuAvailable: 8,
-    verified: true,
-    blockchainVerified: true,
-    lastUpdated: new Date(Date.now() - 15 * 60000),
-    facilities: ['Emergency', 'ICU', 'Cardiac Care', 'Blood Bank'],
-  },
-  {
-    id: '3',
-    name: 'Fortis Healthcare',
-    type: 'private',
-    city: 'Bangalore',
-    state: 'Karnataka',
-    address: '154/9, Bannerghatta Road',
-    phone: '+91-80-66214444',
-    email: 'enquiry@fortishealthcare.com',
-    totalBeds: 380,
-    availableBeds: 42,
-    icuBeds: 40,
-    icuAvailable: 3,
-    verified: true,
-    blockchainVerified: false,
-    lastUpdated: new Date(Date.now() - 45 * 60000),
-    facilities: ['Emergency', 'ICU', 'Neurology'],
-  },
-  {
-    id: '4',
-    name: 'Tata Memorial Hospital',
-    type: 'charitable',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    address: 'Dr. E Borges Road, Parel',
-    phone: '+91-22-24177000',
-    email: 'info@tmc.gov.in',
-    totalBeds: 629,
-    availableBeds: 0,
-    icuBeds: 30,
-    icuAvailable: 0,
-    verified: true,
-    blockchainVerified: true,
-    lastUpdated: new Date(Date.now() - 60 * 60000),
-    facilities: ['Oncology', 'ICU', 'Blood Bank'],
-  },
-  {
-    id: '5',
-    name: 'Christian Medical College',
-    type: 'charitable',
-    city: 'Vellore',
-    state: 'Tamil Nadu',
-    address: 'Ida Scudder Road',
-    phone: '+91-416-2281000',
-    email: 'enquiry@cmcvellore.ac.in',
-    totalBeds: 2500,
-    availableBeds: 180,
-    icuBeds: 150,
-    icuAvailable: 12,
-    verified: true,
-    blockchainVerified: true,
-    lastUpdated: new Date(Date.now() - 20 * 60000),
-    facilities: ['Emergency', 'ICU', 'Trauma Center', 'Blood Bank', 'Pediatrics'],
-  },
-];
+
 
 const facilityOptions = [
   'Emergency',
@@ -188,11 +99,43 @@ const facilityOptions = [
 ];
 
 export default function HospitalsAdminPage() {
-  const [hospitals, setHospitals] = useState(mockHospitals);
+  const [hospitals, setHospitals] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState(null);
+
+  const fetchHospitals = async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const data = await api.hospitals.getAll({ includeUnverified: true, limit: 100 });
+      // Normalize API response — support both {hospitals:[]} and {data:[]}
+      const list = data?.hospitals || data?.data || data || [];
+      // Map backend fields to UI-expected shape
+      const normalized = list.map((h) => ({
+        ...h,
+        id: h._id || h.id,
+        totalBeds: (h.beds?.general?.total || 0) + (h.beds?.icu?.total || 0) + (h.beds?.ventilator?.total || 0),
+        availableBeds: (h.beds?.general?.available || 0) + (h.beds?.icu?.available || 0) + (h.beds?.ventilator?.available || 0),
+        icuBeds: h.beds?.icu?.total || 0,
+        icuAvailable: h.beds?.icu?.available || 0,
+        verified: h.isVerified ?? false,
+        lastUpdated: h.lastUpdated ? new Date(h.lastUpdated) : new Date(),
+        facilities: h.specialties || [],
+      }));
+      setHospitals(normalized);
+    } catch (err) {
+      console.error('Failed to fetch hospitals:', err);
+      setFetchError('Could not load hospitals. Showing cached data.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchHospitals(); }, []);
 
   const filteredHospitals = hospitals.filter((hospital) => {
     const matchesSearch =
@@ -226,6 +169,11 @@ export default function HospitalsAdminPage() {
           <h1 className="text-3xl font-bold tracking-tight">Hospital Management</h1>
           <p className="text-muted-foreground">
             Manage hospital registrations, bed availability, and verifications
+            {hospitals.length > 0 && (
+              <span className="ml-2 text-xs text-emerald-600 font-medium">
+                ({hospitals.length} hospitals loaded from database)
+              </span>
+            )}
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -320,8 +268,24 @@ export default function HospitalsAdminPage() {
         </Dialog>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12 gap-3 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading hospitals from database...</span>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {fetchError && !isLoading && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <span>⚠️ {fetchError}</span>
+          <Button size="sm" variant="outline" onClick={fetchHospitals}>Retry</Button>
+        </div>
+      )}
+
       {/* Pending Approval Queue Card */}
-      {hospitals.some(h => !h.verified && !h.isVerified) && (
+      {!isLoading && hospitals.some(h => !h.verified && !h.isVerified) && (
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
