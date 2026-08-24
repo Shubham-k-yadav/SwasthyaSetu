@@ -1,5 +1,5 @@
  
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getFreshnessStatus } from '@/lib/freshness';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -133,6 +133,11 @@ export default function BloodFinderPage() {
     age: '',
     weight: ''
   });
+
+  // Auto-fetch live blood stock on initial page mount
+  useEffect(() => {
+    handleSearch();
+  }, []);
 
   const handleSearch = async () => {
     setHasSearched(true);

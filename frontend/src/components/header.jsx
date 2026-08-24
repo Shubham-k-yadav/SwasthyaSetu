@@ -20,7 +20,7 @@ import { useLanguage } from '@/lib/language-context';
 const navItems = [
   { href: '/hospitals', label: 'Hospitals', icon: Building2 },
   { href: '/blood', label: 'Blood Availability', icon: Droplets },
-  { href: '/donors', label: 'Blood Donors', icon: HeartHandshake },
+  { href: '/blood', label: 'Blood Donors', icon: HeartHandshake },
   { href: '/emergency', label: 'Emergency', icon: AlertTriangle },
 ];
 

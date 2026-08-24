@@ -83,6 +83,26 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Refresh authentication token
+router.post('/refresh', authenticate, async (req, res) => {
+  try {
+    const freshToken = generateToken(req.user);
+    res.json({
+      token: freshToken,
+      user: {
+        id: req.user._id || req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        role: req.user.role,
+        hospitalId: req.user.hospitalId || null
+      }
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({ error: 'Failed to refresh token' });
+  }
+});
+
 // Get current user
 router.get('/me', authenticate, async (req, res) => {
   try {

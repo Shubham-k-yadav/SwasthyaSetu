@@ -86,21 +86,33 @@ export function HospitalMap({
   const defaultCenter = [20.5937, 78.9629];
   const defaultZoom = 5;
 
-  // Calculate center based on hospitals or selected hospital
+  // Calculate center & zoom based on selected hospital or city filtering
   let center = defaultCenter;
   let zoom = defaultZoom;
 
-  if (selectedHospital) {
+  const validHospitals = hospitals.filter(
+    h => h?.coordinates && typeof h.coordinates.lat === 'number' && typeof h.coordinates.lng === 'number'
+  );
+
+  if (selectedHospital?.coordinates) {
     center = [selectedHospital.coordinates.lat, selectedHospital.coordinates.lng];
     zoom = 14;
   } else if (userLocation) {
     center = [userLocation.lat, userLocation.lng];
     zoom = 12;
-  } else if (hospitals.length > 0) {
-    const avgLat = hospitals.reduce((sum, h) => sum + h.coordinates.lat, 0) / hospitals.length;
-    const avgLng = hospitals.reduce((sum, h) => sum + h.coordinates.lng, 0) / hospitals.length;
-    center = [avgLat, avgLng];
-    zoom = 10;
+  } else if (validHospitals.length > 0) {
+    // Check if hospitals belong to a single city
+    const uniqueCities = new Set(validHospitals.map(h => h.city));
+    if (uniqueCities.size === 1) {
+      const avgLat = validHospitals.reduce((sum, h) => sum + h.coordinates.lat, 0) / validHospitals.length;
+      const avgLng = validHospitals.reduce((sum, h) => sum + h.coordinates.lng, 0) / validHospitals.length;
+      center = [avgLat, avgLng];
+      zoom = 11;
+    } else {
+      // Multiple cities: center on India overview
+      center = defaultCenter;
+      zoom = 5;
+    }
   }
 
   useEffect(() => {

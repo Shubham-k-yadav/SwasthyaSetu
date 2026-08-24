@@ -47,8 +47,6 @@ app.use(mongoSanitize());
 
 // Rate Limiting Middlewares
 app.use('/api', apiLimiter);
-app.use('/api/emergency/request', emergencySosLimiter);
-app.use('/api/hospitals/:id/reserve-bed', emergencySosLimiter);
 app.use('/api/auth/login', authLimiter);
 
 // Health check & System Status

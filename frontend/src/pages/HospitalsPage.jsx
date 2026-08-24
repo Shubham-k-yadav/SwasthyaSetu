@@ -152,7 +152,7 @@ export default function HospitalsPage() {
     async function fetchData() {
       try {
         const [hospitalsRes, statsRes] = await Promise.all([
-          api.hospitals.getAll(),
+          api.hospitals.getAll({ limit: 500 }),
           api.hospitals.getStats(),
         ]);
         setHospitals(hospitalsRes.hospitals && hospitalsRes.hospitals.length > 0 ? hospitalsRes.hospitals : mockHospitals);
@@ -168,9 +168,21 @@ export default function HospitalsPage() {
     fetchData();
   }, []);
 
+  const dynamicCities = [
+    'All Cities',
+    ...Array.from(new Set(hospitals.map(h => h.city).filter(Boolean)))
+  ].sort();
+
   const filteredHospitals = hospitals.filter(hospital => {
-    const matchesSearch = (hospital.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (hospital.address || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase().trim();
+    const specialtiesStr = Array.isArray(hospital.specialties) ? hospital.specialties.join(' ') : '';
+    const matchesSearch = !q || 
+      (hospital.name || '').toLowerCase().includes(q) ||
+      (hospital.address || '').toLowerCase().includes(q) ||
+      (hospital.city || '').toLowerCase().includes(q) ||
+      (hospital.state || '').toLowerCase().includes(q) ||
+      specialtiesStr.toLowerCase().includes(q);
+
     const matchesCity = selectedCity === 'All Cities' || hospital.city === selectedCity;
     const matchesBedType = selectedBedType === 'All Types' || 
                           (hospital.beds?.[selectedBedType]?.available > 0);
@@ -264,7 +276,7 @@ export default function HospitalsPage() {
                     <SelectValue placeholder="City" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cities.map(city => (
+                    {dynamicCities.map(city => (
                       <SelectItem key={city} value={city}>{city}</SelectItem>
                     ))}
                   </SelectContent>

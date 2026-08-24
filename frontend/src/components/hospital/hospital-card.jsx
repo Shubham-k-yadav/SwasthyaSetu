@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,12 +17,14 @@ import {
   Wind,
   Zap,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { getFreshnessStatus } from '@/lib/freshness';
 import { hospitalApi } from '@/lib/api';
+import { BedTicketDialog } from './bed-ticket-dialog';
 
 export function HospitalCard({ 
   hospital, 
@@ -30,13 +32,18 @@ export function HospitalCard({
   onGetDirections,
   showDistance = false 
 }) {
+  const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isReserveOpen, setIsReserveOpen] = useState(false);
+  const [step, setStep] = useState('input'); // 'input' | 'otp' | 'confirmed'
   const [bedType, setBedType] = useState('icu');
   const [patientName, setPatientName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [otpInput, setOtpInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reservation, setReservation] = useState(null);
+  const [secondsRemaining, setSecondsRemaining] = useState(600);
   const [error, setError] = useState('');
+  const [isReleasing, setIsReleasing] = useState(false);
 
   const totalAvailable = (hospital.beds?.icu?.available || 0) + 
                         (hospital.beds?.general?.available || 0) + 
@@ -45,23 +52,93 @@ export function HospitalCard({
   const hasAvailability = totalAvailable > 0;
   const freshness = getFreshnessStatus(hospital.lastUpdated);
 
-  const handleReserve = async (e) => {
+  // Live countdown timer effect for active bed reservation
+  useEffect(() => {
+    let timer;
+    if (step === 'confirmed' && secondsRemaining > 0) {
+      timer = setInterval(() => {
+        setSecondsRemaining((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, secondsRemaining]);
+
+  const formatTimer = (totalSeconds) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleRequestOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    const cleanPhone = String(contactPhone).trim().replace(/[\s\-\+]/g, '');
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setError('Please enter a valid 10-digit mobile number starting with 6-9.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await hospitalApi.requestOtp(cleanPhone);
+      setStep('otp');
+      setOtpInput('123456'); // Pre-fill demo OTP for zero-friction user testing
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send verification OTP.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyAndReserve = async (e) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
 
+    const cleanPhone = String(contactPhone).trim().replace(/[\s\-\+]/g, '');
+
     try {
+      // 1. Verify OTP
+      await hospitalApi.verifyOtp(cleanPhone, otpInput);
+
+      // 2. Reserve Bed Atomically
       const res = await hospitalApi.reserveBed(hospital._id || hospital.id, {
         bedType,
         patientName,
-        contactPhone,
+        contactPhone: cleanPhone,
         holdMinutes: 10
       });
+
       setReservation(res.reservation);
+      setSecondsRemaining(res.expiresInSeconds || 600);
+      setStep('confirmed');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reservation failed. Bed may be full.');
+      setError(err instanceof Error ? err.message : 'Verification or reservation failed.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleReleaseHold = async () => {
+    if (!reservation?.reservationCode) return;
+    setIsReleasing(true);
+    try {
+      await hospitalApi.releaseReservation(reservation.reservationCode);
+      setReservation(null);
+      setStep('input');
+      setIsReserveOpen(false);
+    } catch (err) {
+      setError('Failed to release bed hold.');
+    } finally {
+      setIsReleasing(false);
+    }
+  };
+
+  const handleModalClose = (open) => {
+    setIsReserveOpen(open);
+    if (!open && step !== 'confirmed') {
+      setStep('input');
+      setError('');
     }
   };
 
@@ -136,7 +213,7 @@ export function HospitalCard({
             </div>
             <div className="flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5" />
-              <span>24/7</span>
+              <span>24/7 Emergency</span>
             </div>
           </div>
 
@@ -145,7 +222,7 @@ export function HospitalCard({
             <Button 
               size="sm" 
               className="flex-1 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-medium"
-              onClick={() => setIsReserveOpen(true)}
+              onClick={() => { setError(''); setIsReserveOpen(true); }}
               disabled={!hasAvailability}
             >
               <Zap className="h-4 w-4" />
@@ -165,49 +242,28 @@ export function HospitalCard({
         </CardContent>
       </Card>
 
-      {/* Bed Hold Modal */}
-      <Dialog open={isReserveOpen} onOpenChange={setIsReserveOpen}>
+      {/* Interactive Bed Hold Modal */}
+      <Dialog open={isReserveOpen} onOpenChange={handleModalClose}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <Zap className="h-5 w-5 text-amber-500" />
-              Atomic Bed Hold (10-Min Limit)
+              {step === 'confirmed' ? 'Bed Reservation Ticket' : 'Verified Bed Hold (10-Min Limit)'}
             </DialogTitle>
             <DialogDescription>
-              {hospital.name} — Atomic check prevents double booking during simultaneous emergency requests.
+              {hospital.name} — Concurrency lock & phone OTP verification active.
             </DialogDescription>
           </DialogHeader>
 
-          {reservation ? (
-            <div className="space-y-4 py-2">
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
-                <CheckCircle className="h-10 w-10 text-emerald-600 mx-auto" />
-                <h3 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">
-                  Bed Hold Reserved!
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Bed count decremented. Present this code at hospital admission counter:
-                </p>
-                <div className="p-2.5 rounded-lg bg-background font-mono font-black text-xl text-primary tracking-wider border shadow-xs">
-                  {reservation.reservationCode}
-                </div>
-                <div className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                  ⏳ Hold Expires in 10 Minutes (Pending Arrival)
-                </div>
-              </div>
-              <Button className="w-full" onClick={() => setIsReserveOpen(false)}>
-                Done
-              </Button>
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
             </div>
-          ) : (
-            <form onSubmit={handleReserve} className="space-y-4 py-2">
-              {error && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 text-sm flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
+          )}
 
+          {step === 'input' && (
+            <form onSubmit={handleRequestOtp} className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label htmlFor="bedType">Select Bed Type</Label>
                 <Select value={bedType} onValueChange={setBedType}>
@@ -223,7 +279,7 @@ export function HospitalCard({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pname">Patient Name</Label>
+                <Label htmlFor="pname">Patient Full Name</Label>
                 <Input
                   id="pname"
                   placeholder="Enter patient full name"
@@ -234,24 +290,115 @@ export function HospitalCard({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pphone">Emergency Contact Phone</Label>
+                <Label htmlFor="pphone">Emergency Mobile Number (+91)</Label>
                 <Input
                   id="pphone"
                   type="tel"
-                  placeholder="+91-9876543210"
+                  placeholder="e.g. 9876543210"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                   required
                 />
+                <p className="text-xs text-muted-foreground">10-digit mobile number required for OTP verification.</p>
               </div>
 
               <Button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white gap-2" disabled={isSubmitting}>
-                {isSubmitting ? 'Reserving Bed Atomically...' : 'Confirm 10-Minute Hold'}
+                {isSubmitting ? 'Sending Verification OTP...' : 'Request Verification OTP'}
               </Button>
             </form>
           )}
+
+          {step === 'otp' && (
+            <form onSubmit={handleVerifyAndReserve} className="space-y-4 py-2">
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
+                📱 OTP sent to <strong>+91-{contactPhone}</strong> (Demo OTP: <strong>123456</strong>)
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="otp">Enter 6-Digit OTP</Label>
+                <Input
+                  id="otp"
+                  maxLength={6}
+                  placeholder="123456"
+                  className="font-mono text-center tracking-widest text-lg font-bold"
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setStep('input')} className="flex-1">
+                  Back
+                </Button>
+                <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isSubmitting}>
+                  {isSubmitting ? 'Verifying & Holding...' : 'Verify OTP & Hold Bed'}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {step === 'confirmed' && reservation && (
+            <div className="space-y-4 py-2">
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
+                <CheckCircle className="h-10 w-10 text-emerald-600 mx-auto" />
+                <h3 className="text-lg font-bold text-emerald-800 dark:text-emerald-300">
+                  Bed Hold Active!
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Present code at admission counter ({hospital.name}):
+                </p>
+                <div className="p-2.5 rounded-lg bg-background font-mono font-black text-2xl text-primary tracking-widest border shadow-xs">
+                  {reservation.reservationCode}
+                </div>
+                
+                {/* Live Countdown Timer Display */}
+                <div className="mt-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">⏳ Hold Time Remaining:</span>
+                  <span className="font-mono font-black text-lg text-amber-600 dark:text-amber-400">
+                    {secondsRemaining > 0 ? formatTimer(secondsRemaining) : 'EXPIRED'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-xs space-y-1 text-muted-foreground border-t pt-2">
+                <p>👤 <strong>Patient:</strong> {patientName}</p>
+                <p>🛏️ <strong>Bed Type:</strong> {bedType.toUpperCase()}</p>
+                <p>📞 <strong>Phone:</strong> +91-{contactPhone}</p>
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-sky-300 text-sky-700 dark:text-sky-300 hover:bg-sky-50 font-medium"
+                onClick={() => setIsTicketOpen(true)}
+              >
+                <Printer className="h-4 w-4" />
+                Print / Save PDF Ticket (with QR Code)
+              </Button>
+
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleReleaseHold} disabled={isReleasing}>
+                  {isReleasing ? 'Releasing...' : 'Release Hold'}
+                </Button>
+                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setIsReserveOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Printable Bed Ticket Dialog with QR Code */}
+      <BedTicketDialog
+        open={isTicketOpen}
+        onOpenChange={setIsTicketOpen}
+        reservation={reservation}
+        hospital={hospital}
+        patientName={patientName}
+        contactPhone={contactPhone}
+        bedType={bedType}
+      />
     </>
   );
 }

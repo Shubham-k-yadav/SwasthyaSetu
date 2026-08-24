@@ -45,6 +45,7 @@ export const hospitalApi = {
     if (params?.state) searchParams.set('state', params.state);
     if (params?.bedType) searchParams.set('bedType', params.bedType);
     if (params?.hasAvailability) searchParams.set('hasAvailability', 'true');
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
     return apiCall(`/api/hospitals?${searchParams}`);
   },
 
@@ -74,6 +75,12 @@ export const hospitalApi = {
 
   reserveBed: (hospitalId, payload) =>
     apiCall(`/api/hospitals/${hospitalId}/reserve-bed`, { method: 'POST', body: payload }),
+
+  requestOtp: (phone) =>
+    apiCall('/api/hospitals/request-otp', { method: 'POST', body: { phone } }),
+
+  verifyOtp: (phone, otp) =>
+    apiCall('/api/hospitals/verify-otp', { method: 'POST', body: { phone, otp } }),
 
   confirmReservation: (code) =>
     apiCall(`/api/hospitals/reservations/${code}/confirm`, { method: 'POST' }),

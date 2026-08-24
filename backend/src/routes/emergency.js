@@ -22,10 +22,14 @@ router.post('/request', async (req, res) => {
       notes
     } = req.body;
 
-    if (!contactPhone || !location || !emergencyType || !bedType) {
-      res.status(400).json({ error: 'Missing required fields' });
+    const selectedBedType = bedType || 'icu';
+
+    if (!contactPhone || !location || !emergencyType) {
+      res.status(400).json({ error: 'Contact phone, emergency type, and location are required' });
       return;
     }
+
+    const city = location?.city || location?.address?.split(',').pop()?.trim() || 'delhi';
 
     if (global.isDemoMode || mongoose.connection.readyState !== 1) {
       const newEmergency = {
@@ -34,13 +38,13 @@ router.post('/request', async (req, res) => {
         contactNumber: contactPhone,
         location,
         emergencyType,
-        bedType,
+        bedType: selectedBedType,
         notes,
         status: 'pending',
         createdAt: new Date().toISOString()
       };
       mockEmergencies.unshift(newEmergency);
-      emitEmergencyAlert({
+      emitEmergencyAlert(city, {
         emergencyId: newEmergency._id,
         patientName: newEmergency.patientName,
         emergencyType,
@@ -62,25 +66,27 @@ router.post('/request', async (req, res) => {
 
     const hospitals = await Hospital.find({
       emergencyServices: true,
-      [`beds.${bedType}.available`]: { $gt: 0 }
+      [`beds.${selectedBedType}.available`]: { $gt: 0 }
     }).lean();
 
     const hospitalsWithDistance = hospitals.map(hospital => ({
       ...hospital,
       distance: haversineDistance(
-        location.lat, location.lng,
-        hospital.coordinates.lat, hospital.coordinates.lng
+        location?.lat || location?.coordinates?.lat || 28.6139,
+        location?.lng || location?.coordinates?.lng || 77.2090,
+        hospital.coordinates?.lat || 28.6139,
+        hospital.coordinates?.lng || 77.2090
       )
     })).sort((a, b) => a.distance - b.distance);
 
     const recommendedHospitals = hospitalsWithDistance.slice(0, 3).map(h => h._id);
 
     const emergency = new EmergencyRequest({
-      patientName,
+      patientName: patientName || 'Emergency Patient',
       contactPhone,
       location,
       emergencyType,
-      bedType,
+      bedType: selectedBedType,
       priority,
       notes,
       status: 'searching',
