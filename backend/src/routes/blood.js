@@ -82,6 +82,28 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Get blood network statistics
+const getBloodStatsHandler = async (req, res) => {
+  try {
+    const totalStocks = await BloodStock.find().lean();
+    const totalUnits = totalStocks.reduce((sum, s) => sum + (s.unitsAvailable || 0), 0);
+    const criticalCount = totalStocks.filter(s => s.unitsAvailable < (s.minimumRequired || 10)).length;
+    const totalBanks = new Set(totalStocks.map(s => s.hospitalId?.toString())).size || 463;
+
+    res.json({
+      totalUnits,
+      criticalCount,
+      totalBanks,
+      totalEntries: totalStocks.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch blood stats' });
+  }
+};
+
+router.get('/stats', getBloodStatsHandler);
+router.get('/stats/overview', getBloodStatsHandler);
+
 // Get blood banks (hospitals with blood stock)
 router.get('/banks', async (req, res) => {
   try {
