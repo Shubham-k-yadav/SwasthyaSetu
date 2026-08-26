@@ -229,8 +229,18 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'superadmin';
 
-  const [stats, setStats] = useState(mockStats);
-  const [activities, setActivities] = useState(mockActivities);
+  const [stats, setStats] = useState({
+    totalHospitals: 463,
+    activeEmergencies: 0,
+    totalBeds: 198547,
+    availableBeds: 69918,
+    bloodUnitsAvailable: 90391,
+    criticalBloodTypes: ['O-', 'AB-'],
+    registeredDonors: 0,
+    todayRequests: 0,
+    verifiedRecords: 100,
+  });
+  const [activities, setActivities] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchLiveStats = async () => {

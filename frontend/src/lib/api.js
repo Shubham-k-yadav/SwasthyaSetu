@@ -39,6 +39,8 @@ export const systemApi = {
 
 // Hospital APIs
 export const hospitalApi = {
+  registerRequest: (data) => apiCall('/api/hospitals/register-request', { method: 'POST', body: data }),
+
   getAll: (params) => {
     const searchParams = new URLSearchParams();
     if (params?.city) searchParams.set('city', params.city);

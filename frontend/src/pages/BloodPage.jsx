@@ -161,34 +161,15 @@ export default function BloodFinderPage() {
           bloodStock: r.bloodStock || [],
           lastUpdated: new Date().toISOString()
         }));
-        setSearchResults(formatted);
+         setSearchResults(formatted);
       } else {
-        // Fallback filter on mock data
-        let results = mockBloodBanks;
-        if (selectedCity && selectedCity !== 'all') {
-          results = results.filter(b => b.city === selectedCity);
-        }
-        if (selectedBloodGroup && selectedBloodGroup !== 'all') {
-          results = results.map(bank => ({
-            ...bank,
-            bloodStock: bank.bloodStock.filter(s => s.bloodGroup === selectedBloodGroup)
-          })).filter(bank => bank.bloodStock.length > 0);
-        }
-        setSearchResults(results);
+        setSearchResults([]);
       }
     } catch (err) {
-      console.warn('Error fetching live blood search, using mock data:', err);
-      let results = mockBloodBanks;
-      if (selectedCity && selectedCity !== 'all') {
-        results = results.filter(b => b.city === selectedCity);
-      }
-      if (selectedBloodGroup && selectedBloodGroup !== 'all') {
-        results = results.map(bank => ({
-          ...bank,
-          bloodStock: bank.bloodStock.filter(s => s.bloodGroup === selectedBloodGroup)
-        })).filter(bank => bank.bloodStock.length > 0);
-      }
-      setSearchResults(results);
+      console.error('Error fetching live blood search from backend:', err);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
     }
   };
 
