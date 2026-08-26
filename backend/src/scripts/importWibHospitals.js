@@ -2,6 +2,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import Hospital from '../models/Hospital.js';
 import BloodStock from '../models/BloodStock.js';
+import User from '../models/User.js';
 import connectDB from '../config/db.js';
 
 // 1. Exact Verified Real-World GPS Coordinates for Hospitals
@@ -187,7 +188,8 @@ async function importWibHospitals() {
     // Clean existing collections
     await Hospital.deleteMany({});
     await BloodStock.deleteMany({});
-    console.log('✔ Cleared existing hospital and blood stock collections');
+    await User.deleteMany({});
+    console.log('✔ Cleared existing hospital, blood stock, and user collections');
 
     let count = 0;
     let bloodStockCount = 0;
@@ -276,6 +278,36 @@ async function importWibHospitals() {
         await bloodStock.save();
         bloodStockCount++;
       }
+    }
+
+    // Seed Admin Accounts
+    try {
+      const superAdmin = new User({
+        email: 'superadmin@swasthyasetu.in',
+        password: 'SwasthyaSetu@2026',
+        name: 'Super Admin',
+        role: 'superadmin'
+      });
+      await superAdmin.save();
+
+      const aiimsAdmin = new User({
+        email: 'admin@aiims.edu',
+        password: 'AIIMS@2024',
+        name: 'AIIMS Delhi Admin',
+        role: 'admin'
+      });
+      await aiimsAdmin.save();
+
+      const kemAdmin = new User({
+        email: 'admin@kemhospital.gov.in',
+        password: 'KEM@2024',
+        name: 'KEM Mumbai Admin',
+        role: 'admin'
+      });
+      await kemAdmin.save();
+      console.log('✔ Admin Accounts Created Successfully!');
+    } catch (adminErr) {
+      console.error('❌ Admin user creation error:', adminErr);
     }
 
     console.log('\n======================================================');

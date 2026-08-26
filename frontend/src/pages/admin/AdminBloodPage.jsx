@@ -135,6 +135,20 @@ export default function BloodAdminPage() {
     if (percentage < 70) return { label: 'Normal', color: 'text-emerald-600 bg-emerald-50', variant: 'secondary'  };
     return { label: 'High', color: 'text-blue-600 bg-blue-50', variant: 'secondary'  };
   };
+  const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  const bloodTypeStats = BLOOD_TYPES.map((type) => {
+    const matching = stocks.filter((s) => s.type === type || s.bloodGroup === type || s.bloodType === type);
+    const totalUnits = matching.reduce((sum, s) => sum + (s.units || s.unitsAvailable || 0), 0);
+    const criticalCount = matching.filter((s) => (s.units || s.unitsAvailable || 0) < (s.minThreshold || s.minimumRequired || 10)).length;
+    const percentage = Math.min(100, Math.max(10, (totalUnits / 200) * 100));
+
+    return {
+      type,
+      totalUnits,
+      criticalCount,
+      percentage
+    };
+  });
 
   return (
     <div className="space-y-6">

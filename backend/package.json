@@ -5,7 +5,7 @@
   "description": "SwasthyaSetu Backend - Node.js Express API Server",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node --watch src/index.js",
+    "dev": "node --watch-path=src src/index.js",
     "start": "node src/index.js",
     "build": "echo Server build complete",
     "seed": "node src/scripts/seed.js",

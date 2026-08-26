@@ -55,8 +55,7 @@ router.post('/login', async (req, res) => {
       return;
     }
 
-    user.lastLogin = new Date();
-    await user.save();
+    await User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
 
     let hospital = null;
     if (user.hospitalId) {
