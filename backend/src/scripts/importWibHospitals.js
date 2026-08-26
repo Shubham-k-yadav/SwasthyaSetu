@@ -282,6 +282,9 @@ async function importWibHospitals() {
 
     // Seed Admin Accounts
     try {
+      const aiimsDoc = await Hospital.findOne({ name: /AIIMS/i });
+      const kemDoc = await Hospital.findOne({ name: /KEM/i });
+
       const superAdmin = new User({
         email: 'superadmin@swasthyasetu.in',
         password: 'SwasthyaSetu@2026',
@@ -294,7 +297,8 @@ async function importWibHospitals() {
         email: 'admin@aiims.edu',
         password: 'AIIMS@2024',
         name: 'AIIMS Delhi Admin',
-        role: 'admin'
+        role: 'admin',
+        hospitalId: aiimsDoc?._id
       });
       await aiimsAdmin.save();
 
@@ -302,10 +306,11 @@ async function importWibHospitals() {
         email: 'admin@kemhospital.gov.in',
         password: 'KEM@2024',
         name: 'KEM Mumbai Admin',
-        role: 'admin'
+        role: 'admin',
+        hospitalId: kemDoc?._id
       });
       await kemAdmin.save();
-      console.log('✔ Admin Accounts Created Successfully!');
+      console.log('✔ Admin Accounts Created & Linked to Hospital IDs Successfully!');
     } catch (adminErr) {
       console.error('❌ Admin user creation error:', adminErr);
     }

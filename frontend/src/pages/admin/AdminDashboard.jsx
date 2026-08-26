@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 
 
 
@@ -225,6 +226,9 @@ function ActivityItem({ activity }) {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
+
   const [stats, setStats] = useState(mockStats);
   const [activities, setActivities] = useState(mockActivities);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -279,9 +283,14 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isSuperAdmin ? "National Emergency Network Dashboard" : `${user?.name || 'Hospital'} Portal`}
+          </h1>
           <p className="text-muted-foreground">
-            Real-time overview of the SwasthyaSetu emergency network
+            {isSuperAdmin 
+              ? "Real-time overview of the SwasthyaSetu emergency network across India"
+              : `Real-time management portal for ${user?.name || 'your assigned hospital'}`
+            }
           </p>
         </div>
         <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline">
@@ -293,9 +302,9 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Hospitals"
-          value={stats.totalHospitals}
-          subtitle="Across 28 states"
+          title={isSuperAdmin ? "Total Hospitals" : "Managed Hospital"}
+          value={isSuperAdmin ? stats.totalHospitals : "1 Active"}
+          subtitle={isSuperAdmin ? "Across 35+ Indian cities" : (user?.name || "Assigned Node")}
           icon={Building2}
           trend="up"
           trendValue="12%"

@@ -143,10 +143,17 @@ export default function HospitalsAdminPage() {
 
   const filteredHospitals = hospitals.filter((hospital) => {
     // Non-superadmin hospital admins can ONLY see and manage their assigned hospital
-    if (!isSuperAdmin && user?.hospitalId) {
-      const userHospId = user.hospitalId._id || user.hospitalId;
-      if (hospital.id !== userHospId && hospital._id !== userHospId) {
-        return false;
+    if (!isSuperAdmin) {
+      if (user?.hospitalId) {
+        const userHospId = user.hospitalId._id || user.hospitalId;
+        if (hospital.id !== userHospId && hospital._id !== userHospId) {
+          return false;
+        }
+      } else {
+        const firstKeyword = (user?.name || '').split(' ')[0].toLowerCase();
+        if (firstKeyword && !hospital.name.toLowerCase().includes(firstKeyword)) {
+          return false;
+        }
       }
     }
     const matchesSearch =
