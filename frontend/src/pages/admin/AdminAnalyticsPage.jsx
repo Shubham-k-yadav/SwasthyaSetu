@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import {
 
   TrendingUp,
@@ -87,6 +88,13 @@ const hourlyActivity = Array.from({ length: 24 }, (_, i) => ({
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d');
+  const [liveStats, setLiveStats] = useState(null);
+
+  useEffect(() => {
+    api.hospitals.getStats()
+      .then(res => setLiveStats(res))
+      .catch(err => console.warn('Failed to load analytics stats:', err));
+  }, []);
 
   return (
     <div className="space-y-6">

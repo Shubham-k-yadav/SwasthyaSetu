@@ -32,8 +32,9 @@ import {
   Star
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 import { api } from '@/lib/api';
+import { AmbulanceCard } from '@/components/emergency/ambulance-card';
+import { playEmergencySiren, triggerDesktopNotification } from '@/lib/audio-notification';
 
 
 
@@ -175,6 +176,13 @@ export default function EmergencyPage() {
     try {
       const loc = userLocation || { lat: 28.5672, lng: 77.2100 };
       
+      // Play emergency siren tone & trigger browser desktop notification
+      playEmergencySiren();
+      triggerDesktopNotification(
+        '🚨 SwasthyaSetu Emergency SOS Broadcasted',
+        `Emergency alert sent for patient ${patientName || 'Emergency Patient'} (${bedType.toUpperCase()} bed needed)`
+      );
+
       // Submit emergency request to backend
       await api.emergency.createRequest({
         contactPhone,
@@ -241,6 +249,11 @@ export default function EmergencyPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Ambulance Dispatch Fleet Module */}
+          <div className="mb-8">
+            <AmbulanceCard />
           </div>
 
           {/* Page Header */}
