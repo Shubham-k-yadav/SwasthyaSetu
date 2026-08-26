@@ -63,6 +63,9 @@ const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 
 export default function BloodAdminPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
+
   const [stocks, setStocks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,6 +111,20 @@ export default function BloodAdminPage() {
   }, []);
 
   const filteredStocks = stocks.filter((stock) => {
+    // Role scoping: Hospital Admins see ONLY their hospital's blood stock
+    if (!isSuperAdmin) {
+      if (user?.hospitalId) {
+        const userHospId = user.hospitalId._id || user.hospitalId;
+        if (stock.hospitalId !== userHospId && stock.hospitalId?._id !== userHospId) {
+          return false;
+        }
+      } else {
+        const keyword = (user?.name || '').split(' ')[0].toLowerCase();
+        if (keyword && !stock.hospitalName?.toLowerCase().includes(keyword)) {
+          return false;
+        }
+      }
+    }
     const matchesSearch =
       stock.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       stock.city.toLowerCase().includes(searchQuery.toLowerCase());
@@ -157,7 +174,10 @@ export default function BloodAdminPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Blood Stock Management</h1>
           <p className="text-muted-foreground">
-            Monitor and update blood inventory across all hospitals
+            {isSuperAdmin
+              ? "Monitor and update blood inventory across all hospitals in India"
+              : `Manage and update live blood bank inventory for ${user?.name || 'your hospital'}`
+            }
           </p>
         </div>
         <div className="flex gap-2">
