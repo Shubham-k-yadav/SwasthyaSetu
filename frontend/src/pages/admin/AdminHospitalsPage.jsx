@@ -63,6 +63,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
 
 
 
@@ -99,6 +100,9 @@ const facilityOptions = [
 ];
 
 export default function HospitalsAdminPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
+
   const [hospitals, setHospitals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -138,6 +142,13 @@ export default function HospitalsAdminPage() {
   useEffect(() => { fetchHospitals(); }, []);
 
   const filteredHospitals = hospitals.filter((hospital) => {
+    // Non-superadmin hospital admins can ONLY see and manage their assigned hospital
+    if (!isSuperAdmin && user?.hospitalId) {
+      const userHospId = user.hospitalId._id || user.hospitalId;
+      if (hospital.id !== userHospId && hospital._id !== userHospId) {
+        return false;
+      }
+    }
     const matchesSearch =
       hospital.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       hospital.city.toLowerCase().includes(searchQuery.toLowerCase());
@@ -176,13 +187,14 @@ export default function HospitalsAdminPage() {
             )}
           </p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Hospital
-            </Button>
-          </DialogTrigger>
+        {isSuperAdmin && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Hospital
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Hospital</DialogTitle>
@@ -266,6 +278,7 @@ export default function HospitalsAdminPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* Loading State */}
@@ -285,7 +298,7 @@ export default function HospitalsAdminPage() {
       )}
 
       {/* Pending Approval Queue Card */}
-      {!isLoading && hospitals.some(h => !h.verified && !h.isVerified) && (
+      {!isLoading && isSuperAdmin && hospitals.some(h => !h.verified && !h.isVerified) && (
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">

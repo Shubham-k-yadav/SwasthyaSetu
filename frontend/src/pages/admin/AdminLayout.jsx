@@ -106,7 +106,20 @@ export default function AdminLayout() {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => {
+            {navItems
+              .map((item) => {
+                if (item.href === '/admin/hospitals' && user?.role !== 'superadmin') {
+                  return { ...item, label: 'My Hospital' };
+                }
+                return item;
+              })
+              .filter((item) => {
+                if (user?.role !== 'superadmin' && item.href === '/admin/analytics') {
+                  return false;
+                }
+                return true;
+              })
+              .map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
