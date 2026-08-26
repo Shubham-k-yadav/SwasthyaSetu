@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { systemApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 import { 
   Building2, 
   Droplets, 
@@ -91,6 +92,9 @@ export function Header() {
               <Globe className="h-3.5 w-3.5 text-primary" />
               {language === 'en' ? 'हिंदी (HI)' : 'English (EN)'}
             </Button>
+
+            <HospitalRegisterModal />
+
             <Link to="/admin/login">
               <Button variant="ghost" size="sm" className="gap-2 font-medium">
                 <LayoutDashboard className="h-4 w-4" />

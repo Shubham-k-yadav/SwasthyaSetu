@@ -284,6 +284,7 @@ async function importWibHospitals() {
     try {
       const aiimsDoc = await Hospital.findOne({ name: /AIIMS/i });
       const kemDoc = await Hospital.findOne({ name: /KEM/i });
+      const apolloDoc = await Hospital.findOne({ name: /Apollo Hospitals Bilaspur/i }) || await Hospital.findOne({ name: /Apollo/i });
 
       const superAdmin = new User({
         email: 'superadmin@swasthyasetu.in',
@@ -310,6 +311,15 @@ async function importWibHospitals() {
         hospitalId: kemDoc?._id
       });
       await kemAdmin.save();
+
+      const apolloAdmin = new User({
+        email: 'admin@apollo.com',
+        password: 'Apollo@2024',
+        name: 'Apollo Bilaspur Admin',
+        role: 'admin',
+        hospitalId: apolloDoc?._id
+      });
+      await apolloAdmin.save();
       console.log('✔ Admin Accounts Created & Linked to Hospital IDs Successfully!');
     } catch (adminErr) {
       console.error('❌ Admin user creation error:', adminErr);

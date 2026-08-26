@@ -204,13 +204,20 @@ export default function EmergencyPage() {
         setResults(res.hospitals);
         toast.success(`Found ${res.hospitals.length} hospitals with available beds`);
       } else {
-        setResults(mockResults);
-        toast.success('Found 3 hospitals with available beds');
+        const fallbackList = await api.hospitals.getAll({ limit: 10 }).catch(() => ({ hospitals: [] }));
+        const liveList = fallbackList?.hospitals || fallbackList || [];
+        setResults(liveList);
+        if (liveList.length > 0) {
+          toast.success(`Found ${liveList.length} nearby hospitals with emergency resources`);
+        } else {
+          toast.error('No emergency hospitals found for selected filters.');
+        }
       }
     } catch (err) {
-      console.warn('Error fetching live emergency search, using fallback:', err);
-      setResults(mockResults);
-      toast.success('Found 3 hospitals with available beds');
+      console.error('Error fetching live emergency search:', err);
+      const fallbackList = await api.hospitals.getAll({ limit: 10 }).catch(() => ({ hospitals: [] }));
+      const liveList = fallbackList?.hospitals || fallbackList || [];
+      setResults(liveList);
     } finally {
       setStep(2);
       setLoading(false);

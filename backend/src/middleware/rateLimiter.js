@@ -22,10 +22,10 @@ export const emergencySosLimiter = rateLimit({
   }
 });
 
-// Authentication rate limiter (5 attempts per 15 mins)
+// Authentication rate limiter (100 attempts per 15 mins for smooth development)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

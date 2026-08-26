@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Hospital from '../models/Hospital.js';
 import BloodStock from '../models/BloodStock.js';
 import BedReservation from '../models/BedReservation.js';
+import User from '../models/User.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { emitBedUpdate } from '../services/socket.js';
 import { haversineDistance, calculateHospitalScore } from '../utils/geo.js';
@@ -637,6 +638,107 @@ router.post('/:id/reserve-bed', async (req, res) => {
   } catch (error) {
     console.error('Error reserving bed:', error);
     res.status(500).json({ error: 'Failed to complete atomic bed reservation' });
+  }
+});
+
+// Public registration request for new hospitals
+router.post('/register-request', async (req, res) => {
+  try {
+    const {
+      name,
+      type = 'private',
+      licenseNumber,
+      address,
+      city,
+      state,
+      phone,
+      email,
+      password,
+      generalBeds = 100,
+      icuBeds = 20,
+      ventilatorBeds = 5,
+      specialties = ['Emergency', 'ICU', 'General Care']
+    } = req.body;
+
+    if (!name || !city || !email || !password) {
+      return res.status(400).json({ error: 'Hospital Name, City, Admin Email, and Password are required' });
+    }
+
+    // Check if user already exists
+    if (mongoose.connection.readyState === 1 && !global.isDemoMode) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ error: 'An admin account with this email already exists' });
+      }
+    }
+
+    const regNo = licenseNumber || `HFR-${Date.now().toString().slice(-6)}`;
+
+    // Create unverified hospital
+    const newHospital = new Hospital({
+      name,
+      type,
+      registrationNumber: regNo,
+      address: address || `${city}, ${state || 'India'}`,
+      city,
+      state: state || 'India',
+      phone: phone || '+91-9876543210',
+      isVerified: false,
+      beds: {
+        general: { total: Number(generalBeds), available: Number(generalBeds) },
+        icu: { total: Number(icuBeds), available: Number(icuBeds) },
+        ventilator: { total: Number(ventilatorBeds), available: Number(ventilatorBeds) },
+      },
+      specialties: Array.isArray(specialties) ? specialties : [specialties],
+      coordinates: { lat: 28.6139, lng: 77.2090 },
+      lastUpdated: new Date()
+    });
+
+    await newHospital.save();
+
+    // Create admin user
+    const newAdmin = new User({
+      email,
+      password,
+      name: `${name} Admin`,
+      role: 'admin',
+      hospitalId: newHospital._id,
+      isActive: true
+    });
+
+    await newAdmin.save();
+
+    res.status(201).json({
+      message: 'Hospital registration application submitted successfully! Super Admin review pending.',
+      hospital: newHospital,
+      adminEmail: email
+    });
+  } catch (error) {
+    console.error('Error submitting hospital registration request:', error);
+    res.status(500).json({ error: 'Failed to submit hospital registration application: ' + error.message });
+  }
+});
+
+// Super Admin approval & verification endpoint
+router.patch('/:id/verify', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const hospital = await Hospital.findByIdAndUpdate(
+      req.params.id,
+      { isVerified: true, isBlockchainVerified: true, lastUpdated: new Date() },
+      { new: true }
+    );
+
+    if (!hospital) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
+
+    // Activate hospital admin user if pending
+    await User.updateMany({ hospitalId: hospital._id }, { $set: { isActive: true } });
+
+    res.json({ message: `${hospital.name} verified and approved successfully!`, hospital });
+  } catch (error) {
+    console.error('Error verifying hospital:', error);
+    res.status(500).json({ error: 'Failed to verify hospital' });
   }
 });
 

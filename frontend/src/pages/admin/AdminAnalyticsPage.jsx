@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import {
 
   TrendingUp,
@@ -39,7 +40,6 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { cn } from '@/lib/utils';
 
 // Mock data for charts
 const emergencyTrends = [

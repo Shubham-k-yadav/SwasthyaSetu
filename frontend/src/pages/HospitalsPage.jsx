@@ -155,12 +155,11 @@ export default function HospitalsPage() {
           api.hospitals.getAll({ limit: 500 }),
           api.hospitals.getStats(),
         ]);
-        setHospitals(hospitalsRes.hospitals && hospitalsRes.hospitals.length > 0 ? hospitalsRes.hospitals : mockHospitals);
-        setStats(statsRes || mockStats);
+        setHospitals(hospitalsRes.hospitals || hospitalsRes.data || hospitalsRes || []);
+        if (statsRes) setStats(statsRes);
       } catch (error) {
-        console.warn('Backend API unavailable, using local mock data:', error);
-        setHospitals(mockHospitals);
-        setStats(mockStats);
+        console.error('Error fetching live hospitals from backend:', error);
+        setHospitals([]);
       } finally {
         setLoading(false);
       }

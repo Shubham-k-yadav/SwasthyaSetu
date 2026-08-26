@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Loader2 } from 'lucide-react';
 import {
   Droplets,

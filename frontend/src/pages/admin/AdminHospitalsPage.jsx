@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import {
   Building2,
@@ -16,6 +17,7 @@ import {
   CheckCircle,
   XCircle,
   Shield,
+  Bed,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,6 +113,50 @@ export default function HospitalsAdminPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState(null);
 
+  // Edit Beds Modal State
+  const [isEditBedsOpen, setIsEditBedsOpen] = useState(false);
+  const [editingHospital, setEditingHospital] = useState(null);
+  const [bedFormData, setBedFormData] = useState({
+    generalTotal: 175,
+    generalAvail: 55,
+    icuTotal: 37,
+    icuAvail: 8,
+    ventTotal: 12,
+    ventAvail: 2,
+  });
+
+  const handleOpenEditBeds = (hospital) => {
+    setEditingHospital(hospital);
+    setBedFormData({
+      generalTotal: hospital.beds?.general?.total ?? 175,
+      generalAvail: hospital.beds?.general?.available ?? 55,
+      icuTotal: hospital.beds?.icu?.total ?? 37,
+      icuAvail: hospital.beds?.icu?.available ?? 8,
+      ventTotal: hospital.beds?.ventilator?.total ?? 12,
+      ventAvail: hospital.beds?.ventilator?.available ?? 2,
+    });
+    setIsEditBedsOpen(true);
+  };
+
+  const handleSaveBeds = async () => {
+    if (!editingHospital) return;
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        general: { total: Number(bedFormData.generalTotal), available: Number(bedFormData.generalAvail) },
+        icu: { total: Number(bedFormData.icuTotal), available: Number(bedFormData.icuAvail) },
+        ventilator: { total: Number(bedFormData.ventTotal), available: Number(bedFormData.ventAvail) },
+      };
+      await api.hospitals.updateBeds(editingHospital.id || editingHospital._id, payload, token);
+      toast.success(`Bed availability updated for ${editingHospital.name}!`);
+      setIsEditBedsOpen(false);
+      fetchHospitals();
+    } catch (err) {
+      console.error('Update beds error:', err);
+      toast.error('Failed to update bed stock: ' + (err.message || 'Server error'));
+    }
+  };
+
   const fetchHospitals = async () => {
     setIsLoading(true);
     setFetchError(null);
@@ -144,16 +190,22 @@ export default function HospitalsAdminPage() {
   const filteredHospitals = hospitals.filter((hospital) => {
     // Non-superadmin hospital admins can ONLY see and manage their assigned hospital
     if (!isSuperAdmin) {
-      if (user?.hospitalId) {
-        const userHospId = user.hospitalId._id || user.hospitalId;
-        if (hospital.id !== userHospId && hospital._id !== userHospId) {
-          return false;
-        }
+      const userHospId = user?.hospitalId ? String(user.hospitalId._id || user.hospitalId) : null;
+      const currentHospId = String(hospital.id || hospital._id);
+
+      if (userHospId) {
+        if (currentHospId !== userHospId) return false;
       } else {
-        const firstKeyword = (user?.name || '').split(' ')[0].toLowerCase();
-        if (firstKeyword && !hospital.name.toLowerCase().includes(firstKeyword)) {
-          return false;
-        }
+        // Match all hospital name keywords from user name (e.g. "Apollo Bilaspur Admin" -> ["apollo", "bilaspur"])
+        const keywords = (user?.name || '')
+          .toLowerCase()
+          .replace('admin', '')
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+
+        const matchesAllKeywords = keywords.every((kw) => hospital.name.toLowerCase().includes(kw));
+        if (!matchesAllKeywords) return false;
       }
     }
     const matchesSearch =
@@ -679,30 +731,33 @@ export default function HospitalsAdminPage() {
                       {formatTime(hospital.lastUpdated)}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handleOpenEditBeds(hospital)} className="gap-1.5 bg-primary hover:bg-primary/90 text-xs">
+                          <Bed className="h-3.5 w-3.5" />
+                          Update Beds
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleOpenEditBeds(hospital)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Update Bed Stock
+                            </DropdownMenuItem>
+                            {isSuperAdmin && (
+                              <DropdownMenuItem className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Hospital
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -711,6 +766,101 @@ export default function HospitalsAdminPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Beds Dialog Modal */}
+      <Dialog open={isEditBedsOpen} onOpenChange={setIsEditBedsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Bed className="h-5 w-5 text-primary" />
+              Update Bed Availability
+            </DialogTitle>
+            <DialogDescription>
+              {editingHospital ? editingHospital.name : 'Hospital Bed Management'} ({editingHospital?.city})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-3">
+            {/* General Beds */}
+            <div className="p-3 border rounded-lg bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200">
+              <p className="font-semibold text-sm text-emerald-900 dark:text-emerald-300 mb-2">🛏️ General Ward Beds</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Available Beds</Label>
+                  <Input
+                    type="number"
+                    value={bedFormData.generalAvail}
+                    onChange={(e) => setBedFormData(prev => ({ ...prev, generalAvail: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Total Capacity</Label>
+                  <Input
+                    type="number"
+                    value={bedFormData.generalTotal}
+                    onChange={(e) => setBedFormData(prev => ({ ...prev, generalTotal: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ICU Beds */}
+            <div className="p-3 border rounded-lg bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
+              <p className="font-semibold text-sm text-amber-900 dark:text-amber-300 mb-2">🤍 ICU Beds</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Available ICU Beds</Label>
+                  <Input
+                    type="number"
+                    value={bedFormData.icuAvail}
+                    onChange={(e) => setBedFormData(prev => ({ ...prev, icuAvail: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Total ICU Capacity</Label>
+                  <Input
+                    type="number"
+                    value={bedFormData.icuTotal}
+                    onChange={(e) => setBedFormData(prev => ({ ...prev, icuTotal: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Ventilator Beds */}
+            <div className="p-3 border rounded-lg bg-blue-50/50 dark:bg-blue-950/10 border-blue-200">
+              <p className="font-semibold text-sm text-blue-900 dark:text-blue-300 mb-2">🌬️ Ventilator Beds</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Available Ventilator Beds</Label>
+                  <Input
+                    type="number"
+                    value={bedFormData.ventAvail}
+                    onChange={(e) => setBedFormData(prev => ({ ...prev, ventAvail: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Total Ventilator Capacity</Label>
+                  <Input
+                    type="number"
+                    value={bedFormData.ventTotal}
+                    onChange={(e) => setBedFormData(prev => ({ ...prev, ventTotal: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-between gap-2">
+            <Button variant="outline" onClick={() => setIsEditBedsOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveBeds} className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
+              Save Bed Updates
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
