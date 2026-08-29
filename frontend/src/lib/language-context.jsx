@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import apiCall from '@/lib/api';
 
 const translations = {
   en: {
@@ -13,10 +14,25 @@ const translations = {
     adminLogin: 'Admin Login',
     registerHospital: 'Register Hospital',
     switchLanguage: 'हिंदी (HI)',
+    platformStatusText: 'verified hospitals and',
+    platformStatusTextBlood: 'blood banks are live on SwasthyaSetu. Are you a hospital or blood bank?',
+    joinNetworkCTA: 'Join the Network',
+    noHospitalsTitle: 'No Verified Hospitals Yet',
+    noHospitalsDesc: 'No verified hospitals are currently registered in this area. Be the first to register your facility!',
+    noBloodTitle: 'No Verified Blood Banks Yet',
+    noBloodDesc: 'No verified blood banks are currently registered in this area. Be the first to register your blood bank!',
+    registerFacilityCTA: 'Register Facility',
+    registerBloodBank: 'Register Blood Bank',
 
     // Home Page
     heroTitle: 'Real-Time Bed & Blood Emergency Network',
-    heroSubtitle: 'Instant access to 463 geocoded hospitals, 1.98 Lakh verified beds, and live blood bank stocks across India.',
+    heroTitleMain: 'Find Emergency Hospital Beds in Real-Time',
+    heroSubtitleMain: 'SwasthyaSetu connects patients to verified hospital beds, ICU units, and live blood availability across India. When every second counts, get real-time verified healthcare support.',
+    findEmergencyBed: 'Find Emergency Bed',
+    findBlood: 'Find Blood',
+    liveUpdatesIndia: 'Live Updates Across India',
+    bedsTracked: 'Beds Tracked',
+    heroSubtitle: 'Real-time emergency healthcare network connecting verified hospitals, blood banks, and live ambulance dispatch across India.',
     findNearbyHospitals: 'Find Nearby Hospitals',
     emergencySOSCall: 'Emergency SOS Call (112)',
     liveHospitalNetwork: 'Live Hospital Network',
@@ -26,6 +42,42 @@ const translations = {
     quickEmergencyTitle: 'Need Emergency Medical Help?',
     quickEmergencyDesc: 'Hold an ICU/Ventilator bed for 10 minutes with guaranteed availability while you reach the hospital.',
     reserveBedNow: 'Reserve ICU Bed Now',
+
+    // Problem Statement & Features
+    problemWeSolveTitle: 'The Problem We Solve',
+    problemWeSolveDesc: 'During medical emergencies in India, families waste precious time calling hospitals to check bed availability. Many lose loved ones due to delayed care.',
+    goldenHourLost: 'Golden Hour Lost',
+    goldenHourDesc: 'Trauma patients have 60 minutes for life-saving intervention. Most spend this time searching for hospitals.',
+    noCentralSystem: 'No Central System',
+    noCentralDesc: 'Families call 10-15 hospitals during emergencies. Real-time bed data is not accessible to public.',
+    bloodShortage: 'Blood Shortage',
+    bloodShortageDesc: 'India faces a shortage of 1.5 million blood units annually. Finding donors during emergencies is chaotic.',
+    howItHelps: 'How SwasthyaSetu Helps',
+    howItHelpsDesc: 'A comprehensive platform connecting patients, hospitals, and donors in real-time.',
+    smartSearch: 'Smart Search',
+    smartSearchDesc: 'AI-powered search finds the best hospital based on location, bed type, and availability.',
+    realTimeUpdates: 'Real-Time Updates',
+    realTimeUpdatesDesc: 'Live bed and blood availability updates from hospitals via Socket.io connection.',
+    blockchainVerifiedTitle: 'Blockchain Verified',
+    blockchainVerifiedDesc: 'Hospital data verified on Polygon blockchain. Tamper-proof and trustworthy.',
+    routeOptimization: 'Route Optimization',
+    routeOptimizationDesc: 'Get the fastest route to your chosen hospital with integrated maps.',
+    donorNetwork: 'Donor Network',
+    donorNetworkDesc: 'Connect with registered blood donors in your area during emergencies.',
+    panIndiaCoverage: 'Pan-India Coverage',
+    panIndiaCoverageDesc: 'Available across all major cities with expanding hospital network daily.',
+    howItWorks: 'How It Works',
+    howItWorksDesc: 'Get connected to the right hospital in three simple steps.',
+    shareLocation: 'Share Location',
+    shareLocationDesc: 'Allow location access or enter your address manually.',
+    selectEmergencyType: 'Select Emergency Type',
+    selectEmergencyTypeDesc: 'Choose emergency type and required bed type (ICU, General, Ventilator).',
+    getRecommendations: 'Get Recommendations',
+    getRecommendationsDesc: 'View top hospitals sorted by distance and availability with routes.',
+    everySecondCounts: 'Every Second Counts in an Emergency',
+    everySecondCountsDesc: 'Do not waste time calling hospitals. Find available beds instantly with SwasthyaSetu.',
+    searchNow: 'Search Now',
+    registerAsDonor: 'Register as Donor',
 
     // Hospitals Page
     hospitalsDirectoryTitle: 'Hospital Directory & Bed Occupancy',
@@ -62,7 +114,7 @@ const translations = {
     lastUpdated: 'Last Updated',
     contactBloodBank: 'Contact Blood Bank',
     requestBloodUnits: 'Request Blood Units',
-    registerAsDonor: 'Register as Blood Donor',
+    registerAsBloodDonor: 'Register as Blood Donor',
     criticalShortageAlert: 'Critical Shortage: O- & AB- blood units are low in several cities.',
     noBloodFound: 'No blood stocks found for selected city or blood group.',
 
@@ -128,10 +180,25 @@ const translations = {
     adminLogin: 'एडमिन लॉगिन',
     registerHospital: 'अस्पताल पंजीकृत करें',
     switchLanguage: 'English (EN)',
+    platformStatusText: 'सत्यापित अस्पताल और',
+    platformStatusTextBlood: 'ब्लड बैंक स्वास्थ सेतु पर लाइव हैं। क्या आप एक अस्पताल या ब्लड बैंक हैं?',
+    joinNetworkCTA: 'नेटवर्क में शामिल हों',
+    noHospitalsTitle: 'अभी तक कोई सत्यापित अस्पताल नहीं',
+    noHospitalsDesc: 'आपके क्षेत्र में अभी तक कोई सत्यापित अस्पताल पंजीकृत नहीं है। अपनी सुविधा पंजीकृत करने वाले पहले व्यक्ति बनें!',
+    noBloodTitle: 'अभी तक कोई सत्यापित ब्लड बैंक नहीं',
+    noBloodDesc: 'आपके क्षेत्र में अभी तक कोई सत्यापित ब्लड बैंक पंजीकृत नहीं है। अपना ब्लड बैंक पंजीकृत करने वाले पहले व्यक्ति बनें!',
+    registerFacilityCTA: 'सुविधा पंजीकृत करें',
+    registerBloodBank: 'ब्लड बैंक पंजीकृत करें',
 
     // Home Page
     heroTitle: 'रीयल-टाइम बेड एवं ब्लड आपातकालीन नेटवर्क',
-    heroSubtitle: 'भारत भर के 463 सत्यापित अस्पतालों, 1.98 लाख बेड्स और ब्लड बैंकों की लाइव उपलब्धता तक त्वरित पहुँच।',
+    heroTitleMain: 'रीयल-टाइम में आपातकालीन अस्पताल बेड्स खोजें',
+    heroSubtitleMain: 'स्वास्थ सेतु (SwasthyaSetu) मरीजों को भारत भर के सत्यापित अस्पताल बेड्स, ICU यूनिट्स और लाइव ब्लड बैंक से जोड़ता है। जब हर सेकंड कीमती हो, तुरंत सत्यापित सहायता पाएँ।',
+    findEmergencyBed: 'आपातकालीन बेड खोजें',
+    findBlood: 'रक्त उपलब्धता खोजें',
+    liveUpdatesIndia: 'भारत भर से लाइव अपडेट्स',
+    bedsTracked: 'ट्रैक किए गए बेड्स',
+    heroSubtitle: 'भारत भर में सत्यापित अस्पतालों, ब्लड बैंकों और लाइव एम्बुलेंस सेवाओं को जोड़ने वाला रीयल-टाइम आपातकालीन स्वास्थ्य नेटवर्क।',
     findNearbyHospitals: 'निकटतम अस्पताल खोजें',
     emergencySOSCall: 'इमरजेंसी कॉल करें (112)',
     liveHospitalNetwork: 'लाइव अस्पताल नेटवर्क',
@@ -141,6 +208,42 @@ const translations = {
     quickEmergencyTitle: 'क्या आपको आपातकालीन चिकित्सा सहायता चाहिए?',
     quickEmergencyDesc: 'अस्पताल पहुँचने तक 10 मिनट के लिए गारंटीकृत ICU / वेंटिलेटर बेड तुरंत रिज़र्व करें।',
     reserveBedNow: 'अभी ICU बेड रिज़र्व करें',
+
+    // Problem Statement & Features
+    problemWeSolveTitle: 'जिस समस्या का हम समाधान करते हैं',
+    problemWeSolveDesc: 'भारत में मेडिकल इमरजेंसी के दौरान, परिवार अस्पताल बेड्स की उपलब्धता जानने में कीमती समय बर्बाद करते हैं। उचित जानकारी के अभाव में कई लोग अपनों को खो देते हैं।',
+    goldenHourLost: 'गोल्डन आवर का नुकसान',
+    goldenHourDesc: 'गंभीर चोट/ट्रॉमा के मरीजों के पास जान बचाने के लिए केवल 60 मिनट होते हैं। ज्यादातर समय अस्पताल खोजने में ही निकल जाता है।',
+    noCentralSystem: 'केंद्रीय नेटवर्क का अभाव',
+    noCentralDesc: 'इमरजेंसी में परिवार 10-15 अस्पतालों में कॉल करते हैं। रीयल-टाइम बेड डेटा जनता तक आसानी से नहीं पहुँच पाता।',
+    bloodShortage: 'रक्त की कमी',
+    bloodShortageDesc: 'भारत में हर साल 15 लाख यूनिट रक्त की कमी होती है। आपातकाल में रक्तदाता ढूंढना बेहद कठिन होता है।',
+    howItHelps: 'स्वास्थ्य सेतु कैसे मदद करता है',
+    howItHelpsDesc: 'एक एकीकृत रीयल-टाइम प्लेटफ़ॉर्म जो मरीजों, अस्पतालों और रक्तदाताओं को आपस में जोड़ता है।',
+    smartSearch: 'स्मार्ट सर्च',
+    smartSearchDesc: 'AI-पावर्ड खोज आपकी लोकेशन, बेड के प्रकार और उपलब्धता के आधार पर निकटतम अस्पताल खोजती है।',
+    realTimeUpdates: 'रीयल-टाइम अपडेट्स',
+    realTimeUpdatesDesc: 'Socket.io नेटवर्क द्वारा अस्पतालों से लाइव बेड और ब्लड डेटा का 24/7 प्रसारण।',
+    blockchainVerifiedTitle: 'ब्लॉकचेन द्वारा सत्यापित',
+    blockchainVerifiedDesc: 'Polygon ब्लॉकचेन पर सत्यापित अस्पताल डेटा। 100% पारदर्शी और भरोसेमंद।',
+    routeOptimization: 'सटीक नेविगेशन एवं रास्ता',
+    routeOptimizationDesc: 'मैप्स एकीकरण के साथ चुने गए अस्पताल तक पहुँचने का सबसे तेज़ रास्ता पाएँ।',
+    donorNetwork: 'रक्तदाता नेटवर्क',
+    donorNetworkDesc: 'आपातकाल के समय अपने आसपास पंजीकृत रक्तदाताओं से तुरंत संपर्क करें।',
+    panIndiaCoverage: 'संपूर्ण भारत नेटवर्क',
+    panIndiaCoverageDesc: 'भारत के सभी प्रमुख शहरों में उपलब्ध, जहाँ प्रतिदिन नए अस्पताल जुड़ रहे हैं।',
+    howItWorks: 'यह कैसे काम करता है',
+    howItWorksDesc: 'तीन आसान चरणों में सही अस्पताल और सहायता से जुड़ें।',
+    shareLocation: '1. लोकेशन शेयर करें',
+    shareLocationDesc: 'अपनी लोकेशन साझा करें या अपना पता मैन्युअली दर्ज करें।',
+    selectEmergencyType: '2. इमरजेंसी का प्रकार चुनें',
+    selectEmergencyTypeDesc: 'इमरजेंसी का प्रकार और आवश्यक बेड (ICU, सामान्य, वентिलेटर) चुनें।',
+    getRecommendations: '3. तुरंत सिफारिशें पाएँ',
+    getRecommendationsDesc: 'दूरी और उपलब्धता के आधार पर शीर्ष अस्पतालों और उनके रास्तों की सूची देखें।',
+    everySecondCounts: 'आपातकाल में हर एक सेकंड कीमती है',
+    everySecondCountsDesc: 'अस्पतालों में फोन करके समय बर्बाद न करें। स्वास्थ सेतु से तुरंत उपलब्ध बेड्स खोजें।',
+    searchNow: 'अभी खोजें',
+    registerAsDonor: 'रक्तदाता के रूप में पंजीकरण करें',
 
     // Hospitals Page
     hospitalsDirectoryTitle: 'अस्पताल डायरेक्टरी एवं बेड उपलब्धता',
@@ -177,7 +280,7 @@ const translations = {
     lastUpdated: 'अंतिम अपडेट',
     contactBloodBank: 'ब्लड बैंक से संपर्क करें',
     requestBloodUnits: 'रक्त आवश्यकता की मांग करें',
-    registerAsDonor: 'रक्तदाता के रूप में पंजीकरण करें',
+    registerAsBloodDonor: 'रक्तदाता के रूप में पंजीकरण करें',
     criticalShortageAlert: 'चेतावनी: कई शहरों में O- और AB- रक्त समूह की भारी कमी है।',
     noBloodFound: 'चयनित शहर या रक्त समूह के लिए कोई स्टॉक नहीं मिला।',
 
@@ -235,7 +338,7 @@ const translations = {
 
 const LanguageContext = createContext({
   language: 'en',
-  setLanguage: () => {},
+  setLanguage: () => { },
   t: (key) => key
 });
 
@@ -243,17 +346,48 @@ export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(() => {
     return localStorage.getItem('swasthya_lang') || 'en';
   });
+  const [aiCache, setAiCache] = useState({});
 
   useEffect(() => {
     localStorage.setItem('swasthya_lang', language);
   }, [language]);
 
   const t = (key) => {
-    return translations[language]?.[key] || translations['en']?.[key] || key;
+    if (!key) return '';
+    const staticMatch = translations[language]?.[key] || translations['en']?.[key];
+    if (staticMatch) return staticMatch;
+
+    // Check AI dynamic cache
+    const cacheKey = `${language}:${key}`;
+    if (aiCache[cacheKey]) return aiCache[cacheKey];
+
+    return key;
+  };
+
+  const tAsync = async (text, overrideLang) => {
+    const targetLang = overrideLang || language;
+    if (!text || targetLang === 'en') return text;
+
+    const cacheKey = `${targetLang}:${text}`;
+    if (aiCache[cacheKey]) return aiCache[cacheKey];
+
+    try {
+      const res = await apiCall('/api/translate', {
+        method: 'POST',
+        body: { text, targetLang }
+      });
+      if (res?.translatedText) {
+        setAiCache(prev => ({ ...prev, [cacheKey]: res.translatedText }));
+        return res.translatedText;
+      }
+    } catch (err) {
+      console.warn('AI Translation warning:', err);
+    }
+    return text;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, tAsync }}>
       {children}
     </LanguageContext.Provider>
   );

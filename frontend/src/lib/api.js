@@ -34,7 +34,8 @@ async function apiCall(endpoint, options = {}) {
 
 // System Status API
 export const systemApi = {
-  getStatus: () => apiCall('/api/status')
+  getStatus: () => apiCall('/api/status'),
+  getSystemStatus: () => apiCall('/api/system/status')
 };
 
 // Hospital APIs
@@ -84,11 +85,17 @@ export const hospitalApi = {
   verifyOtp: (phone, otp) =>
     apiCall('/api/hospitals/verify-otp', { method: 'POST', body: { phone, otp } }),
 
-  confirmReservation: (code) =>
-    apiCall(`/api/hospitals/reservations/${code}/confirm`, { method: 'POST' }),
+  confirmReservation: (code, token) =>
+    apiCall(`/api/hospitals/reservations/${code}/confirm`, { method: 'POST', token }),
 
-  releaseReservation: (code) =>
-    apiCall(`/api/hospitals/reservations/${code}/release`, { method: 'POST' }),
+  releaseReservation: (code, token) =>
+    apiCall(`/api/hospitals/reservations/${code}/release`, { method: 'POST', token }),
+
+  dischargeReservation: (code, token) =>
+    apiCall(`/api/hospitals/reservations/${code}/discharge`, { method: 'POST', token }),
+
+  getReservations: (hospitalId, token) =>
+    apiCall(`/api/hospitals/${hospitalId}/reservations`, { token }),
 };
 
 // Blood APIs
@@ -181,12 +188,40 @@ export const authApi = {
     }),
 };
 
+export const translateApi = {
+  translate: (text, targetLang = 'hi') =>
+    apiCall('/api/translate', { method: 'POST', body: { text, targetLang } }),
+};
+
+export const bloodBankApi = {
+  registerRequest: (data) => apiCall('/api/bloodbanks/register-request', { method: 'POST', body: data }),
+  getPendingQueue: (token) => apiCall('/api/bloodbanks/pending/queue', { token }),
+  verify: (id, token) => apiCall(`/api/bloodbanks/${id}/verify`, { method: 'PATCH', token }),
+  updateStock: (id, stockData, token) => apiCall(`/api/bloodbanks/${id}/stock`, { method: 'PUT', body: { bloodGroups: stockData }, token }),
+  getAll: () => apiCall('/api/bloodbanks/all')
+};
+
+export const ambulanceApi = {
+  registerRequest: (data) => apiCall('/api/ambulances/register-request', { method: 'POST', body: data }),
+  getPendingQueue: (token) => apiCall('/api/ambulances/pending/queue', { token }),
+  verify: (id, token) => apiCall(`/api/ambulances/${id}/verify`, { method: 'PATCH', token }),
+  updateLocation: (id, locationData) => apiCall(`/api/ambulances/${id}/update-location`, { method: 'POST', body: locationData }),
+  getActive: () => apiCall('/api/ambulances/active'),
+  getById: (id) => apiCall(`/api/ambulances/${id}`),
+  getByHospital: (hospitalId, token) => apiCall(`/api/ambulances/hospital/${hospitalId}`, { token }),
+  addHospitalAmbulance: (data, token) => apiCall('/api/ambulances/hospital-add', { method: 'POST', body: data, token }),
+  updateStatus: (id, status, token) => apiCall(`/api/ambulances/${id}/status`, { method: 'PATCH', body: { status }, token }),
+};
+
 export const api = {
   auth: authApi,
   hospitals: hospitalApi,
   blood: bloodApi,
+  bloodbanks: bloodBankApi,
+  ambulances: ambulanceApi,
   donors: donorApi,
   emergency: emergencyApi,
+  translate: translateApi,
 };
 
 export default apiCall;

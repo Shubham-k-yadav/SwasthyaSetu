@@ -122,5 +122,41 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
+    overflow-x: hidden;
   }
 }
+
+/* Fix Leaflet map floating over header & z-index stacking context */
+.leaflet-container {
+  z-index: 1 !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  isolation: isolate !important;
+}
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-pane,
+.leaflet-shadow-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane {
+  z-index: 10 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 20 !important;
+}
+
+.leaflet-control-zoom,
+.leaflet-control-attribution {
+  z-index: 25 !important;
+}
+
+.custom-marker,
+.user-marker {
+  z-index: 30 !important;
+}
+

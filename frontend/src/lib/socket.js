@@ -50,6 +50,10 @@ export const onBlockchainVerification = (callback) => {
   getSocket().on('blockchain-verification', callback);
 };
 
+export const onRegistrationRequest = (callback) => {
+  getSocket().on('new-registration-request', callback);
+};
+
 // Room management
 export const joinHospitalRoom = (hospitalId) => {
   getSocket().emit('join-hospital', hospitalId);
