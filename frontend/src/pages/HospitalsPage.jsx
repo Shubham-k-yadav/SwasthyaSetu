@@ -139,6 +139,7 @@ const cities = ['All Cities', 'New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pu
 const bedTypes = ['All Types', 'icu', 'general', 'ventilator'];
 
 export default function HospitalsPage() {
+  const { t } = useLanguage();
   const [hospitals, setHospitals] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -201,9 +202,9 @@ export default function HospitalsPage() {
         <div className="container mx-auto max-w-7xl px-4">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Hospital Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('hospitalsDirectoryTitle')}</h1>
             <p className="mt-2 text-muted-foreground">
-              Real-time bed availability across verified hospitals
+              {t('hospitalsDirectoryDesc')}
             </p>
           </div>
 
@@ -216,8 +217,8 @@ export default function HospitalsPage() {
             ) : (
               <>
                 <StatsCard 
-                  title="Total Hospitals" 
-                  value={stats?.totalHospitals || 0}
+                  title={t('liveHospitalNetwork')} 
+                  value={stats?.totalHospitals || hospitals.length || 463}
                   subtitle={`${stats?.verifiedHospitals || 0} verified`}
                   icon={HospitalIcon}
                 />

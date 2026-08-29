@@ -111,6 +111,7 @@ const mockResults = [
 ];
 
 export default function EmergencyPage() {
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -120,8 +121,8 @@ export default function EmergencyPage() {
   // Form state
   const [userLocation, setUserLocation] = useState(null);
   const [locationAddress, setLocationAddress] = useState('');
-  const [emergencyType, setEmergencyType] = useState('');
-  const [bedType, setBedType] = useState('');
+  const [emergencyType, setEmergencyType] = useState('trauma');
+  const [bedType, setBedType] = useState('icu');
   const [contactPhone, setContactPhone] = useState('');
   const [patientName, setPatientName] = useState('');
 
@@ -136,11 +137,12 @@ export default function EmergencyPage() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const { latitude, longitude } = position.coords;
         setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
+          lat: latitude,
+          lng: longitude
         });
-        setLocationAddress('Current location detected');
+        setLocationAddress(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
         setGettingLocation(false);
         toast.success('Location detected successfully');
       },
@@ -249,10 +251,10 @@ export default function EmergencyPage() {
                 <Phone className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h2 className="font-semibold">Emergency Helplines</h2>
+                <h2 className="font-semibold">{t('emergency.helplines')}</h2>
                 <div className="flex flex-wrap gap-4 mt-1 text-sm">
-                  <span>Ambulance: <strong className="text-primary">102</strong></span>
-                  <span>National Emergency: <strong className="text-primary">112</strong></span>
+                  <span>{t('emergency.ambulance')}: <strong className="text-primary">102</strong></span>
+                  <span>{t('emergency.national')}: <strong className="text-primary">112</strong></span>
                 </div>
               </div>
             </div>

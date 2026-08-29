@@ -18,13 +18,6 @@ import {
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
 
-const navItems = [
-  { href: '/hospitals', label: 'Hospitals', icon: Building2 },
-  { href: '/blood', label: 'Blood Availability', icon: Droplets },
-  { href: '/blood', label: 'Blood Donors', icon: HeartHandshake },
-  { href: '/emergency', label: 'Emergency', icon: AlertTriangle },
-];
-
 export function Header() {
   const { language, setLanguage, t } = useLanguage();
   const location = useLocation();
@@ -38,13 +31,20 @@ export function Header() {
       .catch(() => setSystemStatus({ isDemoMode: true, mode: 'degraded_demo' }));
   }, []);
 
+  const navItems = [
+    { href: '/hospitals', label: t('navHospitals'), icon: Building2 },
+    { href: '/blood', label: t('navBlood'), icon: Droplets },
+    { href: '/blood', label: t('navDonors'), icon: HeartHandshake },
+    { href: '/emergency', label: t('navEmergency'), icon: AlertTriangle },
+  ];
+
   return (
     <>
       {systemStatus.isDemoMode && (
         <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-800 dark:text-amber-300 px-4 py-1.5 text-xs text-center font-medium flex items-center justify-center gap-2">
           <ShieldAlert className="h-3.5 w-3.5 text-amber-600 animate-pulse shrink-0" />
           <span>
-            <strong>Transparent System Mode:</strong> Local MongoDB is currently offline. System running in <strong>Degraded Demo Mode</strong> (in-memory store reset on restart).
+            {t('systemDegradedBanner')}
           </span>
         </div>
       )}
@@ -54,7 +54,7 @@ export function Header() {
           <Link to="/" className="flex items-center gap-2.5 font-bold text-xl">
             <img src="/logo.png" alt="SwasthyaSetu Logo" className="h-9 w-9 rounded-lg shadow-sm object-cover" />
             <span className="bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent font-black tracking-tight">
-              SwasthyaSetu
+              {t('appName')}
             </span>
           </Link>
 
@@ -90,7 +90,7 @@ export function Header() {
               onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
             >
               <Globe className="h-3.5 w-3.5 text-primary" />
-              {language === 'en' ? 'हिंदी (HI)' : 'English (EN)'}
+              {t('switchLanguage')}
             </Button>
 
             <HospitalRegisterModal />
@@ -104,7 +104,7 @@ export function Header() {
             <Link to="/emergency">
               <Button size="sm" className="gap-2 bg-destructive hover:bg-destructive/90 text-white font-semibold">
                 <Phone className="h-4 w-4 animate-pulse" />
-                Emergency Help
+                {t('emergencyHelp')}
               </Button>
             </Link>
           </div>
@@ -122,7 +122,7 @@ export function Header() {
 
         {/* Mobile Menu Dropdown */}
         {open && (
-          <div className="md:hidden border-b bg-background px-4 py-4 space-y-3 shadow-lg">
+          <div className="md:hidden border-b bg-background px-4 py-4 space-y-3">
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -151,12 +151,12 @@ export function Header() {
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-secondary"
               >
                 <LayoutDashboard className="h-5 w-5" />
-                Admin Login
+                {t('adminLogin')}
               </Link>
               <Link to="/emergency" onClick={() => setOpen(false)}>
                 <Button className="w-full gap-2 mt-2 bg-destructive text-white">
                   <Phone className="h-4 w-4" />
-                  Emergency Help
+                  {t('emergencyHelp')}
                 </Button>
               </Link>
             </nav>
