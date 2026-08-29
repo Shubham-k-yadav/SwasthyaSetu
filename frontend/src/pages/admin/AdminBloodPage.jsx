@@ -73,6 +73,32 @@ export default function BloodAdminPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
+  const [updateHospitalId, setUpdateHospitalId] = useState('');
+  const [updateBloodGroup, setUpdateBloodGroup] = useState('A+');
+  const [updateUnits, setUpdateUnits] = useState('20');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleUpdateStockSubmit = async () => {
+    setIsUpdating(true);
+    try {
+      const targetHospId = updateHospitalId || user?.hospitalId?._id || user?.hospitalId || (stocks[0]?.hospitalId);
+      if (user?.bloodBankId) {
+        await api.bloodbanks.updateStock(user.bloodBankId, { [updateBloodGroup]: Number(updateUnits) }, user.token);
+      } else if (targetHospId) {
+        await api.blood.updateStock(targetHospId, {
+          bloodGroup: updateBloodGroup,
+          unitsAvailable: Number(updateUnits)
+        }, user.token);
+      }
+      toast.success('Blood inventory updated and broadcast live!');
+      setIsUpdateDialogOpen(false);
+      fetchBloodData();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update blood stock');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const fetchBloodData = async () => {
     setIsLoading(true);
@@ -231,18 +257,21 @@ export default function BloodAdminPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Units Available</Label>
-                  <Input type="number" placeholder="Enter units" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Units Expiring in 7 Days</Label>
-                  <Input type="number" placeholder="0" />
+                  <Input
+                    type="number"
+                    value={updateUnits}
+                    onChange={(e) => setUpdateUnits(e.target.value)}
+                    placeholder="Enter units"
+                  />
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsUpdateDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={() => setIsUpdateDialogOpen(false)}>Update Stock</Button>
+                <Button onClick={handleUpdateStockSubmit} disabled={isUpdating}>
+                  {isUpdating ? 'Updating...' : 'Update Stock'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

@@ -13,6 +13,10 @@ import {
   X,
   Shield,
   Activity,
+  Save,
+  Zap,
+  Siren,
+  Bed
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -27,13 +31,19 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 
-const navItems = [
+const superAdminNavItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/hospitals', icon: Building2, label: 'Hospitals' },
   { href: '/admin/blood', icon: Droplets, label: 'Blood Stock' },
   { href: '/admin/donors', icon: Users, label: 'Donors' },
   { href: '/admin/emergencies', icon: Bell, label: 'Emergencies' },
   { href: '/admin/analytics', icon: Activity, label: 'Analytics' },
+];
+
+const hospitalNavItems = [
+  { href: '/admin?tab=inventory', matchKey: 'inventory', icon: Bed, label: 'Bed Inventory Controls' },
+  { href: '/admin?tab=holds', matchKey: 'holds', icon: Zap, label: 'Patient Bed Holds' },
+  { href: '/admin?tab=ambulances', matchKey: 'ambulances', icon: Siren, label: 'Ambulance Fleet' },
 ];
 
 export default function AdminLayout() {
@@ -44,12 +54,15 @@ export default function AdminLayout() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
 
   const isLoginPage = pathname === '/admin/login';
+  const isSuperAdminOnlyRoute = ['/admin/hospitals', '/admin/blood', '/admin/donors', '/admin/emergencies', '/admin/analytics'].some(route => pathname.startsWith(route));
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !isLoginPage) {
       navigate('/admin/login');
+    } else if (!isLoading && isAuthenticated && user?.role !== 'superadmin' && isSuperAdminOnlyRoute) {
+      navigate('/admin');
     }
-  }, [isLoading, isAuthenticated, isLoginPage, navigate]);
+  }, [isLoading, isAuthenticated, isLoginPage, user, pathname, navigate]);
 
   if (isLoginPage) {
     return <Outlet />;
@@ -105,35 +118,34 @@ export default function AdminLayout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems
-              .map((item) => {
-                if (item.href === '/admin/hospitals' && user?.role !== 'superadmin') {
-                  return { ...item, label: 'My Hospital' };
-                }
-                return item;
-              })
-              .filter((item) => {
-                if (user?.role !== 'superadmin' && item.href === '/admin/analytics') {
-                  return false;
-                }
-                return true;
-              })
-              .map((item) => {
-              const isActive = pathname === item.href;
+          <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+            {user?.role !== 'superadmin' && (
+              <div className="px-3 pb-2 pt-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  Hospital Management
+                </span>
+              </div>
+            )}
+            {(user?.role === 'superadmin' ? superAdminNavItems : hospitalNavItems).map((item) => {
+              const searchParams = new URLSearchParams(location.search);
+              const currentTab = searchParams.get('tab') || 'inventory';
+              const isActive = user?.role === 'superadmin' 
+                ? pathname === item.href 
+                : (pathname === '/admin' && (item.matchKey === currentTab));
+
               return (
                 <Link
                   key={item.href}
                   to={item.href}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-xs'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className="h-4.5 w-4.5 shrink-0" />
                   {item.label}
                 </Link>
               );

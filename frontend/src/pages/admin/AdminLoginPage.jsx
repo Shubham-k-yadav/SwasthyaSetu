@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/language-context';
 
 export default function AdminLoginPage() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('hospital'); // 'hospital' | 'superadmin'
   const [email, setEmail] = useState('admin@apollo.com');
   const [password, setPassword] = useState('Apollo@2024');
@@ -68,7 +70,7 @@ export default function AdminLoginPage() {
             <img src="/logo.png" alt="SwasthyaSetu Logo" className="h-10 w-10 rounded-lg shadow-sm object-cover" />
             <span className="text-2xl font-bold tracking-tight">SwasthyaSetu</span>
           </Link>
-          <p className="text-sm text-muted-foreground">National Emergency & Healthcare Resource Network</p>
+          <p className="text-sm text-muted-foreground">{t('appSubtitle')}</p>
         </div>
 
         {/* Role Tab Switcher */}
@@ -84,7 +86,7 @@ export default function AdminLoginPage() {
             )}
           >
             <Building2 className="h-4 w-4" />
-            Hospital Admin Portal
+            {t('hospitalAdminPortal')}
           </button>
 
           <button
@@ -98,7 +100,7 @@ export default function AdminLoginPage() {
             )}
           >
             <ShieldCheck className="h-4 w-4" />
-            Super Admin Control
+            {t('superAdminControl')}
           </button>
         </div>
 
@@ -122,7 +124,7 @@ export default function AdminLoginPage() {
                 <CardDescription className="text-xs">
                   {activeTab === 'hospital'
                     ? 'Manage your assigned hospital bed inventory, ICU capacity & blood stocks'
-                    : 'Pan-India emergency network oversight, 463 hospital verification & analytics'
+                    : 'Pan-India emergency network oversight, facility verification & real-time analytics'
                   }
                 </CardDescription>
               </div>
