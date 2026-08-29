@@ -15,9 +15,13 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId, 
     ref: 'Hospital' 
   },
+  bloodBankId: {
+    type: Schema.Types.ObjectId,
+    ref: 'BloodBank'
+  },
   role: { 
     type: String, 
-    enum: ['admin', 'superadmin', 'hospital_staff'],
+    enum: ['admin', 'superadmin', 'hospital_staff', 'blood_bank_admin', 'ambulance_driver'],
     default: 'admin' 
   },
   isActive: { type: Boolean, default: true },

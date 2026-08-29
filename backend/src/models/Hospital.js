@@ -26,6 +26,7 @@ const HospitalSchema = new Schema({
   specialties: [{ type: String }],
   emergencyServices: { type: Boolean, default: true },
   isVerified: { type: Boolean, default: false, index: true },
+  isSimulated: { type: Boolean, default: true, index: true },
   registrationCertificate: { type: String, default: '' },
   verificationStatus: { 
     type: String, 
