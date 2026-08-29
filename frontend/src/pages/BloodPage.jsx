@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { getFreshnessStatus } from '@/lib/freshness';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
+import { PlatformStatusBanner } from '@/components/PlatformStatusBanner';
+import { BloodBankRegisterModal } from '@/components/BloodBankRegisterModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +40,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { useLanguage } from '@/lib/language-context';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] ;
 const CITIES = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad'];
@@ -57,62 +60,7 @@ const CITIES = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata'
 
 
 // Mock data
-const mockBloodBanks = [
-  {
-    id: '1',
-    hospitalName: 'AIIMS Blood Bank',
-    address: 'Ansari Nagar East, New Delhi',
-    city: 'New Delhi',
-    phone: '+91-11-26588500',
-    bloodStock: [
-      { bloodGroup: 'A+', unitsAvailable: 25, isLow: false },
-      { bloodGroup: 'A-', unitsAvailable: 8, isLow: false },
-      { bloodGroup: 'B+', unitsAvailable: 18, isLow: false },
-      { bloodGroup: 'B-', unitsAvailable: 3, isLow: true },
-      { bloodGroup: 'AB+', unitsAvailable: 12, isLow: false },
-      { bloodGroup: 'AB-', unitsAvailable: 2, isLow: true },
-      { bloodGroup: 'O+', unitsAvailable: 30, isLow: false },
-      { bloodGroup: 'O-', unitsAvailable: 5, isLow: false },
-    ],
-    distance: 2.5
-  },
-  {
-    id: '2',
-    hospitalName: 'Red Cross Blood Bank',
-    address: '1 Red Cross Road, New Delhi',
-    city: 'New Delhi',
-    phone: '+91-11-23711551',
-    bloodStock: [
-      { bloodGroup: 'A+', unitsAvailable: 40, isLow: false },
-      { bloodGroup: 'A-', unitsAvailable: 15, isLow: false },
-      { bloodGroup: 'B+', unitsAvailable: 35, isLow: false },
-      { bloodGroup: 'B-', unitsAvailable: 10, isLow: false },
-      { bloodGroup: 'AB+', unitsAvailable: 20, isLow: false },
-      { bloodGroup: 'AB-', unitsAvailable: 6, isLow: false },
-      { bloodGroup: 'O+', unitsAvailable: 50, isLow: false },
-      { bloodGroup: 'O-', unitsAvailable: 12, isLow: false },
-    ],
-    distance: 4.2
-  },
-  {
-    id: '3',
-    hospitalName: 'Tata Memorial Blood Bank',
-    address: 'Dr E Borges Road, Parel, Mumbai',
-    city: 'Mumbai',
-    phone: '+91-22-24177000',
-    bloodStock: [
-      { bloodGroup: 'A+', unitsAvailable: 18, isLow: false },
-      { bloodGroup: 'A-', unitsAvailable: 4, isLow: true },
-      { bloodGroup: 'B+', unitsAvailable: 22, isLow: false },
-      { bloodGroup: 'B-', unitsAvailable: 6, isLow: false },
-      { bloodGroup: 'AB+', unitsAvailable: 8, isLow: false },
-      { bloodGroup: 'AB-', unitsAvailable: 1, isLow: true },
-      { bloodGroup: 'O+', unitsAvailable: 28, isLow: false },
-      { bloodGroup: 'O-', unitsAvailable: 7, isLow: false },
-    ],
-    distance: 3.8
-  }
-];
+const mockBloodBanks = [];
 
 export default function BloodPage() {
   const { t } = useLanguage();
@@ -219,15 +167,19 @@ export default function BloodPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
+      <PlatformStatusBanner />
       
       <main className="flex-1 py-8">
         <div className="container mx-auto max-w-7xl px-4">
           {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Blood Finder</h1>
-            <p className="mt-2 text-muted-foreground">
-              Find blood availability and register as a donor
-            </p>
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Blood Finder</h1>
+              <p className="mt-2 text-muted-foreground">
+                Find blood availability and register as a donor
+              </p>
+            </div>
+            <BloodBankRegisterModal />
           </div>
 
           <Tabs defaultValue="search" className="space-y-6">
@@ -303,15 +255,20 @@ export default function BloodPage() {
                   </p>
                   
                   {searchResults.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <AlertTriangle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold">No Results Found</h3>
-                        <p className="text-muted-foreground mt-2">
-                          Try searching with different criteria or contact emergency services.
+                    <div className="text-center py-16 px-4 bg-muted/30 rounded-2xl border border-dashed my-6 space-y-4">
+                      <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto">
+                        <Droplets className="h-8 w-8 text-primary" />
+                      </div>
+                      <div className="space-y-1 max-w-md mx-auto">
+                        <h3 className="text-xl font-bold">{t('noBloodTitle')}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {t('noBloodDesc')}
                         </p>
-                      </CardContent>
-                    </Card>
+                      </div>
+                      <div className="pt-2">
+                        <BloodBankRegisterModal />
+                      </div>
+                    </div>
                   ) : (
                     <div className="grid gap-4 md:grid-cols-2">
                       {searchResults.map(bank => (

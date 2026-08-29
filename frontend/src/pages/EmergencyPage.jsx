@@ -1,5 +1,5 @@
  
-import { useState, } from 'react';
+import { useState, useEffect } from 'react';
 import { HospitalMap } from '@/components/maps/hospital-map';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { AmbulanceCard } from '@/components/emergency/ambulance-card';
 import { playEmergencySiren, triggerDesktopNotification } from '@/lib/audio-notification';
+import { useLanguage } from '@/lib/language-context';
 
 
 
@@ -53,78 +54,64 @@ const BED_TYPES = [
 ];
 
 // Mock hospital results
-const mockResults = [
-  {
-    _id: '1',
-    name: 'AIIMS Delhi',
-    address: 'Ansari Nagar East, New Delhi',
-    city: 'New Delhi',
-    state: 'Delhi',
-    coordinates: { lat: 28.5672, lng: 77.2100 },
-    phone: '+91-11-26588500',
-    email: 'director@aiims.edu',
-    beds: { icu: { total: 150, available: 23 }, general: { total: 800, available: 156 }, ventilator: { total: 80, available: 12 } },
-    specialties: ['Cardiology', 'Neurology', 'Trauma'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.8,
-    lastUpdated: new Date().toISOString(),
-    distance: 2.4,
-    score: 92
-  },
-  {
-    _id: '2',
-    name: 'Safdarjung Hospital',
-    address: 'Ring Road, Safdarjung Enclave',
-    city: 'New Delhi',
-    state: 'Delhi',
-    coordinates: { lat: 28.5692, lng: 77.2072 },
-    phone: '+91-11-26730000',
-    email: 'info@safdarjunghospital.nic.in',
-    beds: { icu: { total: 100, available: 15 }, general: { total: 600, available: 89 }, ventilator: { total: 50, available: 8 } },
-    specialties: ['General Surgery', 'Orthopedics'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.2,
-    lastUpdated: new Date().toISOString(),
-    distance: 3.1,
-    score: 85
-  },
-  {
-    _id: '3',
-    name: 'Sir Ganga Ram Hospital',
-    address: 'Rajinder Nagar, New Delhi',
-    city: 'New Delhi',
-    state: 'Delhi',
-    coordinates: { lat: 28.6380, lng: 77.1893 },
-    phone: '+91-11-25750000',
-    email: 'info@sgrh.com',
-    beds: { icu: { total: 80, available: 18 }, general: { total: 400, available: 72 }, ventilator: { total: 40, available: 6 } },
-    specialties: ['Cardiac Surgery', 'Nephrology'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.6,
-    lastUpdated: new Date().toISOString(),
-    distance: 5.2,
-    score: 78
-  }
-];
+const mockResults = [];
+
+import { connectSocket, getSocket } from '@/lib/socket';
 
 export default function EmergencyPage() {
   const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
-  const [results, setResults] = useState([]);
-  const [selectedHospital, setSelectedHospital] = useState(null);
-  
-  // Form state
   const [userLocation, setUserLocation] = useState(null);
   const [locationAddress, setLocationAddress] = useState('');
+  const [results, setResults] = useState([]);
+  const [selectedHospital, setSelectedHospital] = useState(null);
   const [emergencyType, setEmergencyType] = useState('trauma');
   const [bedType, setBedType] = useState('icu');
   const [contactPhone, setContactPhone] = useState('');
   const [patientName, setPatientName] = useState('');
+  const [ambulances, setAmbulances] = useState([]);
+
+  useEffect(() => {
+    connectSocket();
+    const s = getSocket();
+
+    api.ambulances.getActive()
+      .then(res => setAmbulances(res.ambulances || []))
+      .catch(() => setAmbulances([]));
+
+    const handleAmbulanceUpdate = (updatedAmb) => {
+      setAmbulances(prev => {
+        const ambId = updatedAmb.ambulanceId || updatedAmb._id || updatedAmb.id;
+        const exists = prev.some(a => (a._id || a.id) === ambId);
+        if (exists) {
+          return prev.map(a => {
+            if ((a._id || a.id) === ambId) {
+              return {
+                ...a,
+                status: updatedAmb.status || a.status,
+                currentLat: updatedAmb.lat || updatedAmb.currentLat || a.currentLat,
+                currentLng: updatedAmb.lng || updatedAmb.currentLng || a.currentLng,
+                driverName: updatedAmb.driverName || a.driverName,
+                driverPhone: updatedAmb.driverPhone || a.driverPhone
+              };
+            }
+            return a;
+          });
+        } else {
+          return [updatedAmb, ...prev];
+        }
+      });
+      toast.info(`🚑 Live Fleet Update: Ambulance ${updatedAmb.vehicleNumber || ''} is now ${(updatedAmb.status || 'available').toUpperCase()}`);
+    };
+
+    s.on('ambulance-updates', handleAmbulanceUpdate);
+
+    return () => {
+      s.off('ambulance-updates', handleAmbulanceUpdate);
+    };
+  }, []);
 
   const handleGetLocation = () => {
     setGettingLocation(true);
@@ -262,7 +249,7 @@ export default function EmergencyPage() {
 
           {/* Ambulance Dispatch Fleet Module */}
           <div className="mb-8">
-            <AmbulanceCard />
+            <AmbulanceCard ambulances={ambulances} />
           </div>
 
           {/* Page Header */}
@@ -394,7 +381,7 @@ export default function EmergencyPage() {
                     <RadioGroup 
                       value={bedType} 
                       onValueChange={setBedType}
-                      className="mt-2 grid grid-cols-3 gap-2"
+                      className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3"
                     >
                       {BED_TYPES.map(type => (
                         <Label
@@ -463,6 +450,7 @@ export default function EmergencyPage() {
                 selectedHospital={selectedHospital}
                 onHospitalSelect={handleSelectHospital}
                 userLocation={userLocation}
+                ambulances={ambulances}
               />
 
               {/* Results */}

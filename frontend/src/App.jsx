@@ -9,6 +9,8 @@ import HospitalsPage from '@/pages/HospitalsPage';
 import BloodPage from '@/pages/BloodPage';
 import EmergencyPage from '@/pages/EmergencyPage';
 import ContactPage from '@/pages/ContactPage';
+import DriverLocationPage from '@/pages/DriverLocationPage';
+import OnboardingFlyer from '@/pages/OnboardingFlyer';
 
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
@@ -85,6 +87,8 @@ export default function App() {
               <Route path="/blood" element={<BloodPage />} />
               <Route path="/emergency" element={<EmergencyPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/driver/:ambulanceId" element={<DriverLocationPage />} />
+              <Route path="/onboarding-flyer" element={<OnboardingFlyer />} />
 
               {/* Admin Authentication */}
               <Route path="/admin/login" element={<AdminLoginPage />} />

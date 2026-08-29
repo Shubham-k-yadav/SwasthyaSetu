@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
+import { PlatformStatusBanner } from '@/components/PlatformStatusBanner';
+import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 import { HospitalCard } from '@/components/hospital/hospital-card';
 import { StatsCard } from '@/components/stats-card';
 import { Button } from '@/components/ui/button';
@@ -15,123 +17,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Hospital as HospitalIcon, Bed, Heart, Wind, Search, Grid, List, } from 'lucide-react';
+import { Hospital as HospitalIcon, Bed, Heart, Wind, Search, Grid, List, Building2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { useLanguage } from '@/lib/language-context';
 
 import { HospitalMap } from '@/components/maps/hospital-map';
 
-// Mock data for demonstration
-const mockHospitals = [
-  {
-    _id: '1',
-    name: 'AIIMS Delhi',
-    address: 'Ansari Nagar East, New Delhi',
-    city: 'New Delhi',
-    state: 'Delhi',
-    coordinates: { lat: 28.5672, lng: 77.2100 },
-    phone: '+91-11-26588500',
-    email: 'director@aiims.edu',
-    beds: { icu: { total: 150, available: 23 }, general: { total: 800, available: 156 }, ventilator: { total: 80, available: 12 } },
-    specialties: ['Cardiology', 'Neurology', 'Oncology', 'Trauma'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.8,
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    _id: '2',
-    name: 'Safdarjung Hospital',
-    address: 'Ring Road, Safdarjung Enclave',
-    city: 'New Delhi',
-    state: 'Delhi',
-    coordinates: { lat: 28.5692, lng: 77.2072 },
-    phone: '+91-11-26730000',
-    email: 'info@safdarjunghospital.nic.in',
-    beds: { icu: { total: 100, available: 15 }, general: { total: 600, available: 89 }, ventilator: { total: 50, available: 8 } },
-    specialties: ['General Surgery', 'Orthopedics', 'Burn Unit'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.2,
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    _id: '3',
-    name: 'Sir Ganga Ram Hospital',
-    address: 'Rajinder Nagar, New Delhi',
-    city: 'New Delhi',
-    state: 'Delhi',
-    coordinates: { lat: 28.6380, lng: 77.1893 },
-    phone: '+91-11-25750000',
-    email: 'info@sgrh.com',
-    beds: { icu: { total: 80, available: 18 }, general: { total: 400, available: 72 }, ventilator: { total: 40, available: 6 } },
-    specialties: ['Cardiac Surgery', 'Nephrology', 'Gastroenterology'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.6,
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    _id: '4',
-    name: 'Tata Memorial Hospital',
-    address: 'Dr E Borges Road, Parel, Mumbai',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    coordinates: { lat: 19.0048, lng: 72.8435 },
-    phone: '+91-22-24177000',
-    email: 'info@tmc.gov.in',
-    beds: { icu: { total: 60, available: 5 }, general: { total: 500, available: 45 }, ventilator: { total: 35, available: 3 } },
-    specialties: ['Oncology', 'Radiation Therapy', 'Surgical Oncology'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.9,
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    _id: '5',
-    name: 'Apollo Hospital Chennai',
-    address: '21 Greams Lane, Chennai',
-    city: 'Chennai',
-    state: 'Tamil Nadu',
-    coordinates: { lat: 13.0604, lng: 80.2496 },
-    phone: '+91-44-28290200',
-    email: 'info@apollohospitals.com',
-    beds: { icu: { total: 90, available: 12 }, general: { total: 450, available: 67 }, ventilator: { total: 55, available: 7 } },
-    specialties: ['Heart Surgery', 'Liver Transplant', 'Joint Replacement'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.5,
-    lastUpdated: new Date().toISOString()
-  },
-  {
-    _id: '6',
-    name: 'Manipal Hospital Bangalore',
-    address: '98 HAL Airport Road, Bangalore',
-    city: 'Bangalore',
-    state: 'Karnataka',
-    coordinates: { lat: 12.9591, lng: 77.6470 },
-    phone: '+91-80-25024444',
-    email: 'info@manipalhospitals.com',
-    beds: { icu: { total: 85, available: 19 }, general: { total: 380, available: 54 }, ventilator: { total: 42, available: 8 } },
-    specialties: ['Oncology', 'Nephrology', 'Spine Surgery'],
-    emergencyServices: true,
-    isVerified: true,
-    rating: 4.4,
-    lastUpdated: new Date().toISOString()
-  }
-];
+const mockHospitals = [];
 
 const mockStats = {
-  totalHospitals: 500,
-  verifiedHospitals: 420,
+  totalHospitals: 0,
+  verifiedHospitals: 0,
   beds: {
-    totalICU: 2500,
-    availableICU: 423,
-    totalGeneral: 15000,
-    availableGeneral: 3200,
-    totalVentilator: 1200,
-    availableVentilator: 189
+    totalICU: 0,
+    availableICU: 0,
+    totalGeneral: 0,
+    availableGeneral: 0,
+    totalVentilator: 0,
+    availableVentilator: 0
   }
 };
 
@@ -152,12 +57,8 @@ export default function HospitalsPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [hospitalsRes, statsRes] = await Promise.all([
-          api.hospitals.getAll({ limit: 500 }),
-          api.hospitals.getStats(),
-        ]);
-        setHospitals(hospitalsRes.hospitals || hospitalsRes.data || hospitalsRes || []);
-        if (statsRes) setStats(statsRes);
+        const res = await api.hospitals.getAll({ limit: 500 });
+        setHospitals(res.hospitals || []);
       } catch (error) {
         console.error('Error fetching live hospitals from backend:', error);
         setHospitals([]);
@@ -167,6 +68,12 @@ export default function HospitalsPage() {
     }
     fetchData();
   }, []);
+
+  const totalICUBeds = hospitals.reduce((acc, h) => acc + (h.beds?.icu?.available || 0), 0);
+  const totalICUCapacity = hospitals.reduce((acc, h) => acc + (h.beds?.icu?.total || 0), 0);
+  const totalGenBeds = hospitals.reduce((acc, h) => acc + (h.beds?.general?.available || 0), 0);
+  const totalGenCapacity = hospitals.reduce((acc, h) => acc + (h.beds?.general?.total || 0), 0);
+  const totalVentBeds = hospitals.reduce((acc, h) => acc + (h.beds?.ventilator?.available || 0), 0);
 
   const dynamicCities = [
     'All Cities',
@@ -197,6 +104,7 @@ export default function HospitalsPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
+      <PlatformStatusBanner />
       
       <main className="flex-1 py-8">
         <div className="container mx-auto max-w-7xl px-4">
@@ -218,30 +126,30 @@ export default function HospitalsPage() {
               <>
                 <StatsCard 
                   title={t('liveHospitalNetwork')} 
-                  value={stats?.totalHospitals || hospitals.length || 463}
-                  subtitle={`${stats?.verifiedHospitals || 0} verified`}
+                  value={hospitals.length}
+                  subtitle={`${hospitals.filter(h => h.isVerified).length} verified`}
                   icon={HospitalIcon}
                 />
                 <StatsCard 
                   title="ICU Beds" 
-                  value={stats?.beds?.availableICU || 0}
-                  subtitle={`of ${stats?.beds?.totalICU || 0} total`}
+                  value={totalICUBeds}
+                  subtitle={`of ${totalICUCapacity} total`}
                   icon={Heart}
-                  variant={stats?.beds?.availableICU < 100 ? 'critical' : 'success'}
+                  variant={totalICUBeds < 10 ? 'critical' : 'success'}
                 />
                 <StatsCard 
                   title="General Beds" 
-                  value={stats?.beds?.availableGeneral || 0}
-                  subtitle={`of ${stats?.beds?.totalGeneral || 0} total`}
+                  value={totalGenBeds}
+                  subtitle={`of ${totalGenCapacity} total`}
                   icon={Bed}
                   variant="success"
                 />
                 <StatsCard 
                   title="Ventilators" 
-                  value={stats?.beds?.availableVentilator || 0}
-                  subtitle={`of ${stats?.beds?.totalVentilator || 0} total`}
+                  value={totalVentBeds}
+                  subtitle="Available Units"
                   icon={Wind}
-                  variant={stats?.beds?.availableVentilator < 50 ? 'warning' : 'success'}
+                  variant={totalVentBeds < 5 ? 'warning' : 'success'}
                 />
               </>
             )}
@@ -257,23 +165,23 @@ export default function HospitalsPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-3 mb-6">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search hospitals..."
+                  placeholder={t('searchHospitalsPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 bg-card shadow-xs"
                 />
               </div>
             </div>
-            <div className="flex gap-4">
-              <div className="w-40">
+            <div className="grid grid-cols-2 sm:flex items-center gap-3">
+              <div className="w-full sm:w-44">
                 <Select value={selectedCity} onValueChange={setSelectedCity}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="City" />
+                  <SelectTrigger className="bg-card shadow-xs">
+                    <SelectValue placeholder={t('allCities')} />
                   </SelectTrigger>
                   <SelectContent>
                     {dynamicCities.map(city => (
@@ -282,34 +190,38 @@ export default function HospitalsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="w-40">
+              <div className="w-full sm:w-44">
                 <Select value={selectedBedType} onValueChange={setSelectedBedType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Bed Type" />
+                  <SelectTrigger className="bg-card shadow-xs">
+                    <SelectValue placeholder={t('allBedTypes')} />
                   </SelectTrigger>
                   <SelectContent>
                     {bedTypes.map(type => (
                       <SelectItem key={type} value={type}>
-                        {type === 'All Types' ? 'All Types' : type.toUpperCase()}
+                        {type === 'All Types' ? t('allBedTypes') : type.toUpperCase()}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex border rounded-lg">
+              <div className="flex border rounded-lg bg-card p-0.5 shadow-xs col-span-2 sm:col-span-1 justify-center">
                 <Button 
                   variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
-                  size="icon"
+                  size="sm"
+                  className="h-8 px-3 text-xs gap-1 font-medium"
                   onClick={() => setViewMode('grid')}
                 >
-                  <Grid className="h-4 w-4" />
+                  <Grid className="h-3.5 w-3.5" />
+                  Grid
                 </Button>
                 <Button 
                   variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
-                  size="icon"
+                  size="sm"
+                  className="h-8 px-3 text-xs gap-1 font-medium"
                   onClick={() => setViewMode('list')}
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-3.5 w-3.5" />
+                  List
                 </Button>
               </div>
             </div>
@@ -347,10 +259,24 @@ export default function HospitalsPage() {
           )}
 
           {!loading && filteredHospitals.length === 0 && (
-            <div className="text-center py-12">
-              <HospitalIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold">No hospitals found</h3>
-              <p className="text-muted-foreground">Try adjusting your filters</p>
+            <div className="text-center py-16 px-4 bg-muted/30 rounded-2xl border border-dashed my-6 space-y-4">
+              <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto">
+                <HospitalIcon className="h-8 w-8 text-primary" />
+              </div>
+              <div className="space-y-1 max-w-md mx-auto">
+                <h3 className="text-xl font-bold">{t('noHospitalsTitle')}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('noHospitalsDesc')}
+                </p>
+              </div>
+              <div className="pt-2">
+                <HospitalRegisterModal>
+                  <Button size="lg" className="gap-2 font-bold bg-primary text-primary-foreground shadow-md">
+                    <Building2 className="h-5 w-5" />
+                    {t('registerFacilityCTA')}
+                  </Button>
+                </HospitalRegisterModal>
+              </div>
             </div>
           )}
         </div>
