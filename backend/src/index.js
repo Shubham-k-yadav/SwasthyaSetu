@@ -9,6 +9,7 @@ import cron from 'node-cron';
 import { apiLimiter, emergencySosLimiter, authLimiter } from './middleware/rateLimiter.js';
 import connectDB from './config/db.js';
 import { initializeSocket } from './services/socket.js';
+import { runLiveDataSimulation } from './scripts/simulateLiveData.js';
 import BedReservation from './models/BedReservation.js';
 import Hospital from './models/Hospital.js';
 
@@ -18,6 +19,10 @@ import bloodRoutes from './routes/blood.js';
 import donorRoutes from './routes/donors.js';
 import emergencyRoutes from './routes/emergency.js';
 import authRoutes from './routes/auth.js';
+import translateRoutes from './routes/translate.js';
+import systemRoutes from './routes/system.js';
+import bloodBankRoutes from './routes/bloodbanks.js';
+import ambulanceRoutes from './routes/ambulances.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -70,6 +75,10 @@ app.use('/api/blood', bloodRoutes);
 app.use('/api/donors', donorRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/translate', translateRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/api/bloodbanks', bloodBankRoutes);
+app.use('/api/ambulances', ambulanceRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -44,24 +44,27 @@ router.post('/login', async (req, res) => {
       return;
     }
 
-    if (!user.isActive) {
-      res.status(403).json({ error: 'Account is deactivated' });
-      return;
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
-    }
-
-    await User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } });
-
     let hospital = null;
     if (user.hospitalId) {
       hospital = await Hospital.findById(user.hospitalId)
-        .select('name city state')
+        .select('name city state isVerified')
         .lean();
+
+      if (user.role === 'admin' && hospital) {
+        if (!hospital.isVerified) {
+          res.status(403).json({ error: 'Your hospital registration is pending Super Admin verification and approval. Please wait for approval before logging in.' });
+          return;
+        } else if (!user.isActive) {
+          // Auto-heal active flag if hospital is verified
+          await User.updateOne({ _id: user._id }, { $set: { isActive: true } });
+          user.isActive = true;
+        }
+      }
+    }
+
+    if (!user.isActive && user.role !== 'superadmin') {
+      res.status(403).json({ error: 'Your account is pending Super Admin verification and approval. Please wait for approval before logging in.' });
+      return;
     }
 
     const token = generateToken(user);

@@ -4,8 +4,8 @@ import BloodStock from '../models/BloodStock.js';
 import BedReservation from '../models/BedReservation.js';
 import User from '../models/User.js';
 import { authenticate, authorize } from '../middleware/auth.js';
-import { emitBedUpdate } from '../services/socket.js';
-import { haversineDistance, calculateHospitalScore } from '../utils/geo.js';
+import { emitBedUpdate, emitRegistrationRequest, emitBedHoldAlert } from '../services/socket.js';
+import { haversineDistance, calculateHospitalScore, getCoordinatesForCity, geocodeFullAddress } from '../utils/geo.js';
 
 import { mockHospitals, mockReservations } from '../utils/mockStore.js';
 import mongoose from 'mongoose';
@@ -35,7 +35,10 @@ router.get('/', async (req, res) => {
 
     const filter = {};
     if (includeUnverified !== 'true') {
-      filter.isVerified = true;
+      filter.$or = [
+        { isVerified: true },
+        { isSimulated: true }
+      ];
     }
     if (city) filter.city = new RegExp(city, 'i');
     if (state) filter.state = new RegExp(state, 'i');
@@ -311,6 +314,56 @@ router.post('/reservations/:code/release', async (req, res) => {
   } catch (error) {
     console.error('Error releasing reservation:', error);
     res.status(500).json({ error: 'Failed to release reservation hold' });
+  }
+});
+
+// Discharge Patient (Frees up bed, sets status to discharged & increments available bed count atomically)
+router.post('/reservations/:code/discharge', async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
+      const resv = mockReservations.find(r => r.reservationCode === code && (r.status === 'confirmed' || r.status === 'reserved'));
+      if (!resv) return res.status(404).json({ error: 'Active admitted patient reservation not found' });
+      
+      resv.status = 'discharged';
+      const hospital = mockHospitals.find(h => h._id === resv.hospitalId || h.id === resv.hospitalId);
+      if (hospital && hospital.beds[resv.bedType]) {
+        hospital.beds[resv.bedType].available += 1;
+        emitBedUpdate(hospital._id || hospital.id, hospital.beds);
+      }
+      return res.json({ message: 'Patient discharged & bed restored to live available inventory', reservation: resv });
+    }
+
+    const reservation = await BedReservation.findOneAndUpdate(
+      { reservationCode: code, status: { $in: ['confirmed', 'reserved'] } },
+      { status: 'discharged' },
+      { new: true }
+    );
+
+    if (!reservation) {
+      res.status(404).json({ error: 'Active admitted patient reservation not found or already discharged' });
+      return;
+    }
+
+    // Atomically increment available bed count back
+    const updatedHospital = await Hospital.findByIdAndUpdate(
+      reservation.hospitalId,
+      {
+        $inc: { [`beds.${reservation.bedType}.available`]: 1 },
+        $set: { lastUpdated: new Date() }
+      },
+      { new: true }
+    );
+
+    if (updatedHospital) {
+      emitBedUpdate(updatedHospital._id, updatedHospital.beds);
+    }
+
+    res.json({ message: 'Patient discharged & bed restored to live available inventory', reservation });
+  } catch (error) {
+    console.error('Error discharging patient:', error);
+    res.status(500).json({ error: 'Failed to discharge patient' });
   }
 });
 
@@ -626,6 +679,7 @@ router.post('/:id/reserve-bed', async (req, res) => {
     await reservation.save();
 
     emitBedUpdate(hospitalId, updatedHospital.beds);
+    emitBedHoldAlert(hospitalId, reservation, updatedHospital.name);
 
     res.status(201).json({
       message: 'Bed reserved successfully (10-minute hold active)',
@@ -638,6 +692,31 @@ router.post('/:id/reserve-bed', async (req, res) => {
   } catch (error) {
     console.error('Error reserving bed:', error);
     res.status(500).json({ error: 'Failed to complete atomic bed reservation' });
+  }
+});
+
+/**
+ * GET /api/hospitals/:id/reservations
+ * Fetch live bed holds/reservations for hospital admin
+ */
+router.get('/:id/reservations', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
+      const list = mockReservations.filter(r => r.hospitalId === id);
+      return res.json({ reservations: list });
+    }
+
+    const reservations = await BedReservation.find({ hospitalId: id })
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .lean();
+
+    res.json({ reservations });
+  } catch (error) {
+    console.error('Error fetching hospital reservations:', error);
+    res.status(500).json({ error: 'Failed to fetch bed reservations' });
   }
 });
 
@@ -674,6 +753,11 @@ router.post('/register-request', async (req, res) => {
 
     const regNo = licenseNumber || `HFR-${Date.now().toString().slice(-6)}`;
 
+    // Automatically geocode full hospital address or city via OpenStreetMap
+    const coordinates = (req.body.lat && req.body.lng) 
+      ? { lat: Number(req.body.lat), lng: Number(req.body.lng) } 
+      : await geocodeFullAddress(address, city, state);
+
     // Create unverified hospital
     const newHospital = new Hospital({
       name,
@@ -683,30 +767,35 @@ router.post('/register-request', async (req, res) => {
       city,
       state: state || 'India',
       phone: phone || '+91-9876543210',
+      email,
       isVerified: false,
+      isSimulated: false,
       beds: {
         general: { total: Number(generalBeds), available: Number(generalBeds) },
         icu: { total: Number(icuBeds), available: Number(icuBeds) },
         ventilator: { total: Number(ventilatorBeds), available: Number(ventilatorBeds) },
       },
       specialties: Array.isArray(specialties) ? specialties : [specialties],
-      coordinates: { lat: 28.6139, lng: 77.2090 },
+      coordinates,
       lastUpdated: new Date()
     });
 
     await newHospital.save();
 
-    // Create admin user
+    // Create admin user (inactive until Super Admin approval)
     const newAdmin = new User({
       email,
       password,
       name: `${name} Admin`,
       role: 'admin',
       hospitalId: newHospital._id,
-      isActive: true
+      isActive: false
     });
 
     await newAdmin.save();
+
+    // Broadcast live notification to Super Admin Control Room via WebSockets
+    emitRegistrationRequest('hospital', newHospital);
 
     res.status(201).json({
       message: 'Hospital registration application submitted successfully! Super Admin review pending.',
@@ -716,6 +805,23 @@ router.post('/register-request', async (req, res) => {
   } catch (error) {
     console.error('Error submitting hospital registration request:', error);
     res.status(500).json({ error: 'Failed to submit hospital registration application: ' + error.message });
+  }
+});
+
+/**
+ * GET /api/hospitals/pending/queue
+ * Superadmin queue for unverified hospitals
+ */
+router.get('/pending/queue', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    const pending = await Hospital.find({ isVerified: false })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ queue: pending });
+  } catch (error) {
+    console.error('Error fetching pending hospitals:', error);
+    res.status(500).json({ error: 'Failed to fetch pending hospitals' });
   }
 });
 
@@ -733,7 +839,18 @@ router.patch('/:id/verify', authenticate, authorize('superadmin'), async (req, r
     }
 
     // Activate hospital admin user if pending
-    await User.updateMany({ hospitalId: hospital._id }, { $set: { isActive: true } });
+    const hospObjId = new mongoose.Types.ObjectId(hospital._id);
+    await User.updateMany(
+      {
+        $or: [
+          { hospitalId: hospObjId },
+          { hospitalId: hospital._id.toString() },
+          { email: hospital.email },
+          { email: hospital.adminEmail }
+        ]
+      },
+      { $set: { isActive: true } }
+    );
 
     res.json({ message: `${hospital.name} verified and approved successfully!`, hospital });
   } catch (error) {
