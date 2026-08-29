@@ -78,7 +78,9 @@ export function BedTicketDialog({ open, onOpenChange, reservation, hospital, pat
             </div>
 
             <div class="qr-container">
-              <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Present QR Code at Hospital Counter</div>
+              <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Present QR Code at Hospital Counter for Instant Admission</div>
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(reservation.reservationCode)}" width="160" height="160" alt="Admission QR Code" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 8px; background: white;" />
+              <div style="font-size: 10px; font-family: monospace; color: #0284c7; margin-top: 4px; font-weight: bold;">PASS: ${reservation.reservationCode}</div>
             </div>
 
             <div class="footer">
@@ -122,13 +124,18 @@ export function BedTicketDialog({ open, onOpenChange, reservation, hospital, pat
               </div>
             </div>
 
-            {/* QR Code Component */}
-            <div className="flex justify-center pt-1">
-              <ReservationQRCode
-                code={reservation.reservationCode}
-                hospitalName={hospital.name}
-                size={140}
+            {/* Crisp High-Res Admission QR Code */}
+            <div className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 rounded-xl border border-sky-300 shadow-xs my-2">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(reservation.reservationCode)}`}
+                width="180"
+                height="180"
+                alt="Emergency Bed Hold Admission QR Code"
+                className="rounded-lg border bg-white p-1"
               />
+              <span className="text-[10px] font-mono text-sky-700 dark:text-sky-300 font-bold mt-1.5 uppercase">
+                📱 Present QR Pass at Hospital Counter
+              </span>
             </div>
           </div>
 

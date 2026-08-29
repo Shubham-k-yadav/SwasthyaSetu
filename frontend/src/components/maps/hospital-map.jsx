@@ -78,7 +78,8 @@ export function HospitalMap({
   hospitals, 
   selectedHospital, 
   onHospitalSelect,
-  userLocation
+  userLocation,
+  ambulances = []
 }) {
   const [mapReady, setMapReady] = useState(false);
 
@@ -128,7 +129,7 @@ export function HospitalMap({
   }
 
   return (
-    <div className="h-[300px] sm:h-[400px] rounded-lg overflow-hidden border shadow-sm">
+    <div className="relative z-0 isolate h-[300px] sm:h-[400px] rounded-xl overflow-hidden border shadow-sm">
       <MapContainer
         center={center}
         zoom={zoom}
@@ -168,6 +169,53 @@ export function HospitalMap({
             </Popup>
           </Marker>
         )}
+
+        {/* Live Ambulance Markers */}
+        {ambulances.map((amb) => {
+          const lat = amb.currentLat || amb.lat;
+          const lng = amb.currentLng || amb.lng;
+          if (!lat || !lng) return null;
+
+          return (
+            <Marker
+              key={amb._id || amb.id || amb.vehicleNumber}
+              position={[lat, lng]}
+              icon={L.divIcon({
+                className: 'ambulance-marker',
+                html: `
+                  <div style="
+                    background-color: #EF4444;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                  ">🚑</div>
+                `,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [0, -16]
+              })}
+            >
+              <Popup minWidth={220}>
+                <div className="p-1 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-red-600 text-sm">
+                    <span>🚑 {amb.vehicleNumber || 'Emergency Ambulance'}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Driver: <strong>{amb.driverName || 'Driver'}</strong> ({amb.driverPhone || '+91 108'})</p>
+                  <p className="text-[11px] text-muted-foreground">Hospital: {amb.hospitalName || 'Independent SOS'}</p>
+                  <Badge variant="outline" className="text-[10px] bg-red-50 text-red-700 border-red-200 mt-1">
+                    {amb.equipmentLevel || 'Advanced Life Support (ALS)'}
+                  </Badge>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
 
         {/* Hospital Markers */}
         {hospitals.map(hospital => {

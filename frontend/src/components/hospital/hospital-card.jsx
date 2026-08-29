@@ -141,36 +141,36 @@ export function HospitalCard({
   return (
     <>
       <Card className={cn(
-        'overflow-hidden transition-all hover:shadow-lg',
+        'overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border-primary/10',
         (!hasAvailability || freshness.isExpired) && 'opacity-75'
       )}>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle className="text-lg leading-tight">{hospital.name}</CardTitle>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>{hospital.address}</span>
+        <CardHeader className="pb-3 px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+            <div className="space-y-1 flex-1 min-w-0">
+              <CardTitle className="text-base sm:text-lg font-bold leading-snug line-clamp-2">{hospital.name}</CardTitle>
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground line-clamp-1">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="truncate">{hospital.address}</span>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1.5">
+            <div className="flex flex-wrap sm:flex-col items-center sm:items-end gap-1.5 shrink-0">
               {hospital.isVerified ? (
-                <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">
+                <Badge variant="secondary" className="gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold text-[11px]">
                   <Shield className="h-3 w-3" />
                   {t('verified')}
                 </Badge>
               ) : (
-                <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
+                <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20 text-[11px]">
                   {t('unverified')}
                 </Badge>
               )}
-              <Badge className={cn('text-xs gap-1 border', freshness.colorClass)}>
+              <Badge className={cn('text-[11px] gap-1 border font-medium', freshness.colorClass)}>
                 <Clock className="h-3 w-3" />
                 {freshness.text}
               </Badge>
               {showDistance && hospital.distance && (
-                <Badge variant="outline" className="gap-1">
-                  <Navigation className="h-3.5 w-3.5" />
+                <Badge variant="outline" className="gap-1 text-[11px]">
+                  <Navigation className="h-3 w-3" />
                   {hospital.distance.toFixed(1)} km
                 </Badge>
               )}
@@ -178,9 +178,9 @@ export function HospitalCard({
           </div>
         </CardHeader>
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
           {/* Bed Availability */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <BedIndicator 
               label={t('icuBeds')} 
               icon={Heart}
@@ -202,22 +202,22 @@ export function HospitalCard({
           </div>
 
           {/* Hospital Info */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-muted-foreground pt-1 border-t">
             <div className="flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5" />
-              <span>{hospital.phone}</span>
+              <Phone className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="font-medium text-foreground">{hospital.phone}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" />
-              <span>24/7 Emergency</span>
+              <Clock className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span className="text-emerald-700 font-medium dark:text-emerald-400">24/7 Emergency</span>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <Button 
               size="sm" 
-              className="flex-1 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-medium"
+              className="flex-1 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-xs"
               onClick={() => { setError(''); setIsReserveOpen(true); }}
               disabled={!hasAvailability}
             >
@@ -227,7 +227,7 @@ export function HospitalCard({
             <Button 
               size="sm" 
               variant="outline"
-              className="flex-1 gap-1.5"
+              className="flex-1 gap-1.5 font-medium"
               onClick={onGetDirections}
               disabled={!hasAvailability}
             >
@@ -305,7 +305,7 @@ export function HospitalCard({
           )}
 
           {step === 'otp' && (
-            <form onSubmit={handleVerifyAndReserve} className="space-y-4 py-2">
+            <form onSubmit={handleVerifyOtpAndReserve} className="space-y-4 py-2">
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
                 📱 OTP sent to <strong>+91-{contactPhone}</strong> (Demo OTP: <strong>123456</strong>)
               </div>
@@ -346,6 +346,20 @@ export function HospitalCard({
                 </p>
                 <div className="p-2.5 rounded-lg bg-background font-mono font-black text-2xl text-primary tracking-widest border shadow-xs">
                   {reservation.reservationCode}
+                </div>
+
+                {/* Scannable Admission QR Code Image */}
+                <div className="flex flex-col items-center justify-center p-3 bg-white dark:bg-slate-900 rounded-xl border-2 border-emerald-500/30 shadow-xs my-2">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(reservation.reservationCode)}`}
+                    width="180"
+                    height="180"
+                    alt="Admission QR Code"
+                    className="rounded-lg border bg-white p-1"
+                  />
+                  <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 font-bold mt-1.5 uppercase">
+                    📱 Show QR Pass at Hospital Desk
+                  </span>
                 </div>
                 
                 {/* Live Countdown Timer Display */}
@@ -413,19 +427,19 @@ function BedIndicator({ label, icon: Icon, available, total }) {
   }
 
   return (
-    <div className="rounded-lg border p-3 text-center">
-      <div className="flex items-center justify-center gap-1.5 mb-1">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="rounded-xl border p-2 sm:p-3 text-center bg-card hover:bg-muted/30 transition-colors">
+      <div className="flex items-center justify-center gap-1 sm:gap-1.5 mb-1">
+        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground shrink-0" />
+        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground truncate">{label}</span>
       </div>
-      <p className={cn('text-xl font-bold', textColor)}>{available}</p>
-      <div className="mt-1.5 h-1.5 rounded-full bg-secondary overflow-hidden">
+      <p className={cn('text-lg sm:text-xl font-black tracking-tight', textColor)}>{available}</p>
+      <div className="mt-1 sm:mt-1.5 h-1.5 rounded-full bg-secondary overflow-hidden">
         <div 
-          className={cn('h-full rounded-full transition-all', statusColor)}
+          className={cn('h-full rounded-full transition-all duration-500', statusColor)}
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <p className="text-xs text-muted-foreground mt-1">of {total}</p>
+      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-medium">of {total}</p>
     </div>
   );
 }
