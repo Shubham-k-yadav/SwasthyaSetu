@@ -66,6 +66,20 @@ export const emitBedUpdate = (hospitalId, beds) => {
   }
 };
 
+export const emitBedHoldAlert = (hospitalId, reservation, hospitalName) => {
+  if (io) {
+    io.to(`hospital-${hospitalId}`).emit('hospital-bed-hold', {
+      reservationCode: reservation.reservationCode,
+      patientName: reservation.patientName,
+      contactPhone: reservation.contactPhone,
+      bedType: reservation.bedType,
+      hospitalName,
+      createdAt: reservation.createdAt || new Date(),
+      expiresAt: reservation.expiresAt
+    });
+  }
+};
+
 export const emitBloodUpdate = (hospitalId, bloodStock) => {
   if (io) {
     io.emit('blood-update', { hospitalId, bloodStock, timestamp: new Date() });
@@ -94,5 +108,16 @@ export const emitDonorAlert = (bloodGroup, request) => {
 export const emitBlockchainVerification = (hospitalId, verification) => {
   if (io) {
     io.emit('blockchain-verification', { hospitalId, verification, timestamp: new Date() });
+  }
+};
+
+export const emitRegistrationRequest = (type, data) => {
+  if (io) {
+    io.emit('new-registration-request', {
+      type, // 'hospital' | 'bloodbank' | 'ambulance'
+      name: data.name || data.vehicleNumber,
+      city: data.city || 'India',
+      timestamp: new Date().toISOString()
+    });
   }
 };
