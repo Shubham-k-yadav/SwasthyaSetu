@@ -114,11 +114,13 @@ const mockBloodBanks = [
   }
 ];
 
-export default function BloodFinderPage() {
-  const [selectedBloodGroup, setSelectedBloodGroup] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
+export default function BloodPage() {
+  const { t } = useLanguage();
+  const [selectedBloodGroup, setSelectedBloodGroup] = useState('all');
+  const [selectedCity, setSelectedCity] = useState('all');
   const [searchResults, setSearchResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
 
@@ -141,6 +143,7 @@ export default function BloodFinderPage() {
 
   const handleSearch = async () => {
     setHasSearched(true);
+    setIsSearching(true);
     try {
       const cityParam = selectedCity && selectedCity !== 'all' ? selectedCity : undefined;
       const groupParam = selectedBloodGroup && selectedBloodGroup !== 'all' ? selectedBloodGroup : undefined;

@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getFreshnessStatus } from '@/lib/freshness';
 import { hospitalApi } from '@/lib/api';
+import { useLanguage } from '@/lib/language-context';
 import { BedTicketDialog } from './bed-ticket-dialog';
 
 export function HospitalCard({ 
@@ -32,6 +33,7 @@ export function HospitalCard({
   onGetDirections,
   showDistance = false 
 }) {
+  const { t } = useLanguage();
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isReserveOpen, setIsReserveOpen] = useState(false);
   const [step, setStep] = useState('input'); // 'input' | 'otp' | 'confirmed'
@@ -71,49 +73,43 @@ export function HospitalCard({
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
-    setError('');
-    const cleanPhone = String(contactPhone).trim().replace(/[\s\-\+]/g, '');
-    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      setError('Please enter a valid 10-digit mobile number starting with 6-9.');
+    if (!patientName || !contactPhone) {
+      setError('Patient name and contact phone are required.');
       return;
     }
-
     setIsSubmitting(true);
+    setError('');
     try {
-      await hospitalApi.requestOtp(cleanPhone);
+      await hospitalApi.requestOtp(contactPhone);
       setStep('otp');
-      setOtpInput('123456'); // Pre-fill demo OTP for zero-friction user testing
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send verification OTP.');
+      setError(err.message || 'Failed to send OTP.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleVerifyAndReserve = async (e) => {
+  const handleVerifyOtpAndReserve = async (e) => {
     e.preventDefault();
-    setError('');
+    if (!otpInput) {
+      setError('Please enter the OTP sent to your phone.');
+      return;
+    }
     setIsSubmitting(true);
-
-    const cleanPhone = String(contactPhone).trim().replace(/[\s\-\+]/g, '');
-
+    setError('');
     try {
-      // 1. Verify OTP
-      await hospitalApi.verifyOtp(cleanPhone, otpInput);
-
-      // 2. Reserve Bed Atomically
+      await hospitalApi.verifyOtp(contactPhone, otpInput);
       const res = await hospitalApi.reserveBed(hospital._id || hospital.id, {
         bedType,
         patientName,
-        contactPhone: cleanPhone,
+        contactPhone,
         holdMinutes: 10
       });
-
       setReservation(res.reservation);
       setSecondsRemaining(res.expiresInSeconds || 600);
       setStep('confirmed');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification or reservation failed.');
+      setError(err.message || 'Failed to complete bed reservation.');
     } finally {
       setIsSubmitting(false);
     }
@@ -161,11 +157,11 @@ export function HospitalCard({
               {hospital.isVerified ? (
                 <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">
                   <Shield className="h-3 w-3" />
-                  Verified
+                  {t('verified')}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
-                  Unverified
+                  {t('unverified')}
                 </Badge>
               )}
               <Badge className={cn('text-xs gap-1 border', freshness.colorClass)}>
@@ -174,7 +170,7 @@ export function HospitalCard({
               </Badge>
               {showDistance && hospital.distance && (
                 <Badge variant="outline" className="gap-1">
-                  <Navigation className="h-3 w-3" />
+                  <Navigation className="h-3.5 w-3.5" />
                   {hospital.distance.toFixed(1)} km
                 </Badge>
               )}
@@ -186,19 +182,19 @@ export function HospitalCard({
           {/* Bed Availability */}
           <div className="grid grid-cols-3 gap-3">
             <BedIndicator 
-              label="ICU" 
+              label={t('icuBeds')} 
               icon={Heart}
               available={hospital.beds?.icu?.available || 0} 
               total={hospital.beds?.icu?.total || 0} 
             />
             <BedIndicator 
-              label="General" 
+              label={t('generalBeds')} 
               icon={Bed}
               available={hospital.beds?.general?.available || 0} 
               total={hospital.beds?.general?.total || 0} 
             />
             <BedIndicator 
-              label="Ventilator" 
+              label={t('ventilatorBeds')} 
               icon={Wind}
               available={hospital.beds?.ventilator?.available || 0} 
               total={hospital.beds?.ventilator?.total || 0} 
@@ -226,7 +222,7 @@ export function HospitalCard({
               disabled={!hasAvailability}
             >
               <Zap className="h-4 w-4" />
-              Hold Bed (10m)
+              {t('holdBed')}
             </Button>
             <Button 
               size="sm" 
@@ -236,7 +232,7 @@ export function HospitalCard({
               disabled={!hasAvailability}
             >
               <Navigation className="h-4 w-4" />
-              Directions
+              {t('directions')}
             </Button>
           </div>
         </CardContent>

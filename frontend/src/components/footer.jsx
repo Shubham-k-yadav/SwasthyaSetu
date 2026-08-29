@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Activity, Heart } from 'lucide-react';
+import { useLanguage } from '@/lib/language-context';
 
 export function Footer() {
+  const { t } = useLanguage();
+
   return (
     <footer className="border-t bg-secondary/30">
       <div className="container mx-auto max-w-7xl px-4 py-12">
@@ -15,33 +18,33 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              Real-time emergency healthcare & blood availability bridge for India. Connecting patients with hospitals when every second counts.
+              {t('footerDesc')}
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-semibold mb-4">Quick Links</h4>
+            <h4 className="font-semibold mb-4">{t('quickLinks')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/hospitals" className="hover:text-foreground transition-colors">Find Hospitals</Link></li>
-              <li><Link to="/blood" className="hover:text-foreground transition-colors">Blood Availability</Link></li>
-              <li><Link to="/emergency" className="hover:text-foreground transition-colors">Emergency Search</Link></li>
-              <li><Link to="/contact" className="hover:text-foreground transition-colors">Contact Us</Link></li>
+              <li><Link to="/hospitals" className="hover:text-foreground transition-colors">{t('navHospitals')}</Link></li>
+              <li><Link to="/blood" className="hover:text-foreground transition-colors">{t('navBlood')}</Link></li>
+              <li><Link to="/emergency" className="hover:text-foreground transition-colors">{t('navEmergency')}</Link></li>
+              <li><Link to="/contact" className="hover:text-foreground transition-colors">{t('navContact')}</Link></li>
             </ul>
           </div>
 
           {/* For Hospitals */}
           <div>
-            <h4 className="font-semibold mb-4">For Hospitals</h4>
+            <h4 className="font-semibold mb-4">{t('forHospitals')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/admin/login" className="hover:text-foreground transition-colors">Hospital Login</Link></li>
-              <li><Link to="/admin" className="hover:text-foreground transition-colors">Dashboard</Link></li>
+              <li><Link to="/admin/login" className="hover:text-foreground transition-colors">{t('adminLogin')}</Link></li>
+              <li><Link to="/admin" className="hover:text-foreground transition-colors">{t('dashboard')}</Link></li>
             </ul>
           </div>
 
           {/* Emergency */}
           <div>
-            <h4 className="font-semibold mb-4">Emergency Contacts</h4>
+            <h4 className="font-semibold mb-4">{t('emergencyHelplines')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>Ambulance: <span className="text-primary font-semibold">102</span></li>
               <li>Police: <span className="text-primary font-semibold">100</span></li>
@@ -53,10 +56,10 @@ export function Footer() {
 
         <div className="mt-8 pt-8 border-t flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2026 SwasthyaSetu (स्वास्थ्य सेतु). Built for India with <Heart className="inline h-3 w-3 text-primary" fill="currentColor" />
+            © 2026 SwasthyaSetu. {t('builtWith')} <Heart className="inline h-3 w-3 text-primary" fill="currentColor" />
           </p>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+            <Link to="/contact" className="hover:text-foreground transition-colors">{t('navContact')}</Link>
           </div>
         </div>
       </div>
