@@ -34,7 +34,7 @@ async function apiCall(endpoint, options = {}) {
 
 // System Status API
 export const systemApi = {
-  getStatus: () => apiCall('/api/status'),
+  getStatus: () => apiCall('/api/system/status'),
   getSystemStatus: () => apiCall('/api/system/status')
 };
 
@@ -222,6 +222,7 @@ export const api = {
   donors: donorApi,
   emergency: emergencyApi,
   translate: translateApi,
+  system: systemApi,
 };
 
 export default apiCall;

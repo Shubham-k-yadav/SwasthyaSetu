@@ -103,7 +103,6 @@ export default function EmergencyPage() {
           return [updatedAmb, ...prev];
         }
       });
-      toast.info(`🚑 Live Fleet Update: Ambulance ${updatedAmb.vehicleNumber || ''} is now ${(updatedAmb.status || 'available').toUpperCase()}`);
     };
 
     s.on('ambulance-updates', handleAmbulanceUpdate);

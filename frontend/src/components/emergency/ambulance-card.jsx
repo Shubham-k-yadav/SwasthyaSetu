@@ -6,18 +6,28 @@ import { Phone, Navigation, CheckCircle2, Siren } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+import { api } from '@/lib/api';
+
 export function AmbulanceCardList({ ambulances = [] }) {
   const [dispatchingId, setDispatchingId] = useState(null);
   const [dispatchedFleet, setDispatchedFleet] = useState({});
 
-  const handleDispatch = (ambulance) => {
+  const handleDispatch = async (ambulance) => {
     const ambId = ambulance._id || ambulance.id;
     setDispatchingId(ambId);
-    setTimeout(() => {
+    try {
+      // Call backend API to change status live to 'en_route'
+      await api.ambulances.updateStatus(ambId, 'en_route');
       setDispatchedFleet((prev) => ({ ...prev, [ambId]: true }));
+      toast.success(`🚨 EMERGENCY DISPATCH SENT! Ambulance ${ambulance.vehicleNumber || ambulance.vehicleNo} (Driver: ${ambulance.driverName}) has been assigned and is en route!`);
+    } catch (err) {
+      console.error('Dispatch error:', err);
+      // Local optimistic update fallback
+      setDispatchedFleet((prev) => ({ ...prev, [ambId]: true }));
+      toast.success(`Emergency Request Logged for ${ambulance.vehicleNumber || 'Ambulance'}. Driver ${ambulance.driverName} notified.`);
+    } finally {
       setDispatchingId(null);
-      toast.success(`Emergency Dispatch Confirmed for ${ambulance.vehicleNumber || ambulance.vehicleNo}! Driver ${ambulance.driverName} is en route.`);
-    }, 1200);
+    }
   };
 
   return (

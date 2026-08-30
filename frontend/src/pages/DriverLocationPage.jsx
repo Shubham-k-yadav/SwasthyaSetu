@@ -78,7 +78,7 @@ export default function DriverLocationPage() {
       getPositionAndSend();
       intervalRef.current = setInterval(() => {
         getPositionAndSend();
-      }, 15000); // Push location every 15 seconds
+      }, 2000); // Push location every 2 seconds
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
@@ -96,6 +96,26 @@ export default function DriverLocationPage() {
       setIsSharing(false);
       toast.info('Live GPS location sharing turned OFF.');
     }
+  };
+
+  const handleStatusSelect = (newStatus) => {
+    setStatus(newStatus);
+    if (!ambulanceId) return;
+
+    const latToUse = location?.lat || ambulanceInfo?.currentLat || 25.4331;
+    const lngToUse = location?.lng || ambulanceInfo?.currentLng || 81.8476;
+
+    setIsSending(true);
+    api.ambulances.updateLocation(ambulanceId, { lat: latToUse, lng: lngToUse, status: newStatus })
+      .then(res => {
+        setLastPushed(new Date());
+        setIsSending(false);
+        toast.success(`Ambulance status updated live to ${newStatus.toUpperCase()}`);
+      })
+      .catch(err => {
+        setIsSending(false);
+        toast.error('Failed to broadcast status change');
+      });
   };
 
   return (
@@ -124,7 +144,7 @@ export default function DriverLocationPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">GPS Location Broadcast</CardTitle>
               <CardDescription className="text-xs">
-                {isSharing ? 'Transmitting live coordinates to Emergency SOS network every 15s' : 'Location broadcast is currently paused'}
+                {isSharing ? 'Transmitting live coordinates to Emergency SOS network every 2s' : 'Location broadcast is currently paused'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 py-4">
@@ -149,7 +169,7 @@ export default function DriverLocationPage() {
               {/* Status Selector */}
               <div className="space-y-1.5 text-left bg-card p-3 rounded-xl border">
                 <label className="text-xs font-semibold text-muted-foreground">Ambulance Operational Status</label>
-                <Select value={status} onValueChange={(val) => { setStatus(val); if (isSharing) getPositionAndSend(); }}>
+                <Select value={status} onValueChange={handleStatusSelect}>
                   <SelectTrigger className="font-bold text-sm">
                     <SelectValue />
                   </SelectTrigger>
