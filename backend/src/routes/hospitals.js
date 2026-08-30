@@ -69,6 +69,28 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/hospitals/pending/queue
+ * Superadmin queue for unverified hospital registration requests
+ */
+router.get('/pending/queue', authenticate, authorize('superadmin'), async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      const pending = mockHospitals.filter(h => h.isVerified === false);
+      return res.json({ queue: pending });
+    }
+
+    const pending = await Hospital.find({ isVerified: false })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ queue: pending });
+  } catch (error) {
+    console.error('Error fetching pending hospitals queue:', error);
+    res.status(500).json({ error: 'Failed to fetch pending hospitals queue' });
+  }
+});
+
 // Search hospitals by location
 router.get('/search', async (req, res) => {
   try {

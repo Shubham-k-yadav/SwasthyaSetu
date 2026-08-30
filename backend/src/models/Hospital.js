@@ -17,7 +17,12 @@ const HospitalSchema = new Schema({
   state: { type: String, required: true, index: true },
   coordinates: { type: CoordinatesSchema, required: true },
   phone: { type: String, required: true },
-  email: { type: String, required: true },
+  type: {
+    type: String,
+    enum: ['government', 'private', 'charitable'],
+    default: 'private',
+    index: true
+  },
   beds: {
     icu: { type: BedCountSchema, required: true },
     general: { type: BedCountSchema, required: true },

@@ -209,14 +209,28 @@ router.post('/hospital-add', authenticate, authorize('admin', 'superadmin'), asy
  * PATCH /api/ambulances/:id/status
  * Update ambulance status (available, busy, maintenance, offline)
  */
-router.patch('/:id/status', authenticate, async (req, res) => {
+router.patch('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    const ambulance = await Ambulance.findByIdAndUpdate(
-      req.params.id,
-      { status, lastUpdated: new Date() },
-      { new: true }
-    );
+    const ambulanceId = req.params.id;
+    let ambulance = null;
+
+    if (mongoose.connection.readyState === 1) {
+      if (mongoose.Types.ObjectId.isValid(ambulanceId)) {
+        ambulance = await Ambulance.findByIdAndUpdate(
+          ambulanceId,
+          { status, lastUpdated: new Date() },
+          { new: true }
+        );
+      } else {
+        ambulance = await Ambulance.findOneAndUpdate(
+          { driverToken: ambulanceId },
+          { status, lastUpdated: new Date() },
+          { new: true }
+        );
+      }
+    }
+
     if (!ambulance) {
       return res.status(404).json({ error: 'Ambulance not found' });
     }

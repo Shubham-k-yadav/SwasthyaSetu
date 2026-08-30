@@ -4,19 +4,38 @@ const BloodStockSchema = new Schema({
   hospitalId: { 
     type: Schema.Types.ObjectId, 
     ref: 'Hospital', 
-    required: true,
+    required: false,
     index: true 
+  },
+  bloodBankId: {
+    type: Schema.Types.ObjectId,
+    ref: 'BloodBank',
+    required: false,
+    index: true
   },
   bloodGroup: { 
     type: String, 
     enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-    required: true 
+    required: false 
   },
   unitsAvailable: { 
     type: Number, 
-    required: true, 
+    required: false, 
     default: 0,
     min: 0 
+  },
+  bloodGroups: {
+    type: Schema.Types.Mixed,
+    default: {}
+  },
+  city: {
+    type: String,
+    index: true
+  },
+  state: {
+    type: String,
+    default: 'India',
+    index: true
   },
   lastUpdated: { 
     type: Date, 
@@ -34,11 +53,10 @@ const BloodStockSchema = new Schema({
   timestamps: true
 });
 
-BloodStockSchema.index({ hospitalId: 1, bloodGroup: 1 }, { unique: true });
-BloodStockSchema.index({ bloodGroup: 1, unitsAvailable: 1 });
+BloodStockSchema.index({ hospitalId: 1, bloodGroup: 1 });
+BloodStockSchema.index({ bloodBankId: 1 });
 
 BloodStockSchema.pre('save', function() {
-  this.isLow = this.unitsAvailable < this.minimumRequired;
   this.lastUpdated = new Date();
 });
 

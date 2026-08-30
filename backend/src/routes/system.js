@@ -15,24 +15,36 @@ router.get('/status', async (req, res) => {
     let verifiedHospitalsCount = 0;
     let verifiedBloodBanksCount = 0;
     let verifiedAmbulancesCount = 0;
+    let pendingHospitalsCount = 0;
+    let pendingBloodBanksCount = 0;
+    let pendingAmbulancesCount = 0;
 
     if (mongoose.connection.readyState === 1) {
-      verifiedHospitalsCount = await Hospital.countDocuments({ isVerified: true });
-      verifiedBloodBanksCount = await BloodBank.countDocuments({ isVerified: true });
-      verifiedAmbulancesCount = await Ambulance.countDocuments({ isVerified: true });
+      verifiedHospitalsCount = await Hospital.countDocuments({ isVerified: { $ne: false } });
+      verifiedBloodBanksCount = await BloodBank.countDocuments({ isVerified: { $ne: false } });
+      verifiedAmbulancesCount = await Ambulance.countDocuments({ isVerified: { $ne: false } });
+
+      pendingHospitalsCount = await Hospital.countDocuments({ isVerified: false });
+      pendingBloodBanksCount = await BloodBank.countDocuments({ isVerified: false });
+      pendingAmbulancesCount = await Ambulance.countDocuments({ isVerified: false });
     }
 
     res.json({
       verifiedHospitalsCount,
       verifiedBloodBanksCount,
-      verifiedAmbulancesCount
+      verifiedAmbulancesCount,
+      pendingHospitalsCount,
+      pendingBloodBanksCount,
+      pendingAmbulancesCount,
+      totalPendingCount: pendingHospitalsCount + pendingBloodBanksCount + pendingAmbulancesCount
     });
   } catch (error) {
     console.error('Error fetching system status:', error);
     res.json({
       verifiedHospitalsCount: 0,
       verifiedBloodBanksCount: 0,
-      verifiedAmbulancesCount: 0
+      verifiedAmbulancesCount: 0,
+      totalPendingCount: 0
     });
   }
 });

@@ -38,14 +38,14 @@ export const authLimiter = rateLimit({
   }
 });
 
-// Ambulance Location Update limiter (Max 1 request per 10 seconds in prod, exempt in dev)
+// Ambulance Location Update limiter (Max 1 request per 2 seconds in prod, exempt in dev)
 export const ambulanceLocationLimiter = rateLimit({
-  windowMs: 10 * 1000, // 10 seconds
+  windowMs: 2 * 1000, // 2 seconds
   max: isDev ? 100 : 1,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => isDev,
   message: {
-    error: 'Location update rate limit exceeded. Updates allowed once every 10 seconds.'
+    error: 'Location update rate limit exceeded. Updates allowed once every 2 seconds.'
   }
 });
