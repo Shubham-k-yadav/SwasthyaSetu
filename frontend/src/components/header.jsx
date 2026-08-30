@@ -3,11 +3,11 @@ import { useState, useEffect } from 'react';
 import { systemApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
-import { 
-  Building2, 
-  Droplets, 
-  AlertTriangle, 
-  Menu, 
+import {
+  Building2,
+  Droplets,
+  AlertTriangle,
+  Menu,
   X,
   ShieldAlert,
   LayoutDashboard,
@@ -46,18 +46,25 @@ export function Header() {
           </span>
         </div>
       )}
-      <header className="sticky top-0 z-[999] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-xs">
-        <div className="container mx-auto max-w-7xl flex h-16 items-center justify-between px-4">
+      <header className="sticky top-0 z-[999] w-full border-b bg-white/95 dark:bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-xs">
+        <div className="container mx-auto max-w-[1440px] flex h-16 items-center justify-between px-4 sm:px-6">
           {/* Brand */}
-          <Link to="/" className="flex items-center gap-2.5 font-bold text-xl shrink-0">
-            <img src="/logo.png" alt="SwasthyaSetu Logo" className="h-9 w-9 rounded-lg shadow-xs object-cover" />
-            <span className="bg-gradient-to-r from-primary to-destructive bg-clip-text text-transparent font-black tracking-tight text-lg sm:text-xl">
-              {t('appName')}
-            </span>
+          <Link to="/" className="flex items-center gap-2.5 font-bold text-xl shrink-0 whitespace-nowrap">
+            <div className="h-10 w-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-2xl shadow-md shrink-0">
+              S
+            </div>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-gray-900 dark:text-white tracking-tight text-lg sm:text-xl leading-tight whitespace-nowrap">
+                SwasthyaSetu
+              </span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-gray-500 tracking-wide uppercase whitespace-nowrap hidden sm:block">
+                Emergency Healthcare Network
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1 mx-4">
+          <nav className="hidden xl:flex items-center gap-1.5 mx-2 whitespace-nowrap">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -66,58 +73,58 @@ export function Header() {
                   key={item.href}
                   to={item.href}
                   className={cn(
-                    'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                    'flex items-center gap-2 rounded-xl px-3 py-2 text-xs xl:text-sm font-semibold transition-all whitespace-nowrap shrink-0',
                     isActive
-                      ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 font-bold'
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
                   )}
                 >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
+                  <Icon className="h-4 w-4 text-red-500 shrink-0" />
+                  <span className="whitespace-nowrap">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
 
           {/* Desktop Right Action Buttons */}
-          <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+          <div className="hidden xl:flex items-center gap-2 shrink-0 whitespace-nowrap">
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 font-semibold text-xs border-primary/30 h-9"
+              className="gap-1.5 font-semibold text-xs border-gray-200 rounded-xl h-9 px-2.5 bg-gray-50/50 hover:bg-gray-100 whitespace-nowrap"
               onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
             >
-              <Globe className="h-3.5 w-3.5 text-primary" />
-              {t('switchLanguage')}
+              <Globe className="h-3.5 w-3.5 text-red-600 shrink-0" />
+              <span className="whitespace-nowrap">{language === 'en' ? 'हिंदी (HI)' : 'English (EN)'}</span>
             </Button>
 
             <HospitalRegisterModal />
 
             <Link to="/admin/login">
-              <Button variant="ghost" size="sm" className="gap-1.5 font-medium h-9 text-xs">
-                <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                {t('adminLogin')}
+              <Button variant="ghost" size="sm" className="gap-1.5 font-semibold h-9 text-xs text-gray-700 hover:text-gray-900 whitespace-nowrap px-2.5">
+                <LayoutDashboard className="h-4 w-4 text-gray-500 shrink-0" />
+                <span className="whitespace-nowrap">{t('adminLogin')}</span>
               </Button>
             </Link>
 
             <Link to="/emergency">
-              <Button size="sm" className="gap-1.5 bg-destructive hover:bg-destructive/90 text-white font-bold h-9 shadow-xs">
-                <Phone className="h-3.5 w-3.5 animate-pulse" />
-                {t('emergencyHelp')}
+              <Button size="sm" className="gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold h-9 px-4 rounded-xl shadow-md transition-transform hover:scale-[1.02] whitespace-nowrap">
+                <Phone className="h-3.5 w-3.5 animate-pulse shrink-0" />
+                <span className="whitespace-nowrap">{t('emergencyHelp')}</span>
               </Button>
             </Link>
           </div>
 
           {/* Mobile/Tablet Menu Button */}
-          <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex items-center gap-2 xl:hidden">
             <Button
               variant="outline"
               size="sm"
-              className="gap-1 font-semibold text-xs h-8 px-2"
+              className="gap-1 font-semibold text-xs h-8 px-2 whitespace-nowrap"
               onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
             >
-              <Globe className="h-3.5 w-3.5 text-primary" />
-              {language === 'en' ? 'HI' : 'EN'}
+              <Globe className="h-3.5 w-3.5 text-red-600 shrink-0" />
+              <span className="whitespace-nowrap">{language === 'en' ? 'HI' : 'EN'}</span>
             </Button>
             <Button
               variant="ghost"
@@ -132,7 +139,7 @@ export function Header() {
 
         {/* Mobile & Tablet Drawer Menu Dropdown */}
         {open && (
-          <div className="lg:hidden border-b bg-background/98 backdrop-blur px-4 py-4 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-200">
+          <div className="xl:hidden border-b bg-white/98 dark:bg-background/98 backdrop-blur px-4 py-4 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -143,34 +150,34 @@ export function Header() {
                     to={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors',
+                      'flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap',
                       isActive 
-                        ? 'bg-primary text-primary-foreground shadow-xs' 
-                        : 'hover:bg-secondary text-foreground'
+                        ? 'bg-red-50 text-red-600 font-bold shadow-xs' 
+                        : 'hover:bg-gray-100 text-gray-800 dark:text-gray-200'
                     )}
                   >
-                    <Icon className="h-5 w-5" />
-                    {item.label}
+                    <Icon className="h-5 w-5 text-red-600 shrink-0" />
+                    <span className="whitespace-nowrap">{item.label}</span>
                   </Link>
                 );
               })}
               
-              <hr className="my-2 border-border" />
+              <hr className="my-2 border-gray-200 dark:border-gray-800" />
               
               <div className="flex flex-col gap-2.5 pt-1">
                 <HospitalRegisterModal />
 
                 <Link to="/admin/login" onClick={() => setOpen(false)}>
-                  <Button variant="outline" className="w-full justify-start gap-3 h-10 font-semibold">
-                    <LayoutDashboard className="h-4 w-4 text-primary" />
-                    {t('adminLogin')}
+                  <Button variant="outline" className="w-full justify-start gap-3 h-10 font-semibold whitespace-nowrap">
+                    <LayoutDashboard className="h-4 w-4 text-red-600 shrink-0" />
+                    <span className="whitespace-nowrap">{t('adminLogin')}</span>
                   </Button>
                 </Link>
 
                 <Link to="/emergency" onClick={() => setOpen(false)}>
-                  <Button className="w-full justify-center gap-2 h-11 bg-destructive hover:bg-destructive/90 text-white font-bold shadow-sm">
-                    <Phone className="h-4 w-4 animate-pulse" />
-                    {t('emergencyHelp')}
+                  <Button className="w-full justify-center gap-2 h-11 bg-red-600 hover:bg-red-700 text-white font-bold shadow-sm whitespace-nowrap">
+                    <Phone className="h-4 w-4 animate-pulse shrink-0" />
+                    <span className="whitespace-nowrap">{t('emergencyHelp')}</span>
                   </Button>
                 </Link>
               </div>
