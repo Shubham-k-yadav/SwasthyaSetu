@@ -101,6 +101,45 @@ const facilityOptions = [
   'Dialysis',
 ];
 
+const INDIAN_STATES_AND_UTS = [
+  'Andaman & Nicobar',
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chandigarh',
+  'Chhattisgarh',
+  'Dadra & Nagar Haveli',
+  'Delhi',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jammu & Kashmir',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Ladakh',
+  'Lakshadweep',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Puducherry',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal'
+];
+
 export default function HospitalsAdminPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'superadmin';
@@ -161,21 +200,36 @@ export default function HospitalsAdminPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const data = await api.hospitals.getAll({ includeUnverified: true, limit: 100 });
+      const data = await api.hospitals.getAll({ includeUnverified: true, limit: 500 });
       // Normalize API response — support both {hospitals:[]} and {data:[]}
       const list = data?.hospitals || data?.data || data || [];
       // Map backend fields to UI-expected shape
-      const normalized = list.map((h) => ({
-        ...h,
-        id: h._id || h.id,
-        totalBeds: (h.beds?.general?.total || 0) + (h.beds?.icu?.total || 0) + (h.beds?.ventilator?.total || 0),
-        availableBeds: (h.beds?.general?.available || 0) + (h.beds?.icu?.available || 0) + (h.beds?.ventilator?.available || 0),
-        icuBeds: h.beds?.icu?.total || 0,
-        icuAvailable: h.beds?.icu?.available || 0,
-        verified: h.isVerified ?? false,
-        lastUpdated: h.lastUpdated ? new Date(h.lastUpdated) : new Date(),
-        facilities: h.specialties || [],
-      }));
+      const normalized = list.map((h) => {
+        let typeVal = h.type || h.hospitalType || h.category;
+        if (!typeVal) {
+          const lowerName = (h.name || '').toLowerCase();
+          if (lowerName.includes('govt') || lowerName.includes('government') || lowerName.includes('district') || lowerName.includes('aiims') || lowerName.includes('civil')) {
+            typeVal = 'government';
+          } else if (lowerName.includes('trust') || lowerName.includes('mission') || lowerName.includes('charitable')) {
+            typeVal = 'charitable';
+          } else {
+            typeVal = 'private';
+          }
+        }
+
+        return {
+          ...h,
+          id: h._id || h.id,
+          type: typeVal.toLowerCase(),
+          totalBeds: (h.beds?.general?.total || 0) + (h.beds?.icu?.total || 0) + (h.beds?.ventilator?.total || 0),
+          availableBeds: (h.beds?.general?.available || 0) + (h.beds?.icu?.available || 0) + (h.beds?.ventilator?.available || 0),
+          icuBeds: h.beds?.icu?.total || 0,
+          icuAvailable: h.beds?.icu?.available || 0,
+          verified: h.isVerified ?? false,
+          lastUpdated: h.lastUpdated ? new Date(h.lastUpdated) : new Date(),
+          facilities: h.specialties || [],
+        };
+      });
       setHospitals(normalized);
     } catch (err) {
       console.error('Failed to fetch hospitals:', err);
@@ -185,7 +239,19 @@ export default function HospitalsAdminPage() {
     }
   };
 
-  useEffect(() => { fetchHospitals(); }, []);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState('all');
+
+  useEffect(() => {
+    fetchHospitals();
+  }, []);
+
+  const availableStates = Array.from(
+    new Set([
+      ...INDIAN_STATES_AND_UTS,
+      ...hospitals.map((h) => h.state).filter(Boolean)
+    ])
+  ).sort();
 
   const filteredHospitals = hospitals.filter((hospital) => {
     // Non-superadmin hospital admins can ONLY see and manage their assigned hospital
@@ -196,7 +262,7 @@ export default function HospitalsAdminPage() {
       if (userHospId) {
         if (currentHospId !== userHospId) return false;
       } else {
-        // Match all hospital name keywords from user name (e.g. "Apollo Bilaspur Admin" -> ["apollo", "bilaspur"])
+        // Match all hospital name keywords from user name
         const keywords = (user?.name || '')
           .toLowerCase()
           .replace('admin', '')
@@ -204,15 +270,67 @@ export default function HospitalsAdminPage() {
           .split(/\s+/)
           .filter(Boolean);
 
-        const matchesAllKeywords = keywords.every((kw) => hospital.name.toLowerCase().includes(kw));
+        const matchesAllKeywords = keywords.every((kw) => (hospital.name || '').toLowerCase().includes(kw));
         if (!matchesAllKeywords) return false;
       }
     }
+
     const matchesSearch =
-      hospital.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      hospital.city.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'all' || hospital.type === typeFilter;
-    return matchesSearch && matchesType;
+      !searchQuery.trim() ||
+      (hospital.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (hospital.city || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (hospital.state || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesType =
+      typeFilter === 'all' ||
+      !typeFilter ||
+      (hospital.type && (
+        hospital.type.toLowerCase() === typeFilter.toLowerCase() ||
+        hospital.type.toLowerCase().includes(typeFilter.toLowerCase()) ||
+        (typeFilter === 'government' && (hospital.type.toLowerCase().includes('govt') || hospital.type.toLowerCase().includes('district') || hospital.type.toLowerCase().includes('civil') || hospital.type.toLowerCase().includes('aiims'))) ||
+        (typeFilter === 'charitable' && (hospital.type.toLowerCase().includes('trust') || hospital.type.toLowerCase().includes('mission')))
+      ));
+
+    const isVerified = hospital.verified || hospital.isVerified;
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'verified' && isVerified) ||
+      (statusFilter === 'pending' && !isVerified);
+
+    const matchesState = (() => {
+      if (stateFilter === 'all' || !stateFilter) return true;
+      const targetState = stateFilter.toLowerCase();
+      const hospState = (hospital.state || '').toLowerCase();
+      const hospCity = (hospital.city || '').toLowerCase();
+      const hospAddress = (hospital.address || '').toLowerCase();
+
+      if (hospState.includes(targetState) || targetState.includes(hospState)) return true;
+
+      // Smart Uttar Pradesh / UP Mapping
+      if (targetState.includes('uttar pradesh') || targetState === 'up') {
+        const upKeywords = ['up', 'u.p.', 'uttar pradesh', 'prayagraj', 'allahabad', 'lucknow', 'kanpur', 'varanasi', 'noida', 'ghaziabad', 'agra', 'gorakhpur', 'bareilly', 'aligarh', 'meerut', 'jhansi', 'mathura', 'ayodhya', 'faizabad', 'mirzapur', 'ballia', 'jaunpur', 'sultanpur', 'azamgarh'];
+        return upKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
+      }
+      // Smart Madhya Pradesh / MP Mapping
+      if (targetState.includes('madhya pradesh') || targetState === 'mp') {
+        const mpKeywords = ['mp', 'm.p.', 'madhya pradesh', 'bhopal', 'indore', 'gwalior', 'jabalpur', 'rewai', 'ujjain'];
+        return mpKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
+      }
+      // Smart Chhattisgarh / CG Mapping
+      if (targetState.includes('chhattisgarh') || targetState === 'cg') {
+        const cgKeywords = ['cg', 'c.g.', 'chhattisgarh', 'raipur', 'bilaspur', 'durg', 'bhilai', 'korba'];
+        return cgKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
+      }
+      // Smart Maharashtra / MH Mapping
+      if (targetState.includes('maharashtra') || targetState === 'mh') {
+        const mhKeywords = ['mh', 'maharashtra', 'mumbai', 'pune', 'nagpur', 'thane', 'nashik'];
+        return mhKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
+      }
+
+      return false;
+    })();
+
+    return matchesSearch && matchesType && matchesStatus && matchesState;
   });
 
   const formatTime = (date) => {
@@ -489,7 +607,7 @@ export default function HospitalsAdminPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search hospitals..."
+                placeholder="Search hospitals by name, city, or state..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -501,10 +619,36 @@ export default function HospitalsAdminPage() {
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">All Hospital Types</SelectItem>
                 <SelectItem value="government">Government</SelectItem>
                 <SelectItem value="private">Private</SelectItem>
                 <SelectItem value="charitable">Charitable</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <Shield className="h-4 w-4 mr-2 text-emerald-600" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="verified">Verified Only</SelectItem>
+                <SelectItem value="pending">Pending Review</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={stateFilter} onValueChange={setStateFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <MapPin className="h-4 w-4 mr-2 text-blue-600" />
+                <SelectValue placeholder="Filter by State" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All States</SelectItem>
+                {availableStates.map((st) => (
+                  <SelectItem key={st} value={st.toLowerCase()}>
+                    {st}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -732,10 +876,12 @@ export default function HospitalsAdminPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => handleOpenEditBeds(hospital)} className="gap-1.5 bg-primary hover:bg-primary/90 text-xs">
-                          <Bed className="h-3.5 w-3.5" />
-                          Update Beds
-                        </Button>
+                        {!isSuperAdmin && (
+                          <Button size="sm" onClick={() => handleOpenEditBeds(hospital)} className="gap-1.5 bg-primary hover:bg-primary/90 text-xs">
+                            <Bed className="h-3.5 w-3.5" />
+                            Update Beds
+                          </Button>
+                        )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -745,10 +891,12 @@ export default function HospitalsAdminPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleOpenEditBeds(hospital)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Update Bed Stock
-                            </DropdownMenuItem>
+                            {!isSuperAdmin && (
+                              <DropdownMenuItem onClick={() => handleOpenEditBeds(hospital)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Update Bed Stock
+                              </DropdownMenuItem>
+                            )}
                             {isSuperAdmin && (
                               <DropdownMenuItem className="text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" />

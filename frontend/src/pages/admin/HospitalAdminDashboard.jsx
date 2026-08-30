@@ -199,8 +199,26 @@ export default function HospitalAdminDashboard() {
     };
 
     const handleAmbulanceUpdate = (data) => {
-      toast.info(`🚑 Live Fleet Alert: Driver ${data.driverName || 'Driver'} updated ambulance ${data.vehicleNumber || ''} status to ${(data.status || 'available').toUpperCase()}`);
-      fetchHospitalData();
+      setAmbulances(prev => {
+        const ambId = data.ambulanceId || data._id || data.id;
+        const exists = prev.some(a => (a._id || a.id) === ambId);
+        if (exists) {
+          return prev.map(a => {
+            if ((a._id || a.id) === ambId) {
+              return {
+                ...a,
+                status: data.status || a.status,
+                currentLat: data.lat || data.currentLat || a.currentLat,
+                currentLng: data.lng || data.currentLng || a.currentLng,
+                driverName: data.driverName || a.driverName,
+                driverPhone: data.driverPhone || a.driverPhone
+              };
+            }
+            return a;
+          });
+        }
+        return prev;
+      });
     };
 
     s.on('hospital-bed-hold', handleBedHoldAlert);
@@ -791,6 +809,23 @@ export default function HospitalAdminDashboard() {
                   </div>
                 </form>
               )}
+
+              {/* Live Uber-Style Fleet Tracking Map for Hospital Admin */}
+              <div className="space-y-2 pb-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm flex items-center gap-1.5 text-foreground">
+                    <Radio className="h-4 w-4 text-emerald-600 animate-pulse" />
+                    Live Fleet Tracking Radar & Uber-style Navigation Map
+                  </h4>
+                  <Badge className="bg-emerald-600 text-white text-[10px] font-bold">LIVE GPS STREAM</Badge>
+                </div>
+                <HospitalMap 
+                  hospitals={hospital ? [hospital] : []}
+                  selectedHospital={hospital}
+                  userLocation={hospital?.coordinates ? { lat: hospital.coordinates.lat, lng: hospital.coordinates.lng } : null}
+                  ambulances={ambulances}
+                />
+              </div>
 
               {/* Ambulances List */}
               {ambulances.length === 0 ? (
