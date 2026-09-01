@@ -1,54 +1,27 @@
-// Web Audio API Synthesizer for Emergency Siren Sound & Desktop Notifications
-
-export function playEmergencySiren() {
+// Audio notification helper for emergency alerts
+export function playEmergencyAlertSound() {
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(440, ctx.currentTime);
-    
-    // Siren frequency sweep from 440Hz to 880Hz
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.5);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 1.0);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 1.5);
-
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.0);
-
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
     osc.connect(gain);
-    gain.connect(ctx.destination);
-
+    gain.connect(audioCtx.destination);
     osc.start();
-    osc.stop(ctx.currentTime + 2.0);
-  } catch (e) {
-    console.warn('AudioContext playback error:', e);
+    osc.stop(audioCtx.currentTime + 0.5);
+  } catch (err) {
+    console.log('Audio playback info:', err);
   }
 }
 
-export function triggerDesktopNotification(title, body) {
-  if (!('Notification' in window)) return;
+export function playEmergencySiren() {
+  playEmergencyAlertSound();
+}
 
-  if (Notification.permission === 'granted') {
-    new Notification(title, {
-      body,
-      icon: '/logo.png',
-      badge: '/logo.png',
-      tag: 'swasthya-sos'
-    });
-  } else if (Notification.permission !== 'denied') {
-    Notification.requestPermission().then((permission) => {
-      if (permission === 'granted') {
-        new Notification(title, {
-          body,
-          icon: '/logo.png',
-          tag: 'swasthya-sos'
-        });
-      }
-    });
+export function triggerDesktopNotification(title, options) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, options);
   }
 }

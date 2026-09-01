@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
@@ -29,14 +28,8 @@ export default function AdminLoginPage() {
       setPassword('Apollo@2024');
     } else {
       setEmail('superadmin@swasthyasetu.in');
-      setPassword('SwasthyaSetu@2026');
+      setPassword('SuperAdmin@2024');
     }
-  };
-
-  const handleQuickCredential = (emailVal, passVal) => {
-    setEmail(emailVal);
-    setPassword(passVal);
-    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -45,99 +38,111 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const user = await login(email, password);
-      // Smart navigation based on role
-      if (user?.role === 'superadmin') {
-        navigate('/admin');
+      const success = await login(email, password, activeTab);
+      if (success) {
+        if (activeTab === 'superadmin') {
+          navigate('/admin');
+        } else {
+          navigate('/admin');
+        }
       } else {
-        navigate('/admin/hospitals');
+        setError('Invalid email or password. Please check your credentials.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please verify credentials.');
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
-      
-      <div className="mx-auto max-w-lg w-full relative z-10 space-y-6">
-        {/* Header Logo */}
-        <div className="text-center space-y-2">
-          <Link to="/" className="inline-flex items-center gap-3">
-            <img src="/logo.png" alt="SwasthyaSetu Logo" className="h-10 w-10 rounded-lg shadow-sm object-cover" />
-            <span className="text-2xl font-bold tracking-tight">SwasthyaSetu</span>
-          </Link>
-          <p className="text-sm text-muted-foreground">{t('appSubtitle')}</p>
-        </div>
+  const handleQuickLogin = (role) => {
+    if (role === 'apollo') {
+      setActiveTab('hospital');
+      setEmail('admin@apollo.com');
+      setPassword('Apollo@2024');
+    } else if (role === 'fortis') {
+      setActiveTab('hospital');
+      setEmail('admin@fortis.com');
+      setPassword('Fortis@2024');
+    } else if (role === 'superadmin') {
+      setActiveTab('superadmin');
+      setEmail('superadmin@swasthyasetu.in');
+      setPassword('SuperAdmin@2024');
+    }
+  };
 
-        {/* Role Tab Switcher */}
-        <div className="grid grid-cols-2 p-1.5 bg-muted rounded-xl gap-1">
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md space-y-3 text-center">
+        <Link to="/" className="inline-flex items-center gap-2">
+          <div className="h-10 w-10 rounded-xl bg-red-600 flex items-center justify-center text-white shadow-md">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <span className="font-extrabold text-2xl tracking-tight text-slate-900 dark:text-white">
+            SwasthyaSetu
+          </span>
+        </Link>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Healthcare Portal Control Room
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+          Authorized personnel portal for hospital bed management and emergency network oversight.
+        </p>
+      </div>
+
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+        {/* Role Switcher Tabs */}
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl mb-4 text-xs">
           <button
             type="button"
             onClick={() => handleTabSwitch('hospital')}
             className={cn(
-              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all',
+              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-bold transition-all',
               activeTab === 'hospital'
-                ? 'bg-card text-primary shadow-xs border'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             )}
           >
-            <Building2 className="h-4 w-4" />
-            {t('hospitalAdminPortal')}
+            <Building2 className="h-4 w-4 text-red-600" />
+            Hospital Staff Login
           </button>
 
           <button
             type="button"
             onClick={() => handleTabSwitch('superadmin')}
             className={cn(
-              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-semibold transition-all',
+              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-bold transition-all',
               activeTab === 'superadmin'
-                ? 'bg-red-600 text-white shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-red-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             )}
           >
             <ShieldCheck className="h-4 w-4" />
-            {t('superAdminControl')}
+            Super Admin Control
           </button>
         </div>
 
         {/* Main Login Card */}
-        <Card className={cn('transition-all border-2', activeTab === 'superadmin' ? 'border-red-500/20' : 'border-primary/20')}>
-          <CardHeader className="space-y-2">
-            <div className="flex items-center gap-2">
-              {activeTab === 'hospital' ? (
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Building2 className="h-5 w-5" />
-                </div>
-              ) : (
-                <div className="p-2 rounded-lg bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400">
-                  <Crown className="h-5 w-5" />
-                </div>
-              )}
-              <div>
-                <CardTitle className="text-xl font-bold">
-                  {activeTab === 'hospital' ? 'Hospital Staff & Nodal Officer Login' : 'Ministry Super Admin Control Room'}
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  {activeTab === 'hospital'
-                    ? 'Manage your assigned hospital bed inventory, ICU capacity & blood stocks'
-                    : 'Pan-India emergency network oversight, facility verification & real-time analytics'
-                  }
-                </CardDescription>
-              </div>
-            </div>
+        <Card className="border-slate-200 dark:border-slate-800 shadow-xl">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-lg font-bold">
+              {activeTab === 'hospital' ? 'Hospital Staff & Nodal Officer Login' : 'Ministry Super Admin Control Room'}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {activeTab === 'hospital'
+                ? 'Manage your assigned hospital bed inventory, ICU capacity & blood stocks'
+                : 'Pan-India emergency network oversight, facility verification & real-time analytics'
+              }
+            </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
               )}
 
               <div className="space-y-2">

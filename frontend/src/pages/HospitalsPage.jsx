@@ -5,7 +5,6 @@ import { Footer } from '@/components/footer';
 import { PlatformStatusBanner } from '@/components/PlatformStatusBanner';
 import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 import { HospitalCard } from '@/components/hospital/hospital-card';
-import { StatsCard } from '@/components/stats-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -16,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Hospital as HospitalIcon, Bed, Heart, Wind, Search, Grid, List, Building2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
