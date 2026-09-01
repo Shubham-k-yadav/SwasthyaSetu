@@ -34,13 +34,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.split(',') || [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174'
-  ],
+  origin: true,
   credentials: true
 }));
 
@@ -91,11 +85,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+import { autoSeedData } from './scripts/autoSeed.js';
+
 // Start server
 const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
+    if (mongoose.connection.readyState === 1) {
+      await autoSeedData();
+    }
     
     // Initialize Socket.io
     initializeSocket(httpServer);
@@ -136,7 +135,7 @@ const startServer = async () => {
     });
     console.log('✔ Bed reservation auto-expiry cron scheduled (every 5 min)');
 
-    httpServer.listen(PORT, () => {
+    httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`SwasthyaSetu Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
     });

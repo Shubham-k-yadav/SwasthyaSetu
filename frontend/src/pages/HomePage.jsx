@@ -50,14 +50,17 @@ export default function HomePage() {
 
       <main className="flex-1">
 
-        {/* 1. Hero Section (Full Width 2-Column Grid with /009.png) */}
-        <section className="bg-red-50 dark:bg-background relative overflow-hidden w-full pt-8 pb-20 md:pt-14 md:pb-24 flex items-center">
-          <div className="w-full px-4 sm:px-8 lg:px-12 max-w-[1600px] mx-auto relative z-10">
-            <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        {/* 1. Hero Section */}
+        <section 
+          className="relative overflow-hidden bg-cover bg-right sm:bg-center bg-no-repeat pt-12 pb-24 md:pt-16 md:pb-32 min-h-[520px] md:min-h-[600px] flex items-center"
+          style={{ backgroundImage: "url('/hero_bg_full.png')" }}
+        >
+          <div className="container mx-auto px-4 sm:px-6 max-w-[1440px] relative z-10">
+            <div className="grid lg:grid-cols-12 gap-8 items-center">
               
               {/* Hero Left Content */}
-              <div className="lg:col-span-6 space-y-6 text-left">
-                <div className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white dark:bg-card px-4 py-1.5 text-xs font-bold text-red-600 shadow-xs">
+              <div className="lg:col-span-7 space-y-6 text-left">
+                <div className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50/90 px-4 py-1.5 text-xs font-bold text-red-600 shadow-xs">
                   <span className="relative flex h-2 w-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600"></span>
@@ -71,7 +74,7 @@ export default function HomePage() {
                   <span className="text-red-600">Real-Time</span>
                 </h1>
 
-                <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-xl font-medium leading-relaxed">
+                <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-2xl font-medium leading-relaxed">
                   Real-time emergency healthcare network connecting verified hospitals, blood banks, and live ambulance dispatch across India.
                 </p>
 
@@ -85,14 +88,14 @@ export default function HomePage() {
                   </Link>
 
                   <Link to="/blood">
-                    <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white whitespace-nowrap">
+                    <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white/80 whitespace-nowrap">
                       <Droplets className="h-5 w-5 text-red-600" />
                       Find Blood
                     </Button>
                   </Link>
 
                   <Link to="/hospitals">
-                    <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white whitespace-nowrap">
+                    <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white/80 whitespace-nowrap">
                       <Siren className="h-5 w-5 text-red-600" />
                       Request Ambulance
                     </Button>
@@ -113,15 +116,8 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Hero Right Image Column (/009.png Full Width) */}
-              <div className="lg:col-span-6 relative flex justify-center items-center">
-                <div className="w-full">
-                  <img 
-                    src="/009.png" 
-                    alt="SwasthyaSetu Emergency Network" 
-                    className="w-full h-auto max-h-[580px] object-contain mx-auto transition-transform duration-500 hover:scale-[1.01]"
-                  />
-                </div>
+              {/* Hero Right Side Spacing for Background Graphic */}
+              <div className="lg:col-span-5 relative min-h-[300px] sm:min-h-[420px]">
               </div>
 
             </div>

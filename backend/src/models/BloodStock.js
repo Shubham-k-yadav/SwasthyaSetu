@@ -54,7 +54,6 @@ const BloodStockSchema = new Schema({
 });
 
 BloodStockSchema.index({ hospitalId: 1, bloodGroup: 1 });
-BloodStockSchema.index({ bloodBankId: 1 });
 
 BloodStockSchema.pre('save', function() {
   this.lastUpdated = new Date();
