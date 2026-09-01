@@ -42,7 +42,7 @@
   --sidebar-accent-foreground: oklch(0.21 0.034 265);
   --sidebar-border: oklch(0.922 0.007 247);
   --sidebar-ring: oklch(0.577 0.245 27.325);
-  
+
   /* Custom colors for status indicators */
   --success: oklch(0.696 0.17 162.48);
   --warning: oklch(0.769 0.188 70.08);
@@ -120,9 +120,16 @@
   * {
     border-color: var(--border);
   }
-  html, body, button, input, select, textarea {
+
+  html,
+  body,
+  button,
+  input,
+  select,
+  textarea {
     font-family: 'Poppins', sans-serif !important;
   }
+
   body {
     background-color: var(--background);
     color: var(--foreground);
@@ -157,9 +164,20 @@
 
 /* Uber-Style Live Ambulance Pulse Animation */
 @keyframes uberPulse {
-  0% { transform: scale(0.9); opacity: 0.9; }
-  50% { transform: scale(1.6); opacity: 0.2; }
-  100% { transform: scale(0.9); opacity: 0.9; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.6);
+    opacity: 0.2;
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
 }
 
 .uber-ambulance-wrapper {
@@ -188,4 +206,3 @@
 .user-marker {
   z-index: 30 !important;
 }
-
