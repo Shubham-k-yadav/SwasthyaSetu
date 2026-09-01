@@ -12,7 +12,8 @@ import {
   ShieldAlert,
   LayoutDashboard,
   Phone,
-  Globe
+  Globe,
+  Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
@@ -47,14 +48,14 @@ export function Header() {
         </div>
       )}
       <header className="sticky top-0 z-[999] w-full border-b bg-white/95 dark:bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-xs">
-        <div className="container mx-auto max-w-[1440px] flex h-16 items-center justify-between px-4 sm:px-6">
+        <div className="container mx-auto max-w-[1440px] flex h-12 sm:h-14 md:h-16 items-center justify-between px-3 sm:px-6">
           {/* Brand */}
-          <Link to="/" className="flex items-center gap-2.5 font-bold text-xl shrink-0 whitespace-nowrap">
-            <div className="h-10 w-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-2xl shadow-md shrink-0">
+          <Link to="/" className="flex items-center gap-2 font-bold text-base sm:text-xl shrink-0 whitespace-nowrap">
+            <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg sm:rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-base sm:text-xl shadow-xs shrink-0">
               S
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-gray-900 dark:text-white tracking-tight text-lg sm:text-xl leading-tight whitespace-nowrap">
+              <span className="font-extrabold text-gray-900 dark:text-white tracking-tight text-base sm:text-xl leading-tight whitespace-nowrap">
                 SwasthyaSetu
               </span>
               <span className="text-[10px] sm:text-[11px] font-semibold text-gray-500 tracking-wide uppercase whitespace-nowrap hidden sm:block">
@@ -139,7 +140,7 @@ export function Header() {
 
         {/* Mobile & Tablet Drawer Menu Dropdown */}
         {open && (
-          <div className="xl:hidden border-b bg-white/98 dark:bg-background/98 backdrop-blur px-4 py-4 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-200">
+          <div className="absolute top-full left-0 right-0 xl:hidden border-b bg-white/98 dark:bg-card/98 backdrop-blur-md px-4 py-4 space-y-3 shadow-2xl animate-in slide-in-from-top-2 duration-200 z-[999]">
             <nav className="flex flex-col gap-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -151,8 +152,8 @@ export function Header() {
                     onClick={() => setOpen(false)}
                     className={cn(
                       'flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap',
-                      isActive 
-                        ? 'bg-red-50 text-red-600 font-bold shadow-xs' 
+                      isActive
+                        ? 'bg-red-50 text-red-600 font-bold shadow-xs'
                         : 'hover:bg-gray-100 text-gray-800 dark:text-gray-200'
                     )}
                   >
@@ -161,15 +162,28 @@ export function Header() {
                   </Link>
                 );
               })}
-              
+
               <hr className="my-2 border-gray-200 dark:border-gray-800" />
-              
+
               <div className="flex flex-col gap-2.5 pt-1">
                 <HospitalRegisterModal />
 
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-10 font-semibold text-red-600 border-red-200 bg-red-50/50 hover:bg-red-100 dark:bg-red-950/20 whitespace-nowrap"
+                  onClick={() => {
+                    setOpen(false);
+                    // Dispatch custom event to trigger PWA guide modal
+                    window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
+                  }}
+                >
+                  <Download className="h-4 w-4 text-red-600 shrink-0" />
+                  <span className="whitespace-nowrap font-bold">Install SwasthyaSetu App</span>
+                </Button>
+
                 <Link to="/admin/login" onClick={() => setOpen(false)}>
                   <Button variant="outline" className="w-full justify-start gap-3 h-10 font-semibold whitespace-nowrap">
-                    <LayoutDashboard className="h-4 w-4 text-red-600 shrink-0" />
+                    <LayoutDashboard className="h-4 w-4 text-gray-600 dark:text-gray-300 shrink-0" />
                     <span className="whitespace-nowrap">{t('adminLogin')}</span>
                   </Button>
                 </Link>

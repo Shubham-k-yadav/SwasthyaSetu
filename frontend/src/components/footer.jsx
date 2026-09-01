@@ -4,10 +4,10 @@ import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 
 export function Footer() {
   return (
-    <footer className="border-t bg-gray-50 dark:bg-card text-gray-700 dark:text-gray-300">
+    <footer className="border-t bg-gray-50 dark:bg-card text-gray-700 dark:text-gray-300 pb-24 md:pb-0">
       <div className="container mx-auto max-w-[1440px] px-4 sm:px-6 py-14">
         <div className="grid gap-10 md:grid-cols-12">
-          
+
           {/* Brand Column */}
           <div className="md:col-span-4 space-y-4">
             <Link to="/" className="flex items-center gap-3 font-bold text-xl">
@@ -76,19 +76,6 @@ export function Footer() {
               <li>Fire: <span className="text-red-600 font-bold">101</span></li>
               <li>National Emergency: <span className="text-red-600 font-bold">112</span></li>
             </ul>
-          </div>
-
-          {/* Download App */}
-          <div className="md:col-span-2 space-y-3">
-            <h4 className="font-bold text-sm text-gray-900 dark:text-white">Download App</h4>
-            <div className="space-y-2">
-              <div className="px-3 py-2 rounded-lg bg-gray-900 text-white flex items-center gap-2 cursor-pointer hover:bg-black transition-colors">
-                <span className="text-[10px] font-medium leading-tight">GET IT ON <br /><strong className="text-xs font-extrabold">Google Play</strong></span>
-              </div>
-              <div className="px-3 py-2 rounded-lg bg-gray-900 text-white flex items-center gap-2 cursor-pointer hover:bg-black transition-colors">
-                <span className="text-[10px] font-medium leading-tight">Download on the <br /><strong className="text-xs font-extrabold">App Store</strong></span>
-              </div>
-            </div>
           </div>
 
         </div>
