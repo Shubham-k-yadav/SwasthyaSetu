@@ -8,19 +8,15 @@ import HomePage from '@/pages/HomePage';
 import HospitalsPage from '@/pages/HospitalsPage';
 import BloodPage from '@/pages/BloodPage';
 import EmergencyPage from '@/pages/EmergencyPage';
-import ContactPage from '@/pages/ContactPage';
 import DriverLocationPage from '@/pages/DriverLocationPage';
-import OnboardingFlyer from '@/pages/OnboardingFlyer';
 
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
-import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminHospitalsPage from '@/pages/admin/AdminHospitalsPage';
 import AdminBloodPage from '@/pages/admin/AdminBloodPage';
-import AdminDonorsPage from '@/pages/admin/AdminDonorsPage';
-import AdminEmergenciesPage from '@/pages/admin/AdminEmergenciesPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
-import { PwaInstallBanner } from '@/components/pwa-install-banner';
+
+import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 
 // Robust Error Boundary to catch any page-level rendering issues
 class ErrorBoundary extends React.Component {
@@ -79,6 +75,7 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <Toaster position="top-right" />
+          <PwaInstallBanner />
           <ErrorBoundary>
             <Routes>
               {/* Public Routes */}
@@ -86,24 +83,19 @@ export default function App() {
               <Route path="/hospitals" element={<HospitalsPage />} />
               <Route path="/blood" element={<BloodPage />} />
               <Route path="/emergency" element={<EmergencyPage />} />
-              <Route path="/contact" element={<ContactPage />} />
               <Route path="/driver/:ambulanceId" element={<DriverLocationPage />} />
-              <Route path="/onboarding-flyer" element={<OnboardingFlyer />} />
 
               {/* Admin Authentication */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
 
               {/* Admin Protected Dashboard */}
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
+                <Route index element={<AdminHospitalsPage />} />
                 <Route path="hospitals" element={<AdminHospitalsPage />} />
                 <Route path="blood" element={<AdminBloodPage />} />
-                <Route path="donors" element={<AdminDonorsPage />} />
-                <Route path="emergencies" element={<AdminEmergenciesPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />
               </Route>
             </Routes>
-            <PwaInstallBanner />
           </ErrorBoundary>
         </AuthProvider>
       </LanguageProvider>
