@@ -1,13 +1,29 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { systemApi } from '@/lib/api';
-import { useLanguage } from '@/lib/language-context';
 import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 import { ShieldCheck, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// In-memory tracking across client-side router navigation
+// Resets automatically whenever the user refreshes the page or visits for the first time
+let initialPathname = null;
+let hasNavigatedAfterLoad = false;
+let isGloballyDismissed = false;
+
 export function PlatformStatusBanner() {
   const [status, setStatus] = useState(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(isGloballyDismissed);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (initialPathname === null) {
+      initialPathname = location.pathname;
+    } else if (initialPathname !== location.pathname) {
+      // User switched to another page via client-side routing
+      hasNavigatedAfterLoad = true;
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     systemApi.getSystemStatus()
@@ -17,12 +33,18 @@ export function PlatformStatusBanner() {
       });
   }, []);
 
-  if (dismissed) {
+  // Do not show if dismissed or if user has switched pages after initial load/refresh
+  if (dismissed || hasNavigatedAfterLoad || isGloballyDismissed) {
     return null;
   }
 
   const hospCount = Math.max(3, status?.verifiedHospitalsCount || 0);
   const bloodCount = Math.max(1, status?.verifiedBloodBanksCount || 0);
+
+  const handleDismiss = () => {
+    isGloballyDismissed = true;
+    setDismissed(true);
+  };
 
   return (
     <div className="bg-red-50/90 dark:bg-card border-b border-red-100 dark:border-gray-800 text-gray-800 dark:text-gray-200 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold transition-all relative">
@@ -48,7 +70,7 @@ export function PlatformStatusBanner() {
           </HospitalRegisterModal>
 
           <button
-            onClick={() => setDismissed(true)}
+            onClick={handleDismiss}
             className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-0.5 sm:p-1 rounded-md transition-colors"
             title="Dismiss"
           >

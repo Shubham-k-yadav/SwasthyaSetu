@@ -46,6 +46,7 @@ export function AuthProvider({ children }) {
     const response = await api.auth.login(email, password);
     localStorage.setItem('swasthya_setu_token', response.token);
     setUser(response.user);
+    return true;
   };
 
   const logout = () => {

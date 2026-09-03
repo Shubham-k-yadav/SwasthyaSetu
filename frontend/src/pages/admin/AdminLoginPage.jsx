@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Building2, ShieldCheck, Crown } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Building2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +32,12 @@ export default function AdminLoginPage() {
     }
   };
 
+  const handleQuickCredential = (emailVal, passVal) => {
+    setEmail(emailVal);
+    setPassword(passVal);
+    setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -40,11 +46,7 @@ export default function AdminLoginPage() {
     try {
       const success = await login(email, password, activeTab);
       if (success) {
-        if (activeTab === 'superadmin') {
-          navigate('/admin');
-        } else {
-          navigate('/admin');
-        }
+        navigate('/admin');
       } else {
         setError('Invalid email or password. Please check your credentials.');
       }
@@ -55,25 +57,10 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleQuickLogin = (role) => {
-    if (role === 'apollo') {
-      setActiveTab('hospital');
-      setEmail('admin@apollo.com');
-      setPassword('Apollo@2024');
-    } else if (role === 'fortis') {
-      setActiveTab('hospital');
-      setEmail('admin@fortis.com');
-      setPassword('Fortis@2024');
-    } else if (role === 'superadmin') {
-      setActiveTab('superadmin');
-      setEmail('superadmin@swasthyasetu.in');
-      setPassword('SuperAdmin@2024');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md space-y-3 text-center">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col justify-center py-6 sm:py-12 px-3.5 sm:px-6 lg:px-8 pb-28 sm:pb-12">
+      {/* Brand Header */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md space-y-2.5 text-center">
         <Link to="/" className="inline-flex items-center gap-2">
           <div className="h-10 w-10 rounded-xl bg-red-600 flex items-center justify-center text-white shadow-md">
             <Building2 className="h-6 w-6" />
@@ -82,53 +69,55 @@ export default function AdminLoginPage() {
             SwasthyaSetu
           </span>
         </Link>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
           Healthcare Portal Control Room
         </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
           Authorized personnel portal for hospital bed management and emergency network oversight.
         </p>
       </div>
 
-      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="mt-5 sm:mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         {/* Role Switcher Tabs */}
-        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl mb-4 text-xs">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl mb-3.5 sm:mb-4 text-xs">
           <button
             type="button"
             onClick={() => handleTabSwitch('hospital')}
             className={cn(
-              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-bold transition-all',
+              'flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg font-bold transition-all text-xs',
               activeTab === 'hospital'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             )}
           >
-            <Building2 className="h-4 w-4 text-red-600" />
-            Hospital Staff Login
+            <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600 shrink-0" />
+            <span className="truncate">Hospital Staff</span>
+            <span className="hidden sm:inline"> Login</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleTabSwitch('superadmin')}
             className={cn(
-              'flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg font-bold transition-all',
+              'flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg font-bold transition-all text-xs',
               activeTab === 'superadmin'
-                ? 'bg-red-600 text-white shadow-sm'
+                ? 'bg-red-600 text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             )}
           >
-            <ShieldCheck className="h-4 w-4" />
-            Super Admin Control
+            <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <span className="truncate">Super Admin</span>
+            <span className="hidden sm:inline"> Control</span>
           </button>
         </div>
 
         {/* Main Login Card */}
-        <Card className="border-slate-200 dark:border-slate-800 shadow-xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-lg font-bold">
-              {activeTab === 'hospital' ? 'Hospital Staff & Nodal Officer Login' : 'Ministry Super Admin Control Room'}
+        <Card className="border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl overflow-hidden">
+          <CardHeader className="space-y-1 p-4 sm:p-6 pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg font-bold">
+              {activeTab === 'hospital' ? 'Hospital Staff & Nodal Officer' : 'Ministry Super Admin Control'}
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs leading-relaxed">
               {activeTab === 'hospital'
                 ? 'Manage your assigned hospital bed inventory, ICU capacity & blood stocks'
                 : 'Pan-India emergency network oversight, facility verification & real-time analytics'
@@ -136,16 +125,16 @@ export default function AdminLoginPage() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6 pt-2 sm:pt-3">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               {error && (
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-xs font-semibold">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -155,14 +144,14 @@ export default function AdminLoginPage() {
                     placeholder={activeTab === 'hospital' ? 'admin@apollo.com' : 'superadmin@swasthyasetu.in'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-9 h-11 text-xs sm:text-sm rounded-xl"
                     required
                     disabled={isLoading}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-xs font-semibold">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -172,14 +161,14 @@ export default function AdminLoginPage() {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
+                    className="pl-9 pr-10 h-11 text-xs sm:text-sm rounded-xl"
                     required
                     disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -188,7 +177,10 @@ export default function AdminLoginPage() {
 
               <Button
                 type="submit"
-                className={cn('w-full font-semibold', activeTab === 'superadmin' ? 'bg-red-600 hover:bg-red-700 text-white' : '')}
+                className={cn(
+                  'w-full h-11 rounded-xl font-bold text-xs sm:text-sm shadow-xs', 
+                  activeTab === 'superadmin' ? 'bg-red-600 hover:bg-red-700 text-white' : ''
+                )}
                 disabled={isLoading}
               >
                 {isLoading ? 'Authenticating...' : activeTab === 'hospital' ? 'Sign In to Hospital Portal' : 'Sign In as Super Admin'}
@@ -202,7 +194,7 @@ export default function AdminLoginPage() {
               </p>
               
               {activeTab === 'hospital' ? (
-                <div className="grid gap-1.5 sm:grid-cols-3">
+                <div className="grid gap-1.5 grid-cols-1 sm:grid-cols-3">
                   <button
                     type="button"
                     onClick={() => handleQuickCredential('admin@apollo.com', 'Apollo@2024')}
@@ -227,26 +219,26 @@ export default function AdminLoginPage() {
                     className="p-2 rounded-lg bg-card border text-left hover:border-primary transition-colors flex flex-col"
                   >
                     <span className="font-semibold text-primary truncate">KEM Mumbai</span>
-                    <span className="text-[10px] text-muted-foreground">admin@kem...</span>
+                    <span className="text-[10px] text-muted-foreground">admin@kemhospital.gov.in</span>
                   </button>
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => handleQuickCredential('superadmin@swasthyasetu.in', 'SwasthyaSetu@2026')}
-                  className="w-full p-2 rounded-lg bg-card border text-left hover:border-red-500 transition-colors flex items-center justify-between"
+                  onClick={() => handleQuickCredential('superadmin@swasthyasetu.in', 'SuperAdmin@2024')}
+                  className="w-full p-2.5 rounded-lg bg-card border text-left hover:border-red-500 transition-colors flex items-center justify-between"
                 >
                   <div>
-                    <span className="font-semibold text-red-600 block">National Super Admin</span>
+                    <span className="font-semibold text-red-600 block text-xs">National Super Admin</span>
                     <span className="text-[11px] text-muted-foreground">superadmin@swasthyasetu.in</span>
                   </div>
-                  <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Full Access</span>
+                  <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">Full Access</span>
                 </button>
               )}
             </div>
 
             <div className="text-center pt-1">
-              <Link to="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+              <Link to="/" className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors">
                 ← Back to Patient Public Portal
               </Link>
             </div>

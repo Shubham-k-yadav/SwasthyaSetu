@@ -17,6 +17,8 @@ import AdminBloodPage from '@/pages/admin/AdminBloodPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 
 import { PwaInstallBanner } from '@/components/PwaInstallBanner';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { ScrollToTop } from '@/components/ScrollToTop';
 
 // Robust Error Boundary to catch any page-level rendering issues
 class ErrorBoundary extends React.Component {
@@ -72,6 +74,7 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <LanguageProvider>
         <AuthProvider>
           <Toaster position="top-right" />
@@ -97,6 +100,8 @@ export default function App() {
               </Route>
             </Routes>
           </ErrorBoundary>
+          {/* Global Mobile Bottom Navigation Bar on all mobile screens */}
+          <MobileBottomNav />
         </AuthProvider>
       </LanguageProvider>
     </BrowserRouter>

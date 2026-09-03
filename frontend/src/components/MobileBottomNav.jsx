@@ -1,14 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Bed, Droplets, User } from 'lucide-react';
+import { Home, Search, Droplets, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function MobileBottomNav() {
   const location = useLocation();
   const pathname = location.pathname;
 
+  // Hide inside authenticated admin dashboard (which has its own mobile drawer)
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    return null;
+  }
+
   const items = [
-    { href: '/hospitals', label: 'Search', icon: Search },
-    { href: '/emergency', label: 'Beds', icon: Bed },
+    { href: '/', label: 'Home', icon: Home },
+    { href: '/hospitals', label: 'Hospitals', icon: Search },
     // Center Floating SOS Button
     { isSos: true, href: '/emergency' },
     { href: '/blood', label: 'Blood', icon: Droplets },
@@ -20,13 +25,17 @@ export function MobileBottomNav() {
       <div className="flex items-center justify-around h-16 px-2 relative">
         {items.map((item, idx) => {
           if (item.isSos) {
+            const isSosActive = pathname === '/emergency';
             return (
               <Link
                 key="sos-btn"
                 to="/emergency"
                 className="relative -top-5 flex flex-col items-center justify-center z-10"
               >
-                <div className="h-14 w-14 rounded-full bg-red-600 text-white font-black text-sm flex items-center justify-center shadow-xl shadow-red-600/40 border-4 border-white dark:border-card transition-transform active:scale-95">
+                <div className={cn(
+                  "h-14 w-14 rounded-full bg-red-600 text-white font-black text-sm flex items-center justify-center shadow-xl shadow-red-600/40 border-4 border-white dark:border-card transition-transform active:scale-95",
+                  isSosActive && "ring-2 ring-red-500 ring-offset-2"
+                )}>
                   SOS
                 </div>
               </Link>

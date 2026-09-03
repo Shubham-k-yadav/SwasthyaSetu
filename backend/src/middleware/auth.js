@@ -17,16 +17,23 @@ export const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, secret);
 
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const mockUser = mockUsers.find(u => u._id === decoded.userId) || mockUsers[0];
-      req.user = mockUser;
-      return next();
+    let user = null;
+    if (mongoose.connection.readyState === 1 && !global.isDemoMode && mongoose.Types.ObjectId.isValid(decoded.userId)) {
+      user = await User.findById(decoded.userId);
     }
 
-    const user = await User.findById(decoded.userId);
-
-    if (!user || !user.isActive) {
+    if (!user) {
+      const mockUser = mockUsers.find(u => u._id === decoded.userId || u.id === decoded.userId || u.email === decoded.email);
+      if (mockUser) {
+        req.user = mockUser;
+        return next();
+      }
       res.status(401).json({ error: 'Invalid token or user inactive' });
+      return;
+    }
+
+    if (!user.isActive && user.role !== 'superadmin') {
+      res.status(401).json({ error: 'Account pending activation or verification' });
       return;
     }
 
