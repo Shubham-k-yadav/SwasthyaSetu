@@ -102,6 +102,9 @@ export function HospitalMap({
     .map(h => ({ hospital: h, coords: getHospitalCoordinates(h) }))
     .filter(item => item.coords !== null);
 
+  const validHospitals = validHospitalsWithCoords.map(item => item.hospital);
+  const defaultHospitalCoord = validHospitalsWithCoords[0]?.coords || null;
+
   const selectedCoords = getHospitalCoordinates(selectedHospital);
 
   if (selectedCoords) {
@@ -137,7 +140,7 @@ export function HospitalMap({
 
   // Find active tracking ambulance for Uber-style HUD
   const activeAmb = ambulances.find(a => (a.currentLat || a.lat) && (a.currentLng || a.lng));
-  const destLocation = userLocation || (selectedHospital?.coordinates ? selectedHospital.coordinates : (validHospitals[0]?.coordinates || null));
+  const destLocation = userLocation || selectedCoords || defaultHospitalCoord;
 
   let liveDistance = null;
   let liveEtaMins = null;
@@ -244,7 +247,7 @@ export function HospitalMap({
           const ambId = amb._id || amb.id || amb.vehicleNumber;
 
           // Route destination (Patient location or target Hospital)
-          const targetDest = userLocation || (selectedHospital?.coordinates ? selectedHospital.coordinates : (validHospitals[0]?.coordinates || null));
+          const targetDest = userLocation || selectedCoords || defaultHospitalCoord;
 
           return (
             <Fragment key={ambId}>
