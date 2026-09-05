@@ -62,22 +62,22 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
           {/* Row 2: Full Width Mobile Action Buttons */}
           <div className="px-4 pt-1">
             <div className="flex items-center gap-2 w-full">
-              <Link to="/emergency" className="flex-1">
-                <Button size="sm" className="w-full gap-1 bg-red-600 hover:bg-red-700 text-white font-bold h-10 text-xs rounded-xl shadow-md shadow-red-600/25 px-2 whitespace-nowrap">
+              <Link to="/hospitals" className="flex-1">
+                <Button size="sm" className="w-full gap-1 bg-red-600 hover:bg-red-700 text-white font-bold h-10 text-xs rounded-xl shadow-md shadow-red-600/25 px-2 whitespace-nowrap cursor-pointer">
                   <Bed className="h-4 w-4 shrink-0" />
                   Find Bed
                 </Button>
               </Link>
 
               <Link to="/blood" className="flex-1">
-                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-xl bg-white shadow-xs px-2 whitespace-nowrap">
+                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-xl bg-white shadow-xs px-2 whitespace-nowrap cursor-pointer">
                   <Droplets className="h-3.5 w-3.5 text-red-600 shrink-0" />
                   Find Blood
                 </Button>
               </Link>
 
-              <Link to="/hospitals" className="flex-1">
-                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-xl bg-white shadow-xs px-2 whitespace-nowrap">
+              <Link to="/emergency" className="flex-1">
+                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-xl bg-white shadow-xs px-2 whitespace-nowrap cursor-pointer">
                   <Siren className="h-3.5 w-3.5 text-red-600 shrink-0" />
                   Ambulance
                 </Button>

@@ -49,22 +49,22 @@ export function DesktopHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 })
 
           {/* Hero Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Link to="/emergency">
-              <Button size="lg" className="gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-7 py-6 text-sm sm:text-base rounded-xl shadow-lg shadow-red-600/20 transition-transform hover:scale-[1.02] whitespace-nowrap">
+            <Link to="/hospitals">
+              <Button size="lg" className="gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-7 py-6 text-sm sm:text-base rounded-xl shadow-lg shadow-red-600/20 transition-transform hover:scale-[1.02] whitespace-nowrap cursor-pointer">
                 <Bed className="h-5 w-5" />
                 Find Emergency Bed
               </Button>
             </Link>
 
             <Link to="/blood">
-              <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white whitespace-nowrap">
+              <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white whitespace-nowrap cursor-pointer">
                 <Droplets className="h-5 w-5 text-red-600" />
                 Find Blood
               </Button>
             </Link>
 
-            <Link to="/hospitals">
-              <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white whitespace-nowrap">
+            <Link to="/emergency">
+              <Button size="lg" variant="outline" className="gap-2 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 hover:border-red-400 font-semibold px-6 py-6 text-sm sm:text-base rounded-xl bg-white whitespace-nowrap cursor-pointer">
                 <Siren className="h-5 w-5 text-red-600" />
                 Request Ambulance
               </Button>

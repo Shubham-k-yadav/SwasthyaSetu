@@ -49,22 +49,22 @@ export function TabletHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
 
           {/* Tablet Hero Action Buttons */}
           <div className="flex items-center gap-2 pt-1">
-            <Link to="/emergency">
-              <Button size="sm" className="gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold px-3.5 py-4 text-xs rounded-xl shadow-md whitespace-nowrap">
+            <Link to="/hospitals">
+              <Button size="sm" className="gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold px-3.5 py-4 text-xs rounded-xl shadow-md whitespace-nowrap cursor-pointer">
                 <Bed className="h-4 w-4" />
                 Find Bed
               </Button>
             </Link>
 
             <Link to="/blood">
-              <Button size="sm" variant="outline" className="gap-1.5 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 font-semibold px-3 py-4 text-xs rounded-xl bg-white whitespace-nowrap">
+              <Button size="sm" variant="outline" className="gap-1.5 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 font-semibold px-3 py-4 text-xs rounded-xl bg-white whitespace-nowrap cursor-pointer">
                 <Droplets className="h-4 w-4 text-red-600" />
                 Find Blood
               </Button>
             </Link>
 
-            <Link to="/hospitals">
-              <Button size="sm" variant="outline" className="gap-1.5 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 font-semibold px-3 py-4 text-xs rounded-xl bg-white whitespace-nowrap">
+            <Link to="/emergency">
+              <Button size="sm" variant="outline" className="gap-1.5 border-gray-300 text-gray-800 dark:text-gray-200 hover:bg-gray-100 font-semibold px-3 py-4 text-xs rounded-xl bg-white whitespace-nowrap cursor-pointer">
                 <Siren className="h-4 w-4 text-red-600" />
                 Request Ambulance
               </Button>
