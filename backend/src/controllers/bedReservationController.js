@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import Hospital from '../models/Hospital.js';
 import BedReservation from '../models/BedReservation.js';
 import { emitBedUpdate, emitBedHoldAlert } from '../services/socket.js';
-import { mockHospitals, mockReservations } from '../utils/mockStore.js';
 
 const otpStore = new Map();
 
@@ -17,13 +16,13 @@ export const requestOtp = async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6-9.' });
     }
 
-    const demoOtp = '123456';
-    otpStore.set(cleanPhone, { otp: demoOtp, expiresAt: Date.now() + 5 * 60 * 1000 });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore.set(cleanPhone, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
     res.json({
-      message: 'Verification OTP sent successfully (Demo OTP: 123456)',
+      message: `Verification OTP sent to +91-${cleanPhone}`,
       expiresInSeconds: 300,
-      demoOtp
+      otp
     });
   } catch (error) {
     console.error('Error in /request-otp:', error);
@@ -75,57 +74,21 @@ export const reserveBed = async (req, res) => {
     }
 
     // Prevent duplicate active holds for the same phone number
-    if (mongoose.connection.readyState === 1 && !global.isDemoMode) {
-      const activeHold = await BedReservation.findOne({
-        contactPhone: cleanPhone,
-        status: 'reserved',
-        expiresAt: { $gt: new Date() }
-      });
+    const activeHold = await BedReservation.findOne({
+      contactPhone: cleanPhone,
+      status: 'reserved',
+      expiresAt: { $gt: new Date() }
+    });
 
-      if (activeHold) {
-        return res.status(429).json({
-          error: 'An active bed reservation already exists for this phone number. Please use or release your current hold before creating a new one.',
-          existingReservationCode: activeHold.reservationCode
-        });
-      }
+    if (activeHold) {
+      return res.status(429).json({
+        error: 'An active bed reservation already exists for this phone number. Please use or release your current hold before creating a new one.',
+        existingReservationCode: activeHold.reservationCode
+      });
     }
 
     const reservationCode = `SS-HOLD-${Math.floor(100000 + Math.random() * 900000)}`;
     const expiresAt = new Date(Date.now() + holdMinutes * 60 * 1000);
-
-    // DEMO MODE / FALLBACK HANDLER
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const targetHospital = mockHospitals.find(h => h._id === hospitalId || h.id === hospitalId);
-      if (!targetHospital || !targetHospital.beds?.[bedType] || targetHospital.beds[bedType].available <= 0) {
-        return res.status(409).json({ 
-          error: 'Bed no longer available. Another patient reserved the last remaining bed.' 
-        });
-      }
-
-      // Decrement bed count atomically in mock store
-      targetHospital.beds[bedType].available -= 1;
-      targetHospital.lastUpdated = new Date().toISOString();
-
-      const newReservation = {
-        _id: `res_${Date.now()}`,
-        hospitalId,
-        hospitalName: targetHospital.name,
-        bedType,
-        patientName,
-        contactPhone,
-        reservationCode,
-        status: 'reserved',
-        expiresAt: expiresAt.toISOString()
-      };
-      mockReservations.push(newReservation);
-      emitBedUpdate(hospitalId, targetHospital.beds);
-
-      return res.status(201).json({
-        message: 'Bed reserved successfully (10-minute hold active)',
-        reservation: newReservation,
-        expiresInSeconds: holdMinutes * 60
-      });
-    }
 
     // MONGO DB ATOMIC TRANSACTION CHECK
     const filter = {
@@ -179,13 +142,6 @@ export const confirmReservation = async (req, res) => {
   try {
     const { code } = req.params;
 
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const resv = mockReservations.find(r => r.reservationCode === code);
-      if (!resv) return res.status(404).json({ error: 'Reservation code not found' });
-      resv.status = 'confirmed';
-      return res.json({ message: 'Bed admission confirmed', reservation: resv });
-    }
-
     const reservation = await BedReservation.findOneAndUpdate(
       { reservationCode: code, status: 'reserved' },
       { status: 'confirmed' },
@@ -207,19 +163,6 @@ export const confirmReservation = async (req, res) => {
 export const releaseReservation = async (req, res) => {
   try {
     const { code } = req.params;
-
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const resv = mockReservations.find(r => r.reservationCode === code && r.status === 'reserved');
-      if (!resv) return res.status(404).json({ error: 'Active reservation not found' });
-      
-      resv.status = 'released';
-      const hospital = mockHospitals.find(h => h._id === resv.hospitalId || h.id === resv.hospitalId);
-      if (hospital && hospital.beds[resv.bedType]) {
-        hospital.beds[resv.bedType].available += 1;
-        emitBedUpdate(hospital._id || hospital.id, hospital.beds);
-      }
-      return res.json({ message: 'Bed hold released & bed count restored', reservation: resv });
-    }
 
     const reservation = await BedReservation.findOneAndUpdate(
       { reservationCode: code, status: 'reserved' },
@@ -256,19 +199,6 @@ export const dischargePatient = async (req, res) => {
   try {
     const { code } = req.params;
 
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const resv = mockReservations.find(r => r.reservationCode === code && (r.status === 'confirmed' || r.status === 'reserved'));
-      if (!resv) return res.status(404).json({ error: 'Active admitted patient reservation not found' });
-      
-      resv.status = 'discharged';
-      const hospital = mockHospitals.find(h => h._id === resv.hospitalId || h.id === resv.hospitalId);
-      if (hospital && hospital.beds[resv.bedType]) {
-        hospital.beds[resv.bedType].available += 1;
-        emitBedUpdate(hospital._id || hospital.id, hospital.beds);
-      }
-      return res.json({ message: 'Patient discharged & bed restored to live available inventory', reservation: resv });
-    }
-
     const reservation = await BedReservation.findOneAndUpdate(
       { reservationCode: code, status: { $in: ['confirmed', 'reserved'] } },
       { status: 'discharged' },
@@ -303,11 +233,6 @@ export const dischargePatient = async (req, res) => {
 export const getHospitalReservations = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const list = mockReservations.filter(r => r.hospitalId === id);
-      return res.json({ reservations: list });
-    }
 
     const reservations = await BedReservation.find({ hospitalId: id })
       .sort({ createdAt: -1 })

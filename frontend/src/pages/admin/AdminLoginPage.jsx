@@ -12,8 +12,8 @@ import { useLanguage } from '@/lib/language-context';
 export default function AdminLoginPage() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('hospital'); // 'hospital' | 'superadmin'
-  const [email, setEmail] = useState('admin@apollo.com');
-  const [password, setPassword] = useState('Apollo@2024');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,19 +23,8 @@ export default function AdminLoginPage() {
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
     setError('');
-    if (tab === 'hospital') {
-      setEmail('admin@apollo.com');
-      setPassword('Apollo@2024');
-    } else {
-      setEmail('superadmin@swasthyasetu.in');
-      setPassword('SuperAdmin@2024');
-    }
-  };
-
-  const handleQuickCredential = (emailVal, passVal) => {
-    setEmail(emailVal);
-    setPassword(passVal);
-    setError('');
+    setEmail('');
+    setPassword('');
   };
 
   const handleSubmit = async (e) => {
@@ -187,55 +176,15 @@ export default function AdminLoginPage() {
               </Button>
             </form>
 
-            {/* Quick Demo Credentials Switcher */}
-            <div className="p-3 bg-muted/60 rounded-xl border text-xs space-y-2">
-              <p className="font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">
-                {activeTab === 'hospital' ? 'Quick Demo Hospital Accounts:' : 'Super Admin Account:'}
-              </p>
-              
-              {activeTab === 'hospital' ? (
-                <div className="grid gap-1.5 grid-cols-1 sm:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickCredential('admin@apollo.com', 'Apollo@2024')}
-                    className="p-2 rounded-lg bg-card border text-left hover:border-primary transition-colors flex flex-col"
-                  >
-                    <span className="font-semibold text-primary truncate">Apollo Bilaspur</span>
-                    <span className="text-[10px] text-muted-foreground">admin@apollo.com</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickCredential('admin@aiims.edu', 'AIIMS@2024')}
-                    className="p-2 rounded-lg bg-card border text-left hover:border-primary transition-colors flex flex-col"
-                  >
-                    <span className="font-semibold text-primary truncate">AIIMS New Delhi</span>
-                    <span className="text-[10px] text-muted-foreground">admin@aiims.edu</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickCredential('admin@kemhospital.gov.in', 'KEM@2024')}
-                    className="p-2 rounded-lg bg-card border text-left hover:border-primary transition-colors flex flex-col"
-                  >
-                    <span className="font-semibold text-primary truncate">KEM Mumbai</span>
-                    <span className="text-[10px] text-muted-foreground">admin@kemhospital.gov.in</span>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleQuickCredential('superadmin@swasthyasetu.in', 'SuperAdmin@2024')}
-                  className="w-full p-2.5 rounded-lg bg-card border text-left hover:border-red-500 transition-colors flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-semibold text-red-600 block text-xs">National Super Admin</span>
-                    <span className="text-[11px] text-muted-foreground">superadmin@swasthyasetu.in</span>
-                  </div>
-                  <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">Full Access</span>
-                </button>
-              )}
-            </div>
+            {/* Hospital Registration Link */}
+            {activeTab === 'hospital' && (
+              <div className="p-3 bg-muted/40 rounded-xl border text-center text-xs space-y-1">
+                <p className="text-muted-foreground">New Healthcare Provider / Hospital?</p>
+                <Link to="/register-hospital" className="text-primary hover:underline font-bold text-xs inline-block">
+                  Register Your Hospital on SwasthyaSetu →
+                </Link>
+              </div>
+            )}
 
             <div className="text-center pt-1">
               <Link to="/" className="text-xs font-semibold text-muted-foreground hover:text-primary transition-colors">

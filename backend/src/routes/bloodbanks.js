@@ -44,7 +44,7 @@ router.post('/register-request', async (req, res) => {
       return res.status(400).json({ error: 'Blood Bank Name, City, Admin Email, and Password are required' });
     }
 
-    if (mongoose.connection.readyState === 1 && !global.isDemoMode) {
+    if (mongoose.connection.readyState === 1) {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
         return res.status(400).json({ error: 'An admin account with this email already exists' });

@@ -6,10 +6,9 @@ import { createServer } from 'http';
 import mongoose from 'mongoose';
 import mongoSanitize from 'express-mongo-sanitize';
 import cron from 'node-cron';
-import { apiLimiter, emergencySosLimiter, authLimiter } from './middleware/rateLimiter.js';
+import { apiLimiter, authLimiter } from './middleware/rateLimiter.js';
 import connectDB from './config/db.js';
 import { initializeSocket } from './services/socket.js';
-import { runLiveDataSimulation } from './scripts/simulateLiveData.js';
 import BedReservation from './models/BedReservation.js';
 import Hospital from './models/Hospital.js';
 
@@ -51,15 +50,13 @@ app.use('/api/auth/login', authLimiter);
 // Health check & System Status
 app.get(['/health', '/api/status'], (req, res) => {
   const isDbConnected = mongoose.connection.readyState === 1;
-  const isDemo = global.isDemoMode || !isDbConnected;
 
   res.json({ 
-    status: 'healthy', 
+    status: isDbConnected ? 'healthy' : 'degraded', 
     timestamp: new Date().toISOString(),
     service: 'swasthya-setu-server',
-    isDemoMode: isDemo,
     databaseConnected: isDbConnected,
-    mode: isDemo ? 'degraded_demo' : 'live_production'
+    mode: 'live_production'
   });
 });
 
@@ -84,8 +81,6 @@ app.use((err, req, res, next) => {
   console.error('Server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
-
-import { autoSeedData } from './scripts/autoSeed.js';
 
 // Start server
 const startServer = async () => {

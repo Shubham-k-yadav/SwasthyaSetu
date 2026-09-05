@@ -63,11 +63,7 @@ export default function DriverLocationPage() {
       },
       (err) => {
         console.warn('GPS Error:', err);
-        // Fallback Delhi GPS for demo
-        const demoLat = 28.6139 + (Math.random() - 0.5) * 0.01;
-        const demoLng = 77.2090 + (Math.random() - 0.5) * 0.01;
-        setLocation({ lat: demoLat, lng: demoLng });
-        sendLocationUpdate(demoLat, demoLng);
+        toast.error('Unable to acquire GPS coordinates. Please enable device location.');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );

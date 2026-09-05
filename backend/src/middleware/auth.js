@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { mockUsers } from '../utils/mockStore.js';
 import mongoose from 'mongoose';
 
 export const authenticate = async (req, res, next) => {
@@ -17,17 +16,11 @@ export const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, secret);
 
-    let user = null;
-    if (mongoose.connection.readyState === 1 && !global.isDemoMode && mongoose.Types.ObjectId.isValid(decoded.userId)) {
-      user = await User.findById(decoded.userId);
-    }
+    const user = (decoded.userId && mongoose.Types.ObjectId.isValid(decoded.userId))
+      ? await User.findById(decoded.userId)
+      : null;
 
     if (!user) {
-      const mockUser = mockUsers.find(u => u._id === decoded.userId || u.id === decoded.userId || u.email === decoded.email);
-      if (mockUser) {
-        req.user = mockUser;
-        return next();
-      }
       res.status(401).json({ error: 'Invalid token or user inactive' });
       return;
     }

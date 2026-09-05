@@ -2,16 +2,16 @@ import { Router } from 'express';
 import EmergencyRequest from '../models/EmergencyRequest.js';
 import Hospital from '../models/Hospital.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { emergencySosLimiter } from '../middleware/rateLimiter.js';
 import { emitEmergencyAlert } from '../services/socket.js';
 import { haversineDistance } from '../utils/geo.js';
 
-import { mockHospitals, mockEmergencies } from '../utils/mockStore.js';
 import mongoose from 'mongoose';
 
 const router = Router();
 
 // Create emergency request
-router.post('/request', async (req, res) => {
+router.post('/request', emergencySosLimiter, async (req, res) => {
   try {
     const {
       patientName,
@@ -27,34 +27,6 @@ router.post('/request', async (req, res) => {
     if (!contactPhone || !location || !emergencyType) {
       res.status(400).json({ error: 'Contact phone, emergency type, and location are required' });
       return;
-    }
-
-    const city = location?.city || location?.address?.split(',').pop()?.trim() || 'delhi';
-
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const newEmergency = {
-        _id: '66c000000000000000000099',
-        patientName: patientName || 'Emergency Patient',
-        contactNumber: contactPhone,
-        location,
-        emergencyType,
-        bedType: selectedBedType,
-        notes,
-        status: 'pending',
-        createdAt: new Date().toISOString()
-      };
-      mockEmergencies.unshift(newEmergency);
-      emitEmergencyAlert(city, {
-        emergencyId: newEmergency._id,
-        patientName: newEmergency.patientName,
-        emergencyType,
-        location
-      });
-      return res.status(201).json({
-        message: 'Emergency request broadcasted successfully',
-        emergency: newEmergency,
-        nearbyHospitalsCount: mockHospitals.length
-      });
     }
 
     let priority = 'high';

@@ -8,9 +8,7 @@
     "dev": "node --watch-path=src src/index.js",
     "start": "node src/index.js",
     "build": "echo Server build complete",
-    "seed": "node src/scripts/seed.js",
-    "seed:real": "node src/scripts/fetchRealHospitals.js",
-    "seed:wib": "node src/scripts/importWibHospitals.js"
+    "init:admin": "node src/scripts/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

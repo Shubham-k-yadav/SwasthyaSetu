@@ -7,11 +7,9 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 8000
     });
     console.log(`✔ MongoDB Connected: ${conn.connection.host}`);
-    global.isDemoMode = false;
   } catch (error) {
-    global.isDemoMode = true;
-    console.log(`💡 MongoDB connection failed: ${error.message}`);
-    console.log('✨ Activated SwasthyaSetu Instant Demo Mode (Zero-delay Memory Store)');
+    console.error(`❌ MongoDB connection failed: ${error.message}`);
+    throw error;
   }
 };
 

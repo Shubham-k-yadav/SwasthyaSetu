@@ -23,12 +23,12 @@ export function Header() {
   const location = useLocation();
   const pathname = location.pathname;
   const [open, setOpen] = useState(false);
-  const [systemStatus, setSystemStatus] = useState({ isDemoMode: false, mode: 'loading' });
+  const [isServerOffline, setIsServerOffline] = useState(false);
 
   useEffect(() => {
     systemApi.getStatus()
-      .then(res => setSystemStatus(res))
-      .catch(() => setSystemStatus({ isDemoMode: true, mode: 'degraded_demo' }));
+      .then(res => setIsServerOffline(!res.databaseConnected))
+      .catch(() => setIsServerOffline(true));
   }, []);
 
   const navItems = [
@@ -39,12 +39,10 @@ export function Header() {
 
   return (
     <>
-      {systemStatus.isDemoMode && (
+      {isServerOffline && (
         <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-800 dark:text-amber-300 px-4 py-1.5 text-xs text-center font-medium flex items-center justify-center gap-2">
           <ShieldAlert className="h-3.5 w-3.5 text-amber-600 animate-pulse shrink-0" />
-          <span>
-            {t('systemDegradedBanner')}
-          </span>
+          <span>Live healthcare network connecting...</span>
         </div>
       )}
       <header className="sticky top-0 z-[999] w-full border-b bg-white/95 dark:bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-xs">

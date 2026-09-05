@@ -342,10 +342,6 @@ router.post('/:id/update-location', ambulanceLocationLimiter, async (req, res) =
  */
 router.get('/active', async (req, res) => {
   try {
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      return res.json({ ambulances: mockAmbulances });
-    }
-
     const activeAmbulances = await Ambulance.find({
       isVerified: { $ne: false },
       status: { $ne: 'offline' }

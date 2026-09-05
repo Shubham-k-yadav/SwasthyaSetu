@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import Donor from '../models/Donor.js';
 import { authenticate, authorize } from '../middleware/auth.js';
-import { mockDonors } from '../utils/mockStore.js';
 import mongoose from 'mongoose';
 
 const router = Router();
@@ -86,13 +85,6 @@ router.post('/register', async (req, res) => {
 router.get('/search', async (req, res) => {
   try {
     const { bloodGroup, city, limit = 20 } = req.query;
-
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      let filtered = [...mockDonors];
-      if (bloodGroup) filtered = filtered.filter(d => d.bloodGroup === bloodGroup);
-      if (city) filtered = filtered.filter(d => d.city.toLowerCase().includes(city.toLowerCase()));
-      return res.json({ donors: filtered });
-    }
 
     const filter = {
       isAvailable: true,

@@ -25,6 +25,7 @@ export function BedHoldModal({
   const [patientName, setPatientName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [otpInput, setOtpInput] = useState('');
+  const [receivedOtp, setReceivedOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
   const [reservation, setReservation] = useState(null);
@@ -65,7 +66,8 @@ export function BedHoldModal({
     setIsSubmitting(true);
     setError('');
     try {
-      await hospitalApi.requestOtp(contactPhone);
+      const res = await hospitalApi.requestOtp(contactPhone);
+      setReceivedOtp(res.otp || '');
       setStep('otp');
     } catch (err) {
       setError(err.message || 'Failed to send OTP.');
@@ -220,7 +222,10 @@ export function BedHoldModal({
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtpAndReserve} className="space-y-4 py-2">
             <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
-              📱 OTP sent to <strong>+91-{contactPhone}</strong> (Demo OTP: <strong>123456</strong>)
+              📱 OTP sent to <strong>+91-{contactPhone}</strong>
+              {receivedOtp && (
+                <span> (Verification Code: <strong>{receivedOtp}</strong>)</span>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -228,7 +233,7 @@ export function BedHoldModal({
               <Input
                 id="otp"
                 maxLength={6}
-                placeholder="123456"
+                placeholder={receivedOtp || "Enter 6-digit OTP"}
                 className="font-mono text-center tracking-widest text-lg font-bold"
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value)}

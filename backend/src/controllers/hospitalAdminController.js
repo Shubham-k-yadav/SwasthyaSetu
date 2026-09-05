@@ -3,7 +3,6 @@ import Hospital from '../models/Hospital.js';
 import User from '../models/User.js';
 import { emitRegistrationRequest } from '../services/socket.js';
 import { geocodeFullAddress } from '../utils/geo.js';
-import { mockHospitals } from '../utils/mockStore.js';
 
 // Public registration request for new hospitals
 export const registerHospitalRequest = async (req, res) => {
@@ -29,7 +28,7 @@ export const registerHospitalRequest = async (req, res) => {
     }
 
     // Check if user already exists
-    if (mongoose.connection.readyState === 1 && !global.isDemoMode) {
+    if (mongoose.connection.readyState === 1) {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
         return res.status(400).json({ error: 'An admin account with this email already exists' });
@@ -96,11 +95,6 @@ export const registerHospitalRequest = async (req, res) => {
 // Superadmin queue for unverified hospitals
 export const getPendingQueue = async (req, res) => {
   try {
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const pending = mockHospitals.filter(h => h.isVerified === false || h.verificationStatus === 'pending');
-      return res.json({ queue: pending });
-    }
-
     const pending = await Hospital.find({
       $or: [
         { isVerified: false },
@@ -120,16 +114,6 @@ export const verifyHospital = async (req, res) => {
   try {
     const { status = 'approved' } = req.body;
     const isApproved = status === 'approved';
-
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      const target = mockHospitals.find(h => h._id === req.params.id);
-      if (target) {
-        target.isVerified = isApproved;
-        target.verificationStatus = status;
-        target.lastUpdated = new Date().toISOString();
-        return res.json({ message: `Hospital ${status} successfully`, hospital: target });
-      }
-    }
 
     const hospital = await Hospital.findByIdAndUpdate(
       req.params.id,

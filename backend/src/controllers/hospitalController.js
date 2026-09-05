@@ -1,30 +1,11 @@
-import mongoose from 'mongoose';
 import Hospital from '../models/Hospital.js';
-import BloodStock from '../models/BloodStock.js';
 import { haversineDistance, calculateHospitalScore } from '../utils/geo.js';
-import { mockHospitals } from '../utils/mockStore.js';
 import { emitBedUpdate } from '../services/socket.js';
 
 // Get all hospitals with filters
 export const getHospitals = async (req, res) => {
   try {
     const { city, state, bedType, hasAvailability, includeUnverified, limit = 50, page = 1 } = req.query;
-    
-    if (global.isDemoMode || mongoose.connection.readyState !== 1) {
-      let filtered = [...mockHospitals];
-      if (includeUnverified !== 'true') {
-        filtered = filtered.filter(h => h.isVerified !== false);
-      }
-      if (city) filtered = filtered.filter(h => h.city.toLowerCase().includes(city.toLowerCase()));
-      if (state) filtered = filtered.filter(h => h.state.toLowerCase().includes(state.toLowerCase()));
-      if (hasAvailability === 'true' && bedType) {
-        filtered = filtered.filter(h => h.beds?.[bedType]?.available > 0);
-      }
-      return res.json({
-        hospitals: filtered,
-        pagination: { total: filtered.length, page: 1, limit: 50, pages: 1 }
-      });
-    }
 
     const filter = {};
     if (includeUnverified !== 'true') {
@@ -50,12 +31,12 @@ export const getHospitals = async (req, res) => {
         total,
         page: Number(page),
         limit: Number(limit),
-        pages: Math.ceil(total / Number(limit))
+        pages: Math.ceil(total / Number(limit)) || 1
       }
     });
   } catch (error) {
     console.error('Error fetching hospitals:', error);
-    res.json({ hospitals: mockHospitals, pagination: { total: mockHospitals.length, page: 1, limit: 50, pages: 1 } });
+    res.status(500).json({ error: 'Failed to fetch hospitals', hospitals: [] });
   }
 };
 

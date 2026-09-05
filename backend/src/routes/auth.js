@@ -2,8 +2,6 @@ import { Router } from 'express';
 import User from '../models/User.js';
 import Hospital from '../models/Hospital.js';
 import { authenticate, authorize, generateToken } from '../middleware/auth.js';
-
-import { mockUsers, mockHospitals } from '../utils/mockStore.js';
 import mongoose from 'mongoose';
 
 const router = Router();
@@ -20,80 +18,53 @@ router.post('/login', async (req, res) => {
 
     const cleanEmail = String(email).trim().toLowerCase();
 
-    // 1. Try MongoDB First
-    let user = null;
-    if (mongoose.connection.readyState === 1 && !global.isDemoMode) {
-      user = await User.findOne({ email: cleanEmail }).select('+password');
+    const user = await User.findOne({ email: cleanEmail }).select('+password');
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password. Please check your credentials.' });
     }
 
-    if (user) {
-      let isMatch = await user.comparePassword(password);
-      // Support standard admin passwords
-      if (!isMatch && user.role === 'superadmin' && (password === 'SuperAdmin@2024' || password === 'SwasthyaSetu@2026')) {
-        isMatch = true;
-      }
-
-      if (!isMatch) {
-        return res.status(401).json({ error: 'Invalid email or password. Please check your credentials.' });
-      }
-
-      let hospital = null;
-      if (user.hospitalId) {
-        hospital = await Hospital.findById(user.hospitalId)
-          .select('name city state isVerified')
-          .lean();
-
-        if (user.role === 'admin' && hospital) {
-          if (!hospital.isVerified) {
-            return res.status(403).json({ error: 'Your hospital registration is pending Super Admin verification and approval. Please wait for approval before logging in.' });
-          } else if (!user.isActive) {
-            await User.updateOne({ _id: user._id }, { $set: { isActive: true } });
-            user.isActive = true;
-          }
-        }
-      }
-
-      if (!user.isActive && user.role !== 'superadmin') {
-        return res.status(403).json({ error: 'Your account is pending Super Admin verification and approval. Please wait for approval before logging in.' });
-      }
-
-      const token = generateToken(user);
-
-      return res.json({
-        token,
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          hospital
-        }
-      });
+    let isMatch = await user.comparePassword(password);
+    if (!isMatch && user.role === 'superadmin' && (password === 'SuperAdmin@2024' || password === 'SwasthyaSetu@2026')) {
+      isMatch = true;
     }
 
-    // 2. Fallback to Mock Users for Demo Hospital Staff & Superadmin
-    const mockUser = mockUsers.find(u => 
-      u.email.toLowerCase() === cleanEmail && 
-      (u.password === password || password === 'Apollo@2024' || password === 'AIIMS@2024' || password === 'KEM@2024' || password === 'BloodBank@2024' || password === 'SuperAdmin@2024' || password === 'SwasthyaSetu@2026')
-    );
-
-    if (mockUser) {
-      const token = generateToken(mockUser._id || mockUser.id);
-      const mockHospital = mockHospitals.find(h => h._id === mockUser.hospitalId || h.id === mockUser.hospitalId);
-
-      return res.json({
-        token,
-        user: {
-          id: mockUser._id || mockUser.id,
-          email: mockUser.email,
-          name: mockUser.name,
-          role: mockUser.role,
-          hospital: mockHospital || null
-        }
-      });
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password. Please check your credentials.' });
     }
 
-    res.status(401).json({ error: 'Invalid email or password. Please check your credentials.' });
+    let hospital = null;
+    if (user.hospitalId) {
+      hospital = await Hospital.findById(user.hospitalId)
+        .select('name city state isVerified')
+        .lean();
+
+      if (user.role === 'admin' && hospital) {
+        if (!hospital.isVerified) {
+          return res.status(403).json({ error: 'Your hospital registration is pending Super Admin verification and approval. Please wait for approval before logging in.' });
+        } else if (!user.isActive) {
+          await User.updateOne({ _id: user._id }, { $set: { isActive: true } });
+          user.isActive = true;
+        }
+      }
+    }
+
+    if (!user.isActive && user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Your account is pending Super Admin verification and approval. Please wait for approval before logging in.' });
+    }
+
+    const token = generateToken(user);
+
+    return res.json({
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        hospital
+      }
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
@@ -131,9 +102,6 @@ router.get('/me', authenticate, async (req, res) => {
         hospital = await Hospital.findById(user.hospitalId)
           .select('name city state beds')
           .lean();
-      }
-      if (!hospital) {
-        hospital = mockHospitals.find(h => h._id === user.hospitalId || h.id === user.hospitalId) || null;
       }
     }
 
