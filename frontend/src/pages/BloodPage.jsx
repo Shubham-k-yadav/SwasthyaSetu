@@ -14,6 +14,7 @@ import {
   BloodSearchFilters,
   DonateInfoCards
 } from '@/components/blood';
+import { BloodBankRegisterModal } from '@/components/BloodBankRegisterModal';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const CITIES = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad'];
