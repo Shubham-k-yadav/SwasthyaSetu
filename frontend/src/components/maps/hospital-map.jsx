@@ -1,5 +1,5 @@
  
-import React, { useEffect, useState, Fragment } from 'react';
+import React, { useEffect, useState, useRef, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -71,12 +71,25 @@ const createCustomIcon = (available) => {
   });
 };
 
-// Component to handle map center updates
-function MapUpdater({ center, zoom }) {
+// Component to handle smooth animated map flyTo and zoom updates
+function MapUpdater({ center, zoom, selectedHospitalId, markerRefs }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, zoom);
-  }, [map, center, zoom]);
+    if (center && Array.isArray(center) && typeof center[0] === 'number') {
+      map.flyTo(center, zoom, {
+        duration: 1.2,
+        easeLinearity: 0.25
+      });
+      if (selectedHospitalId && markerRefs?.current?.[selectedHospitalId]) {
+        const timer = setTimeout(() => {
+          try {
+            markerRefs.current[selectedHospitalId]?.openPopup();
+          } catch (e) {}
+        }, 600);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [map, center, zoom, selectedHospitalId]);
   return null;
 }
 
@@ -109,7 +122,7 @@ export function HospitalMap({
 
   if (selectedCoords) {
     center = [selectedCoords.lat, selectedCoords.lng];
-    zoom = 14;
+    zoom = 16;
   } else if (userLocation) {
     center = [userLocation.lat, userLocation.lng];
     zoom = 12;
@@ -154,6 +167,9 @@ export function HospitalMap({
     }
   }
 
+  const markerRefs = useRef({});
+  const selectedHospitalId = selectedHospital?._id || selectedHospital?.id || null;
+
   return (
     <div className="relative z-0 isolate h-[340px] sm:h-[450px] rounded-xl overflow-hidden border shadow-md">
       {/* Uber-style Live Radar HUD Banner */}
@@ -166,31 +182,28 @@ export function HospitalMap({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-black text-sm text-red-400">🚑 {activeAmb.vehicleNumber || 'Emergency Ambulance'}</span>
-                  <Badge variant="outline" className="text-[10px] bg-red-950 text-red-400 border-red-800">
-                    {activeAmb.status?.toUpperCase() || 'LIVE GPS'}
+                  <span className="font-black tracking-wide text-xs sm:text-sm">LIVE EMERGENCY RADAR</span>
+                  <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] animate-pulse">
+                    GPS ACTIVE
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-300">
-                  Driver: <strong className="text-white">{activeAmb.driverName || 'Verified Driver'}</strong> ({activeAmb.driverPhone || '+91 108'})
+                <p className="text-slate-400 text-xs mt-0.5">
+                  Vehicle: <span className="text-white font-bold">{activeAmb.vehicleNumber || 'Dispatch #108'}</span>
+                  {activeAmb.driverName && <span> • Driver: {activeAmb.driverName}</span>}
                 </p>
               </div>
             </div>
 
             {liveDistance !== null && (
-              <div className="flex items-center gap-4 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800 text-xs font-mono">
+              <div className="flex items-center gap-3 bg-red-950/50 border border-red-800/40 rounded-lg px-3 py-1.5 self-stretch sm:self-auto justify-between sm:justify-start">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">DISTANCE</span>
-                  <span className="font-bold text-amber-400 flex items-center gap-1">
-                    <Route className="h-3.5 w-3.5" /> {liveDistance} km
-                  </span>
+                  <p className="text-[10px] uppercase font-bold text-red-400">Live Distance</p>
+                  <p className="font-mono font-bold text-base text-red-300">{liveDistance} km</p>
                 </div>
-                <div className="h-6 w-px bg-slate-800" />
+                <div className="h-6 w-px bg-red-800/50"></div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">ESTIMATED ETA</span>
-                  <span className="font-bold text-emerald-400 flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" /> ~{liveEtaMins} mins
-                  </span>
+                  <p className="text-[10px] uppercase font-bold text-red-400">Est. Arrival</p>
+                  <p className="font-mono font-bold text-base text-red-300">~{liveEtaMins} min</p>
                 </div>
               </div>
             )}
@@ -208,7 +221,12 @@ export function HospitalMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapUpdater center={center} zoom={zoom} />
+        <MapUpdater 
+          center={center} 
+          zoom={zoom} 
+          selectedHospitalId={selectedHospitalId}
+          markerRefs={markerRefs}
+        />
 
         {/* User Location Marker */}
         {userLocation && (
@@ -328,13 +346,24 @@ export function HospitalMap({
           
           const hasGoogleUrl = Boolean(hospital.googleMapsUrl && hospital.googleMapsUrl.trim());
 
+          const hospId = hospital._id || hospital.id;
+
           return (
             <Marker
-              key={hospital._id || hospital.id}
+              key={hospId}
+              ref={el => {
+                if (el) markerRefs.current[hospId] = el;
+              }}
               position={[coords.lat, coords.lng]}
               icon={createCustomIcon(totalAvailable)}
               eventHandlers={{
-                click: () => onHospitalSelect?.(hospital)
+                click: (e) => {
+                  onHospitalSelect?.(hospital);
+                  const map = e.target._map;
+                  if (map) {
+                    map.flyTo([coords.lat, coords.lng], 16, { duration: 1 });
+                  }
+                }
               }}
             >
               <Popup minWidth={280} maxWidth={320}>

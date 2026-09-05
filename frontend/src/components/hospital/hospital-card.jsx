@@ -26,6 +26,7 @@ export { BedIndicator };
 export function HospitalCard({
   hospital,
   initialBedType = 'icu',
+  isSelected = false,
   onViewDetails,
   onGetDirections,
   showDistance = false
@@ -57,13 +58,18 @@ export function HospitalCard({
     <>
       <Card className={cn(
         'overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border-primary/10',
+        isSelected && 'ring-2 ring-red-600 shadow-xl border-red-500/50 bg-red-50/10 dark:bg-red-950/20',
         (!hasAvailability || freshness.isExpired) && 'opacity-75'
       )}>
-        <CardHeader className="p-4 sm:p-5 pb-2 sm:pb-3">
+        <CardHeader 
+          className="p-4 sm:p-5 pb-2 sm:pb-3 cursor-pointer group"
+          onClick={() => onViewDetails?.(hospital)}
+          title="Click to zoom pin on map"
+        >
           <div className="flex items-start justify-between gap-2 w-full min-w-0">
             <div className="space-y-1 flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <CardTitle className="text-base sm:text-lg font-bold leading-snug">{hospital.name}</CardTitle>
+                <CardTitle className="text-base sm:text-lg font-bold leading-snug group-hover:text-red-600 transition-colors">{hospital.name}</CardTitle>
                 {hospital.isVerified ? (
                   <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 border-emerald-500/20 font-semibold text-[10px] px-1.5 py-0.2 shrink-0">
                     <Shield className="h-2.5 w-2.5" />
@@ -78,6 +84,12 @@ export function HospitalCard({
               <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
                 <MapPin className="h-3 w-3 shrink-0 text-red-500" />
                 <span className="truncate block min-w-0">{hospital.address}</span>
+              </div>
+              <div className="pt-0.5">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 group-hover:underline">
+                  <Navigation className="h-2.5 w-2.5" />
+                  Zoom Pin on Map 📍
+                </span>
               </div>
             </div>
 

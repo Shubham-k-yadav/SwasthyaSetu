@@ -137,6 +137,18 @@ export default function HospitalsPage() {
     openHospitalDirections(hospital);
   };
 
+  const handleSelectHospital = (hospital) => {
+    setSelectedHospital(hospital);
+    // Smoothly bring map into view so user sees the pin zooming in
+    const mapViewport = document.getElementById('hospital-live-map-viewport');
+    if (mapViewport) {
+      const rect = mapViewport.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > window.innerHeight) {
+        mapViewport.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden w-full">
       <Header />
@@ -201,7 +213,7 @@ export default function HospitalsPage() {
 
           {/* Interactive Map */}
           {showMap && (
-            <div className="mb-6 sm:mb-8 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm animate-in fade-in">
+            <div id="hospital-live-map-viewport" className="mb-6 sm:mb-8 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm animate-in fade-in scroll-mt-24">
               <HospitalMap 
                 hospitals={filteredHospitals}
                 selectedHospital={selectedHospital}
@@ -371,7 +383,8 @@ export default function HospitalsPage() {
                   key={hospital._id || hospital.id} 
                   hospital={hospital}
                   initialBedType={selectedBedType && selectedBedType !== 'All Types' ? selectedBedType.toLowerCase() : 'icu'}
-                  onViewDetails={() => setSelectedHospital(hospital)}
+                  isSelected={Boolean(selectedHospital && (selectedHospital._id === hospital._id || selectedHospital.id === hospital.id))}
+                  onViewDetails={() => handleSelectHospital(hospital)}
                   onGetDirections={() => handleGetDirections(hospital)}
                   showDistance
                 />
