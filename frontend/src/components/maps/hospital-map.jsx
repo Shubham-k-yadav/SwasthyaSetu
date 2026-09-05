@@ -96,11 +96,13 @@ function MapUpdater({ center, zoom, selectedHospitalId, markerRefs }) {
 export function HospitalMap({ 
   hospitals = [], 
   selectedHospital, 
-  onHospitalSelect,
+  onHospitalSelect, 
   userLocation,
   ambulances = []
 }) {
   const [mapReady, setMapReady] = useState(false);
+  const markerRefs = useRef({});
+  const selectedHospitalId = selectedHospital?._id || selectedHospital?.id || null;
 
   // Default center (India)
   const defaultCenter = [20.5937, 78.9629];
@@ -166,9 +168,6 @@ export function HospitalMap({
       liveEtaMins = Math.max(1, Math.round((liveDistance / 35) * 60));
     }
   }
-
-  const markerRefs = useRef({});
-  const selectedHospitalId = selectedHospital?._id || selectedHospital?.id || null;
 
   return (
     <div className="relative z-0 isolate h-[340px] sm:h-[450px] rounded-xl overflow-hidden border shadow-md">
