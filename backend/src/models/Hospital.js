@@ -34,6 +34,7 @@ const HospitalSchema = new Schema({
   licenseNumber: { type: String, default: '' },
   email: { type: String, trim: true },
   adminEmail: { type: String, trim: true },
+  googleMapsUrl: { type: String, default: '' },
   isVerified: { type: Boolean, default: false, index: true },
   isSimulated: { type: Boolean, default: true, index: true },
   registrationCertificate: { type: String, default: '' },

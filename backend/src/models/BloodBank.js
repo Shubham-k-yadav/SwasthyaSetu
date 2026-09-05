@@ -13,6 +13,7 @@ const BloodBankSchema = new Schema({
   isBlockchainVerified: { type: Boolean, default: false },
   isSimulated: { type: Boolean, default: false, index: true },
   linkedBloodStockId: { type: Schema.Types.ObjectId, ref: 'BloodStock' },
+  googleMapsUrl: { type: String, default: '' },
   coordinates: {
     lat: { type: Number, default: 28.6139 },
     lng: { type: Number, default: 77.2090 }

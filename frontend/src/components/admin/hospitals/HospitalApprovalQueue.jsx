@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, CheckCircle, XCircle, Eye, Building2 } from 'lucide-react';
+import { Shield, CheckCircle, XCircle, Eye, Building2, MapPin, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -146,14 +146,37 @@ export function HospitalApprovalQueue({
                       📍 {selectedHospital.address}, {selectedHospital.city}, {selectedHospital.state || 'India'}
                     </span>
                   </div>
-                  {selectedHospital.coordinates && (
-                    <div className="sm:col-span-2">
-                      <span className="text-xs text-muted-foreground block font-medium">GPS Coordinates</span>
-                      <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                        Lat: {selectedHospital.coordinates.lat}, Lng: {selectedHospital.coordinates.lng}
+                  <div className="sm:col-span-2 p-3 rounded-xl border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-red-600" />
+                        Exact Google Maps Location & Verification Node:
                       </span>
+                      {selectedHospital.coordinates && (
+                        <span className="font-mono text-xs text-muted-foreground block">
+                          Lat: {selectedHospital.coordinates.lat}, Lng: {selectedHospital.coordinates.lng}
+                        </span>
+                      )}
                     </div>
-                  )}
+                    {(() => {
+                      const mapUrl = selectedHospital.googleMapsUrl || (
+                        selectedHospital.coordinates?.lat && selectedHospital.coordinates?.lng
+                          ? `https://www.google.com/maps/search/?api=1&query=${selectedHospital.coordinates.lat},${selectedHospital.coordinates.lng}`
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((selectedHospital.name || '') + ' ' + (selectedHospital.city || ''))}`
+                      );
+                      return (
+                        <a
+                          href={mapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs transition-colors shrink-0"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Open in Google Maps ↗
+                        </a>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Bed Capacity Infrastructure */}

@@ -41,10 +41,28 @@ export const registerHospitalRequest = async (req, res) => {
 
     const regNo = (licenseNumber || registrationNumber || '').trim() || `HFR-${Date.now().toString().slice(-6)}`;
 
-    // Automatically geocode full hospital address or city via OpenStreetMap
+    // Parse Google Maps location link if provided
+    const rawMapUrl = (req.body.googleMapsUrl || req.body.mapLink || '').trim();
+    let extractedLat = null;
+    let extractedLng = null;
+    if (rawMapUrl) {
+      const match = rawMapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
+                    rawMapUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                    rawMapUrl.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) {
+        extractedLat = Number(match[1]);
+        extractedLng = Number(match[2]);
+      }
+    }
+
+    // Automatically geocode full hospital address or city via OpenStreetMap if coordinates not passed
     const coordinates = (req.body.lat && req.body.lng) 
       ? { lat: Number(req.body.lat), lng: Number(req.body.lng) } 
-      : await geocodeFullAddress(address, city, state);
+      : (extractedLat && extractedLng)
+        ? { lat: extractedLat, lng: extractedLng }
+        : await geocodeFullAddress(address, city, state);
+
+    const finalGoogleMapsUrl = rawMapUrl || `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lng}`;
 
     const parsedSpecialties = Array.isArray(specialties) 
       ? specialties.filter(s => typeof s === 'string' && s.trim().length > 0)
@@ -64,6 +82,7 @@ export const registerHospitalRequest = async (req, res) => {
       phone: phone || '+91-9876543210',
       email: cleanEmail,
       adminEmail: cleanEmail,
+      googleMapsUrl: finalGoogleMapsUrl,
       isVerified: false,
       isSimulated: false,
       beds: {
@@ -130,12 +149,17 @@ export const getPendingQueue = async (req, res) => {
         }
       }
 
+      const googleMapsUrl = hosp.googleMapsUrl || (hosp.coordinates?.lat && hosp.coordinates?.lng
+        ? `https://www.google.com/maps/search/?api=1&query=${hosp.coordinates.lat},${hosp.coordinates.lng}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((hosp.name || '') + ' ' + (hosp.address || ''))}`);
+
       return {
         ...hosp,
         email: adminEmail || hosp.email || 'N/A',
         adminEmail: adminEmail || hosp.adminEmail || 'N/A',
         registrationNumber: hosp.registrationNumber || hosp.licenseNumber || hosp.registrationCertificate || 'HFR-SYSTEM-PENDING',
-        licenseNumber: hosp.licenseNumber || hosp.registrationNumber || 'HFR-SYSTEM-PENDING'
+        licenseNumber: hosp.licenseNumber || hosp.registrationNumber || 'HFR-SYSTEM-PENDING',
+        googleMapsUrl
       };
     }));
 

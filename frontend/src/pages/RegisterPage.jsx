@@ -88,6 +88,7 @@ export default function RegisterPage() {
     ventilatorBeds: '',
     emergencyServices: true,
     specialties: ['General Medicine', 'Emergency & Trauma'],
+    googleMapsUrl: '',
     lat: '',
     lng: ''
   });
@@ -116,6 +117,7 @@ export default function RegisterPage() {
       'O+': '25',
       'O-': '5'
     },
+    googleMapsUrl: '',
     lat: '',
     lng: ''
   });
@@ -134,28 +136,53 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    googleMapsUrl: '',
     lat: '',
     lng: ''
   });
 
-  // ── GPS AUTO-DETECT HANDLER ──────────────────────────────────────────────────
+  // ── GPS AUTO-DETECT & MAP URL HANDLER ─────────────────────────────────────────
   const handleDetectGPS = (setter) => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser.');
       return;
     }
-    toast.info('Detecting precise GPS coordinates...');
+    toast.info('Detecting precise live GPS coordinates...');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const lat = pos.coords.latitude.toFixed(4);
+        const lng = pos.coords.longitude.toFixed(4);
+        const autoLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
         setter(prev => ({
           ...prev,
-          lat: pos.coords.latitude.toFixed(4),
-          lng: pos.coords.longitude.toFixed(4)
+          lat,
+          lng,
+          googleMapsUrl: prev.googleMapsUrl || autoLink
         }));
-        toast.success(`GPS Pin locked! (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+        toast.success(`Live GPS Pin locked & Google Maps link generated! (${lat}, ${lng})`);
       },
-      () => toast.error('Unable to fetch GPS. Address will be geocoded automatically on submit.')
+      () => toast.error('Unable to fetch GPS. You can paste a Google Maps link directly below.')
     );
+  };
+
+  const handleMapUrlChange = (url, setter) => {
+    let lat = null;
+    let lng = null;
+    if (url) {
+      const match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
+                    url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                    url.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) {
+        lat = match[1];
+        lng = match[2];
+        toast.success(`Exact coordinates extracted from Google Maps: (${lat}, ${lng})`);
+      }
+    }
+    setter(prev => ({
+      ...prev,
+      googleMapsUrl: url,
+      ...(lat && lng ? { lat, lng } : {})
+    }));
   };
 
   // ── HOSPITAL SUBMISSION ─────────────────────────────────────────────────────
@@ -236,6 +263,7 @@ export default function RegisterPage() {
         email: bloodBankForm.email.trim().toLowerCase(),
         password: bloodBankForm.password,
         initialStock: bloodBankForm.stock,
+        googleMapsUrl: bloodBankForm.googleMapsUrl,
         lat: bloodBankForm.lat,
         lng: bloodBankForm.lng
       };
@@ -284,6 +312,7 @@ export default function RegisterPage() {
         city: ambulanceForm.city.trim() || 'Prayagraj',
         email: ambulanceForm.email.trim().toLowerCase(),
         password: ambulanceForm.password,
+        googleMapsUrl: ambulanceForm.googleMapsUrl,
         currentLat: ambulanceForm.lat ? Number(ambulanceForm.lat) : 25.4316,
         currentLng: ambulanceForm.lng ? Number(ambulanceForm.lng) : 81.8520
       };
@@ -527,27 +556,44 @@ export default function RegisterPage() {
                             </div>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs font-bold">Full Physical Street Address</Label>
-                              <button
-                                type="button"
-                                onClick={() => handleDetectGPS(setHospitalForm)}
-                                className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
-                              >
-                                <MapPin className="h-3.5 w-3.5" /> Auto-Detect Hospital GPS Location
-                              </button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-bold">Physical Street Address / Landmark</Label>
+                              <Input
+                                placeholder="e.g. Pahalwan Chauraha, Kareli, Prayagraj 211016"
+                                value={hospitalForm.address}
+                                onChange={(e) => setHospitalForm({ ...hospitalForm, address: e.target.value })}
+                              />
                             </div>
-                            <Input
-                              placeholder="e.g. Pahalwan Chauraha, Kareli, Prayagraj 211016"
-                              value={hospitalForm.address}
-                              onChange={(e) => setHospitalForm({ ...hospitalForm, address: e.target.value })}
-                            />
-                            {hospitalForm.lat && hospitalForm.lng && (
-                              <p className="text-xs text-emerald-600 font-bold flex items-center gap-1 pt-0.5">
-                                ✓ GPS Node Attached: {hospitalForm.lat}, {hospitalForm.lng}
-                              </p>
-                            )}
+
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5 text-red-600" /> Google Maps Link (or Live Pin)
+                                </Label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDetectGPS(setHospitalForm)}
+                                  className="text-[11px] font-bold text-red-600 hover:underline flex items-center gap-1"
+                                >
+                                  <MapPin className="h-3 w-3" /> Auto-Detect GPS
+                                </button>
+                              </div>
+                              <Input
+                                placeholder="e.g. https://maps.app.goo.gl/... or paste Google Maps URL"
+                                value={hospitalForm.googleMapsUrl}
+                                onChange={(e) => handleMapUrlChange(e.target.value, setHospitalForm)}
+                              />
+                              {hospitalForm.lat && hospitalForm.lng ? (
+                                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 pt-0.5">
+                                  ✓ Verified GPS Node: Lat {hospitalForm.lat}, Lng {hospitalForm.lng}
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Paste your Google Maps location link or click Auto-Detect.
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -821,27 +867,44 @@ export default function RegisterPage() {
                             </div>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
                               <Label className="text-xs font-bold">Physical Address / Center Location</Label>
-                              <button
-                                type="button"
-                                onClick={() => handleDetectGPS(setBloodBankForm)}
-                                className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
-                              >
-                                <MapPin className="h-3.5 w-3.5" /> Auto-Detect GPS Location
-                              </button>
+                              <Input
+                                placeholder="e.g. Civil Hospital Complex, Hazratganj, Lucknow"
+                                value={bloodBankForm.address}
+                                onChange={(e) => setBloodBankForm({ ...bloodBankForm, address: e.target.value })}
+                              />
                             </div>
-                            <Input
-                              placeholder="e.g. Civil Hospital Complex, Hazratganj, Lucknow"
-                              value={bloodBankForm.address}
-                              onChange={(e) => setBloodBankForm({ ...bloodBankForm, address: e.target.value })}
-                            />
-                            {bloodBankForm.lat && bloodBankForm.lng && (
-                              <p className="text-xs text-emerald-600 font-bold flex items-center gap-1 pt-0.5">
-                                ✓ GPS Node Attached: {bloodBankForm.lat}, {bloodBankForm.lng}
-                              </p>
-                            )}
+
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5 text-red-600" /> Google Maps Link (or Live Pin)
+                                </Label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDetectGPS(setBloodBankForm)}
+                                  className="text-[11px] font-bold text-red-600 hover:underline flex items-center gap-1"
+                                >
+                                  <MapPin className="h-3 w-3" /> Auto-Detect GPS
+                                </button>
+                              </div>
+                              <Input
+                                placeholder="e.g. https://maps.app.goo.gl/... or paste Google Maps URL"
+                                value={bloodBankForm.googleMapsUrl}
+                                onChange={(e) => handleMapUrlChange(e.target.value, setBloodBankForm)}
+                              />
+                              {bloodBankForm.lat && bloodBankForm.lng ? (
+                                <p className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 pt-0.5">
+                                  ✓ Verified GPS Node: Lat {bloodBankForm.lat}, Lng {bloodBankForm.lng}
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Paste your Google Maps location link or click Auto-Detect.
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
 

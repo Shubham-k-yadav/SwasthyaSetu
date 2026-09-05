@@ -53,6 +53,21 @@ router.post('/register-request', async (req, res) => {
 
     const regNo = licenseNumber || `BB-LIC-${Date.now().toString().slice(-6)}`;
 
+    // Parse Google Maps location link or coordinates
+    const rawMapUrl = (req.body.googleMapsUrl || req.body.mapLink || '').trim();
+    let lat = req.body.lat ? Number(req.body.lat) : 25.4316;
+    let lng = req.body.lng ? Number(req.body.lng) : 81.8520;
+    if (rawMapUrl) {
+      const match = rawMapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
+                    rawMapUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                    rawMapUrl.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (match) {
+        lat = Number(match[1]);
+        lng = Number(match[2]);
+      }
+    }
+    const finalMapUrl = rawMapUrl || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
     // Create BloodStock document for this blood bank
     const newStock = new BloodStock({
       city,
@@ -81,11 +96,12 @@ router.post('/register-request', async (req, res) => {
       state,
       phone: phone || '+91-9876543210',
       adminEmail: email,
+      googleMapsUrl: finalMapUrl,
       isVerified: false,
       isBlockchainVerified: false,
       isSimulated: false,
       linkedBloodStockId: newStock._id,
-      coordinates: { lat: 28.6139, lng: 77.2090 },
+      coordinates: { lat, lng },
       lastUpdated: new Date()
     });
 
@@ -130,7 +146,14 @@ router.get('/pending/queue', authenticate, authorize('superadmin'), async (req, 
       .sort({ createdAt: -1 })
       .lean();
 
-    res.json({ queue: pending });
+    const enriched = pending.map(b => ({
+      ...b,
+      googleMapsUrl: b.googleMapsUrl || (b.coordinates?.lat && b.coordinates?.lng
+        ? `https://www.google.com/maps/search/?api=1&query=${b.coordinates.lat},${b.coordinates.lng}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((b.name || '') + ' ' + (b.address || ''))}`)
+    }));
+
+    res.json({ queue: enriched });
   } catch (error) {
     console.error('Error fetching pending blood bank queue:', error);
     res.status(500).json({ error: 'Failed to fetch pending blood banks' });

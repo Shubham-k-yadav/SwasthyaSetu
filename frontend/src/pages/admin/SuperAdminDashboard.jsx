@@ -13,7 +13,9 @@ import {
   RefreshCw,
   Siren,
   ShieldCheck,
-  Eye
+  Eye,
+  MapPin,
+  ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -337,10 +339,21 @@ export default function SuperAdminDashboard() {
                       </div>
                       <p className="text-xs text-muted-foreground">📍 {bb.city}, {bb.state || 'India'} | 🔑 {bb.adminEmail} | 📜 License: {bb.licenseNumber}</p>
                     </div>
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 shrink-0" onClick={() => handleVerifyBloodBank(bb._id || bb.id)}>
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                      Verify & Approve
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={bb.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bb.name + ' ' + bb.city)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs border rounded-lg hover:bg-muted font-medium text-muted-foreground hover:text-foreground h-8"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Google Maps
+                      </a>
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 shrink-0" onClick={() => handleVerifyBloodBank(bb._id || bb.id)}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                        Verify & Approve
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -365,10 +378,21 @@ export default function SuperAdminDashboard() {
                       </div>
                       <p className="text-xs text-muted-foreground">Driver: {amb.driverName} | 📞 {amb.driverPhone} | Hospital: {amb.hospitalName || 'Independent Operator'}</p>
                     </div>
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 shrink-0" onClick={() => handleVerifyAmbulance(amb._id || amb.id)}>
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                      Verify & Generate Link
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${amb.currentLat || 25.4316},${amb.currentLng || 81.8520}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs border rounded-lg hover:bg-muted font-medium text-muted-foreground hover:text-foreground h-8"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Live GPS
+                      </a>
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 shrink-0" onClick={() => handleVerifyAmbulance(amb._id || amb.id)}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                        Verify & Generate Link
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -436,14 +460,37 @@ export default function SuperAdminDashboard() {
                       📍 {selectedHospitalForDetails.address}, {selectedHospitalForDetails.city}, {selectedHospitalForDetails.state || 'India'}
                     </span>
                   </div>
-                  {selectedHospitalForDetails.coordinates && (
-                    <div className="sm:col-span-2">
-                      <span className="text-xs text-muted-foreground block font-medium">GPS Coordinates (Live Map Node)</span>
-                      <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                        Lat: {selectedHospitalForDetails.coordinates.lat}, Lng: {selectedHospitalForDetails.coordinates.lng}
+                  <div className="sm:col-span-2 p-3 rounded-xl border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-red-600" />
+                        Exact Google Maps Location & Verification Node:
                       </span>
+                      {selectedHospitalForDetails.coordinates && (
+                        <span className="font-mono text-xs text-muted-foreground block">
+                          Lat: {selectedHospitalForDetails.coordinates.lat}, Lng: {selectedHospitalForDetails.coordinates.lng}
+                        </span>
+                      )}
                     </div>
-                  )}
+                    {(() => {
+                      const mapUrl = selectedHospitalForDetails.googleMapsUrl || (
+                        selectedHospitalForDetails.coordinates?.lat && selectedHospitalForDetails.coordinates?.lng
+                          ? `https://www.google.com/maps/search/?api=1&query=${selectedHospitalForDetails.coordinates.lat},${selectedHospitalForDetails.coordinates.lng}`
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedHospitalForDetails.name + ' ' + selectedHospitalForDetails.city)}`
+                      );
+                      return (
+                        <a
+                          href={mapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs transition-colors shrink-0"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Open in Google Maps ↗
+                        </a>
+                      );
+                    })()}
+                  </div>
                 </div>
 
                 {/* Bed Capacity Infrastructure */}
