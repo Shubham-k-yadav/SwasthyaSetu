@@ -35,10 +35,7 @@ router.get('/', async (req, res) => {
 
     const filter = {};
     if (includeUnverified !== 'true') {
-      filter.$or = [
-        { isVerified: true },
-        { isSimulated: true }
-      ];
+      filter.isVerified = true;
     }
     if (city) filter.city = new RegExp(city, 'i');
     if (state) filter.state = new RegExp(state, 'i');

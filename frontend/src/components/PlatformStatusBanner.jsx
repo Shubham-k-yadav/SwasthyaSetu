@@ -38,8 +38,8 @@ export function PlatformStatusBanner() {
     return null;
   }
 
-  const hospCount = Math.max(3, status?.verifiedHospitalsCount || 0);
-  const bloodCount = Math.max(1, status?.verifiedBloodBanksCount || 0);
+  const hospCount = status?.verifiedHospitalsCount || 0;
+  const bloodCount = status?.verifiedBloodBanksCount || 0;
 
   const handleDismiss = () => {
     isGloballyDismissed = true;
@@ -54,8 +54,14 @@ export function PlatformStatusBanner() {
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
           <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600 shrink-0" />
           <span className="truncate sm:whitespace-normal">
-            <strong className="font-bold text-red-600">{hospCount} Hospitals</strong> &{' '}
-            <strong className="font-bold text-red-600">{bloodCount} Blood Banks</strong> Live.
+            {hospCount > 0 || bloodCount > 0 ? (
+              <>
+                <strong className="font-bold text-red-600">{hospCount} Hospitals</strong> &{' '}
+                <strong className="font-bold text-red-600">{bloodCount} Blood Banks</strong> Live.
+              </>
+            ) : (
+              <strong className="font-bold text-red-600">National Healthcare Network Live.</strong>
+            )}
             <span className="hidden sm:inline"> Are you a hospital or blood bank?</span>
           </span>
         </div>

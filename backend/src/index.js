@@ -92,9 +92,6 @@ const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
-    if (mongoose.connection.readyState === 1) {
-      await autoSeedData();
-    }
     
     // Initialize Socket.io
     initializeSocket(httpServer);
