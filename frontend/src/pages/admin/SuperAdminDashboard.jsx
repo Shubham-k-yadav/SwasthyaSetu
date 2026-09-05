@@ -12,11 +12,20 @@ import {
   ArrowRight,
   RefreshCw,
   Siren,
-  ShieldCheck
+  ShieldCheck,
+  Eye
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -37,6 +46,7 @@ export default function SuperAdminDashboard() {
   const [pendingBloodBanks, setPendingBloodBanks] = useState([]);
   const [pendingAmbulances, setPendingAmbulances] = useState([]);
   const [pendingTab, setPendingTab] = useState('hospitals');
+  const [selectedHospitalForDetails, setSelectedHospitalForDetails] = useState(null);
 
   const fetchStatusAndQueues = async () => {
     try {
@@ -284,10 +294,25 @@ export default function SuperAdminDashboard() {
                       </div>
                       <p className="text-xs text-muted-foreground">📍 {h.city}, {h.state || 'India'} | 📞 {h.phone} | 🔑 {h.adminEmail || h.email}</p>
                     </div>
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 shrink-0" onClick={() => handleVerifyHospital(h._id || h.id)}>
-                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                      Verify & Approve
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-8 gap-1.5 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        onClick={() => setSelectedHospitalForDetails(h)}
+                      >
+                        <Eye className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 shrink-0"
+                        onClick={() => handleVerifyHospital(h._id || h.id)}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                        Verify & Approve
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -351,6 +376,164 @@ export default function SuperAdminDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Hospital Detailed Inspection Modal */}
+      <Dialog open={!!selectedHospitalForDetails} onOpenChange={(open) => !open && setSelectedHospitalForDetails(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedHospitalForDetails && (
+            <>
+              <DialogHeader className="border-b pb-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center text-red-600 shrink-0">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-xl font-bold">
+                        {selectedHospitalForDetails.name}
+                      </DialogTitle>
+                      <DialogDescription className="text-xs">
+                        Hospital Infrastructure & Verification Application Review
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30 capitalize font-bold">
+                    {selectedHospitalForDetails.verificationStatus || 'Pending'}
+                  </Badge>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2 text-sm">
+                {/* General Info Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">Facility Type</span>
+                    <span className="font-semibold capitalize text-foreground">
+                      {selectedHospitalForDetails.type || 'Private Hospital'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">Registration / License No.</span>
+                    <span className="font-mono font-bold text-foreground">
+                      {selectedHospitalForDetails.registrationNumber || selectedHospitalForDetails.licenseNumber || 'HFR-SYSTEM-PENDING'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">Contact Phone</span>
+                    <span className="font-semibold text-foreground">
+                      📞 {selectedHospitalForDetails.phone || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">Admin / Official Email</span>
+                    <span className="font-semibold text-foreground">
+                      ✉️ {selectedHospitalForDetails.adminEmail || selectedHospitalForDetails.email || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-xs text-muted-foreground block font-medium">Complete Physical Address</span>
+                    <span className="text-foreground font-medium">
+                      📍 {selectedHospitalForDetails.address}, {selectedHospitalForDetails.city}, {selectedHospitalForDetails.state || 'India'}
+                    </span>
+                  </div>
+                  {selectedHospitalForDetails.coordinates && (
+                    <div className="sm:col-span-2">
+                      <span className="text-xs text-muted-foreground block font-medium">GPS Coordinates (Live Map Node)</span>
+                      <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                        Lat: {selectedHospitalForDetails.coordinates.lat}, Lng: {selectedHospitalForDetails.coordinates.lng}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bed Capacity Infrastructure */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                    Declared Bed Capacity Breakdown
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 rounded-xl border bg-card text-center shadow-xs">
+                      <span className="text-xs text-muted-foreground block font-medium">General Beds</span>
+                      <span className="text-2xl font-black text-blue-600 block mt-0.5">
+                        {selectedHospitalForDetails.beds?.general?.total || 0}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">
+                        {selectedHospitalForDetails.beds?.general?.available || 0} Available
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl border bg-card text-center shadow-xs">
+                      <span className="text-xs text-muted-foreground block font-medium">ICU Beds</span>
+                      <span className="text-2xl font-black text-red-600 block mt-0.5">
+                        {selectedHospitalForDetails.beds?.icu?.total || 0}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">
+                        {selectedHospitalForDetails.beds?.icu?.available || 0} Available
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl border bg-card text-center shadow-xs">
+                      <span className="text-xs text-muted-foreground block font-medium">Ventilators</span>
+                      <span className="text-2xl font-black text-amber-600 block mt-0.5">
+                        {selectedHospitalForDetails.beds?.ventilator?.total || 0}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">
+                        {selectedHospitalForDetails.beds?.ventilator?.available || 0} Available
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Specialties */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                    Departments & Medical Specialties
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.isArray(selectedHospitalForDetails.specialties) && selectedHospitalForDetails.specialties.length > 0 ? (
+                      selectedHospitalForDetails.specialties.map((spec, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs font-medium px-2.5 py-1">
+                          {spec}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">General Medical Care, Emergency Support</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Emergency Services */}
+                <div className="flex items-center justify-between p-3 rounded-xl border bg-card text-xs">
+                  <span className="font-semibold text-foreground">24/7 Emergency & Critical Care Status</span>
+                  <Badge variant="outline" className={cn(
+                    "font-bold text-[10px] px-2 py-0.5",
+                    selectedHospitalForDetails.emergencyServices !== false
+                      ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/30"
+                      : "text-red-600 bg-red-50 dark:bg-red-950/40 border-red-500/30"
+                  )}>
+                    {selectedHospitalForDetails.emergencyServices !== false ? '✓ 24/7 Emergency Enabled' : 'Disabled'}
+                  </Badge>
+                </div>
+              </div>
+
+              <DialogFooter className="border-t pt-4 flex sm:justify-between items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedHospitalForDetails(null)}>
+                  Close
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5"
+                  onClick={() => {
+                    handleVerifyHospital(selectedHospitalForDetails._id || selectedHospitalForDetails.id);
+                    setSelectedHospitalForDetails(null);
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Verify & Approve Hospital
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
