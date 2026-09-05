@@ -1,143 +1,27 @@
-
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
-import {
-  Building2,
-  Plus,
-  Search,
-  Filter,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye,
-  MapPin,
-
-  CheckCircle,
-  XCircle,
-  Shield,
-  Bed,
-} from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-
-
-
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-const facilityOptions = [
-  'Emergency',
-  'ICU',
-  'Trauma Center',
-  'Blood Bank',
-  'Cardiac Care',
-  'Neurology',
-  'Pediatrics',
-  'Oncology',
-  'Maternity',
-  'Dialysis',
-];
+import {
+  HospitalStatsCards,
+  HospitalFiltersBar,
+  HospitalApprovalQueue,
+  HospitalTableView,
+  EditBedsModal,
+  AddHospitalModal
+} from '@/components/admin/hospitals';
 
 const INDIAN_STATES_AND_UTS = [
-  'Andaman & Nicobar',
-  'Andhra Pradesh',
-  'Arunachal Pradesh',
-  'Assam',
-  'Bihar',
-  'Chandigarh',
-  'Chhattisgarh',
-  'Dadra & Nagar Haveli',
-  'Delhi',
-  'Goa',
-  'Gujarat',
-  'Haryana',
-  'Himachal Pradesh',
-  'Jammu & Kashmir',
-  'Jharkhand',
-  'Karnataka',
-  'Kerala',
-  'Ladakh',
-  'Lakshadweep',
-  'Madhya Pradesh',
-  'Maharashtra',
-  'Manipur',
-  'Meghalaya',
-  'Mizoram',
-  'Nagaland',
-  'Odisha',
-  'Puducherry',
-  'Punjab',
-  'Rajasthan',
-  'Sikkim',
-  'Tamil Nadu',
-  'Telangana',
-  'Tripura',
-  'Uttar Pradesh',
-  'Uttarakhand',
-  'West Bengal'
+  'Andaman & Nicobar', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+  'Chandigarh', 'Chhattisgarh', 'Dadra & Nagar Haveli', 'Delhi', 'Goa',
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu & Kashmir', 'Jharkhand',
+  'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh',
+  'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
+  'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
 ];
 
 export default function HospitalsAdminPage() {
@@ -149,8 +33,9 @@ export default function HospitalsAdminPage() {
   const [fetchError, setFetchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedHospital, setSelectedHospital] = useState(null);
 
   // Edit Beds Modal State
   const [isEditBedsOpen, setIsEditBedsOpen] = useState(false);
@@ -201,9 +86,7 @@ export default function HospitalsAdminPage() {
     setFetchError(null);
     try {
       const data = await api.hospitals.getAll({ includeUnverified: true, limit: 500 });
-      // Normalize API response — support both {hospitals:[]} and {data:[]}
       const list = data?.hospitals || data?.data || data || [];
-      // Map backend fields to UI-expected shape
       const normalized = list.map((h) => {
         let typeVal = h.type || h.hospitalType || h.category;
         if (!typeVal) {
@@ -239,9 +122,6 @@ export default function HospitalsAdminPage() {
     }
   };
 
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [stateFilter, setStateFilter] = useState('all');
-
   useEffect(() => {
     fetchHospitals();
   }, []);
@@ -254,7 +134,6 @@ export default function HospitalsAdminPage() {
   ).sort();
 
   const filteredHospitals = hospitals.filter((hospital) => {
-    // Non-superadmin hospital admins can ONLY see and manage their assigned hospital
     if (!isSuperAdmin) {
       const userHospId = user?.hospitalId ? String(user.hospitalId._id || user.hospitalId) : null;
       const currentHospId = String(hospital.id || hospital._id);
@@ -262,7 +141,6 @@ export default function HospitalsAdminPage() {
       if (userHospId) {
         if (currentHospId !== userHospId) return false;
       } else {
-        // Match all hospital name keywords from user name
         const keywords = (user?.name || '')
           .toLowerCase()
           .replace('admin', '')
@@ -306,22 +184,18 @@ export default function HospitalsAdminPage() {
 
       if (hospState.includes(targetState) || targetState.includes(hospState)) return true;
 
-      // Smart Uttar Pradesh / UP Mapping
       if (targetState.includes('uttar pradesh') || targetState === 'up') {
         const upKeywords = ['up', 'u.p.', 'uttar pradesh', 'prayagraj', 'allahabad', 'lucknow', 'kanpur', 'varanasi', 'noida', 'ghaziabad', 'agra', 'gorakhpur', 'bareilly', 'aligarh', 'meerut', 'jhansi', 'mathura', 'ayodhya', 'faizabad', 'mirzapur', 'ballia', 'jaunpur', 'sultanpur', 'azamgarh'];
         return upKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
       }
-      // Smart Madhya Pradesh / MP Mapping
       if (targetState.includes('madhya pradesh') || targetState === 'mp') {
         const mpKeywords = ['mp', 'm.p.', 'madhya pradesh', 'bhopal', 'indore', 'gwalior', 'jabalpur', 'rewai', 'ujjain'];
         return mpKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
       }
-      // Smart Chhattisgarh / CG Mapping
       if (targetState.includes('chhattisgarh') || targetState === 'cg') {
         const cgKeywords = ['cg', 'c.g.', 'chhattisgarh', 'raipur', 'bilaspur', 'durg', 'bhilai', 'korba'];
         return cgKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
       }
-      // Smart Maharashtra / MH Mapping
       if (targetState.includes('maharashtra') || targetState === 'mh') {
         const mhKeywords = ['mh', 'maharashtra', 'mumbai', 'pune', 'nagpur', 'thane', 'nashik'];
         return mhKeywords.some(k => hospState.includes(k) || hospCity.includes(k) || hospAddress.includes(k));
@@ -333,20 +207,19 @@ export default function HospitalsAdminPage() {
     return matchesSearch && matchesType && matchesStatus && matchesState;
   });
 
-  const formatTime = (date) => {
-    const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+  const handleApproveHospital = (hospital) => {
+    setHospitals(prev => prev.map(h => {
+      if ((h.id || h._id) === (hospital.id || hospital._id)) {
+        return { ...h, verified: true, isVerified: true, verificationStatus: 'approved' };
+      }
+      return h;
+    }));
+    toast.success(`Approved ${hospital.name}!`);
   };
 
-  const getOccupancyColor = (available, total) => {
-    const rate = (total - available) / total;
-    if (rate >= 0.9) return 'text-red-600 bg-red-50';
-    if (rate >= 0.7) return 'text-amber-600 bg-amber-50';
-    return 'text-emerald-600 bg-emerald-50';
+  const handleRejectHospital = (hospital) => {
+    setHospitals(prev => prev.filter(h => (h.id || h._id) !== (hospital.id || hospital._id)));
+    toast.info(`Rejected ${hospital.name}`);
   };
 
   return (
@@ -365,96 +238,10 @@ export default function HospitalsAdminPage() {
           </p>
         </div>
         {isSuperAdmin && (
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Hospital
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Hospital</DialogTitle>
-              <DialogDescription>
-                Register a new hospital in the SwasthyaSetu network
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Hospital Name</Label>
-                  <Input id="name" placeholder="Enter hospital name" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="government">Government</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                      <SelectItem value="charitable">Charitable</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea id="address" placeholder="Full address" />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input id="city" placeholder="City" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Input id="state" placeholder="State" />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" placeholder="+91-XX-XXXXXXXX" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="contact@hospital.com" />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="totalBeds">Total Beds</Label>
-                  <Input id="totalBeds" type="number" placeholder="0" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="icuBeds">ICU Beds</Label>
-                  <Input id="icuBeds" type="number" placeholder="0" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Facilities</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {facilityOptions.map((facility) => (
-                    <div key={facility} className="flex items-center space-x-2">
-                      <Checkbox id={facility} />
-                      <Label htmlFor={facility} className="text-sm font-normal">
-                        {facility}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setIsAddDialogOpen(false)}>Add Hospital</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Hospital
+          </Button>
         )}
       </div>
 
@@ -475,540 +262,52 @@ export default function HospitalsAdminPage() {
       )}
 
       {/* Pending Approval Queue Card */}
-      {!isLoading && isSuperAdmin && hospitals.some(h => !h.verified && !h.isVerified) && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-amber-600 animate-pulse" />
-                <h2 className="text-lg font-bold text-amber-900 dark:text-amber-300">
-                  Unverified Hospital Approval Queue
-                </h2>
-                <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40">
-                  {hospitals.filter(h => !h.verified && !h.isVerified).length} Pending Review
-                </Badge>
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {hospitals.filter(h => !h.verified && !h.isVerified).map((hospital) => (
-                <div key={hospital.id || hospital._id} className="p-4 rounded-lg border bg-card flex flex-col justify-between gap-3 shadow-xs">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-semibold text-base">{hospital.name}</h3>
-                      <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
-                        Pending Certificate
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{hospital.address}, {hospital.city}</p>
-                    <div className="mt-2 text-xs bg-muted p-2 rounded-md font-mono text-muted-foreground">
-                      📄 Document: {hospital.registrationCertificate || 'REG-CERT-2026-PENDING.pdf'}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 justify-end pt-2 border-t">
-                    <Button 
-                      size="sm" 
-                      variant="destructive"
-                      onClick={() => {
-                        setHospitals(prev => prev.filter(h => (h.id || h._id) !== (hospital.id || hospital._id)));
-                      }}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Reject
-                    </Button>
-                    <Button 
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => {
-                        setHospitals(prev => prev.map(h => {
-                          if ((h.id || h._id) === (hospital.id || hospital._id)) {
-                            return { ...h, verified: true, isVerified: true, verificationStatus: 'approved' };
-                          }
-                          return h;
-                        }));
-                      }}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Approve & Verify
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {!isLoading && isSuperAdmin && (
+        <HospitalApprovalQueue
+          hospitals={hospitals}
+          onApprove={handleApproveHospital}
+          onReject={handleRejectHospital}
+        />
       )}
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-primary/10">
-                <Building2 className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{hospitals.length}</p>
-                <p className="text-sm text-muted-foreground">Total Hospitals</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-emerald-500/10">
-                <CheckCircle className="h-6 w-6 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {hospitals.filter((h) => h.verified).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Verified</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-purple-500/10">
-                <Shield className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {hospitals.filter((h) => h.blockchainVerified).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Blockchain Verified</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-amber-500/10">
-                <XCircle className="h-6 w-6 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {hospitals.filter((h) => h.availableBeds === 0).length}
-                </p>
-                <p className="text-sm text-muted-foreground">At Full Capacity</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats Cards */}
+      <HospitalStatsCards hospitals={hospitals} />
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search hospitals by name, city, or state..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Hospital Types</SelectItem>
-                <SelectItem value="government">Government</SelectItem>
-                <SelectItem value="private">Private</SelectItem>
-                <SelectItem value="charitable">Charitable</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Shield className="h-4 w-4 mr-2 text-emerald-600" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="verified">Verified Only</SelectItem>
-                <SelectItem value="pending">Pending Review</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* Filters Bar */}
+      <HospitalFiltersBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        stateFilter={stateFilter}
+        setStateFilter={setStateFilter}
+        availableStates={availableStates}
+      />
 
-            <Select value={stateFilter} onValueChange={setStateFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <MapPin className="h-4 w-4 mr-2 text-blue-600" />
-                <SelectValue placeholder="Filter by State" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All States</SelectItem>
-                {availableStates.map((st) => (
-                  <SelectItem key={st} value={st.toLowerCase()}>
-                    {st}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {/* Mobile Card View */}
-          <div className="block md:hidden">
-            <div className="divide-y">
-              {filteredHospitals.map((hospital) => (
-                <div key={hospital.id} className="p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          'p-2 rounded-lg',
-                          hospital.type === 'government'
-                            ? 'bg-blue-100'
-                            : hospital.type === 'private'
-                              ? 'bg-purple-100'
-                              : 'bg-amber-100'
-                        )}
-                      >
-                        <Building2
-                          className={cn(
-                            'h-4 w-4',
-                            hospital.type === 'government'
-                              ? 'text-blue-600'
-                              : hospital.type === 'private'
-                                ? 'text-purple-600'
-                                : 'text-amber-600'
-                          )}
-                        />
-                      </div>
-                      <div>
-                        <p className="font-medium">{hospital.name}</p>
-                        <Badge variant="secondary" className="mt-1 capitalize text-xs">
-                          {hospital.type}
-                        </Badge>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Location</p>
-                      <p className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {hospital.city}, {hospital.state}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Contact</p>
-                      <p>{hospital.phone}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">General Beds</p>
-                      <div
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium',
-                          getOccupancyColor(hospital.availableBeds, hospital.totalBeds)
-                        )}
-                      >
-                        {hospital.availableBeds}/{hospital.totalBeds}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">ICU Beds</p>
-                      <div
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium',
-                          getOccupancyColor(hospital.icuAvailable, hospital.icuBeds)
-                        )}
-                      >
-                        {hospital.icuAvailable}/{hospital.icuBeds}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Status</p>
-                      <div className="flex flex-col gap-1">
-                        {hospital.verified && (
-                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-xs">
-                            Verified
-                          </Badge>
-                        )}
-                        {hospital.blockchainVerified && (
-                          <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
-                            <Shield className="h-3 w-3 mr-1" />
-                            Chain
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Last updated {formatTime(hospital.lastUpdated)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Desktop Table View */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Hospital</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Beds</TableHead>
-                  <TableHead>ICU</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredHospitals.map((hospital) => (
-                  <TableRow key={hospital.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={cn(
-                            'p-2 rounded-lg',
-                            hospital.type === 'government'
-                              ? 'bg-blue-100'
-                              : hospital.type === 'private'
-                                ? 'bg-purple-100'
-                                : 'bg-amber-100'
-                          )}
-                        >
-                          <Building2
-                            className={cn(
-                              'h-4 w-4',
-                              hospital.type === 'government'
-                                ? 'text-blue-600'
-                                : hospital.type === 'private'
-                                ? 'text-purple-600'
-                                : 'text-amber-600'
-                            )}
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium">{hospital.name}</p>
-                          <Badge variant="secondary" className="mt-1 capitalize text-xs">
-                            {hospital.type}
-                          </Badge>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        {hospital.city}, {hospital.state}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium',
-                          getOccupancyColor(hospital.availableBeds, hospital.totalBeds)
-                        )}
-                      >
-                        {hospital.availableBeds}/{hospital.totalBeds}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium',
-                          getOccupancyColor(hospital.icuAvailable, hospital.icuBeds)
-                        )}
-                      >
-                        {hospital.icuAvailable}/{hospital.icuBeds}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {hospital.verified && (
-                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-                            Verified
-                          </Badge>
-                        )}
-                        {hospital.blockchainVerified && (
-                          <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                            <Shield className="h-3 w-3 mr-1" />
-                            Chain
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatTime(hospital.lastUpdated)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {!isSuperAdmin && (
-                          <Button size="sm" onClick={() => handleOpenEditBeds(hospital)} className="gap-1.5 bg-primary hover:bg-primary/90 text-xs">
-                            <Bed className="h-3.5 w-3.5" />
-                            Update Beds
-                          </Button>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {!isSuperAdmin && (
-                              <DropdownMenuItem onClick={() => handleOpenEditBeds(hospital)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Update Bed Stock
-                              </DropdownMenuItem>
-                            )}
-                            {isSuperAdmin && (
-                              <DropdownMenuItem className="text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Hospital
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Table / List View */}
+      <HospitalTableView
+        filteredHospitals={filteredHospitals}
+        isSuperAdmin={isSuperAdmin}
+        onOpenEditBeds={handleOpenEditBeds}
+      />
 
       {/* Edit Beds Dialog Modal */}
-      <Dialog open={isEditBedsOpen} onOpenChange={setIsEditBedsOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Bed className="h-5 w-5 text-primary" />
-              Update Bed Availability
-            </DialogTitle>
-            <DialogDescription>
-              {editingHospital ? editingHospital.name : 'Hospital Bed Management'} ({editingHospital?.city})
-            </DialogDescription>
-          </DialogHeader>
+      <EditBedsModal
+        open={isEditBedsOpen}
+        onOpenChange={setIsEditBedsOpen}
+        editingHospital={editingHospital}
+        bedFormData={bedFormData}
+        setBedFormData={setBedFormData}
+        onSave={handleSaveBeds}
+      />
 
-          <div className="grid gap-4 py-3">
-            {/* General Beds */}
-            <div className="p-3 border rounded-lg bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200">
-              <p className="font-semibold text-sm text-emerald-900 dark:text-emerald-300 mb-2">🛏️ General Ward Beds</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Available Beds</Label>
-                  <Input
-                    type="number"
-                    value={bedFormData.generalAvail}
-                    onChange={(e) => setBedFormData(prev => ({ ...prev, generalAvail: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Total Capacity</Label>
-                  <Input
-                    type="number"
-                    value={bedFormData.generalTotal}
-                    onChange={(e) => setBedFormData(prev => ({ ...prev, generalTotal: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* ICU Beds */}
-            <div className="p-3 border rounded-lg bg-amber-50/50 dark:bg-amber-950/10 border-amber-200">
-              <p className="font-semibold text-sm text-amber-900 dark:text-amber-300 mb-2">🤍 ICU Beds</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Available ICU Beds</Label>
-                  <Input
-                    type="number"
-                    value={bedFormData.icuAvail}
-                    onChange={(e) => setBedFormData(prev => ({ ...prev, icuAvail: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Total ICU Capacity</Label>
-                  <Input
-                    type="number"
-                    value={bedFormData.icuTotal}
-                    onChange={(e) => setBedFormData(prev => ({ ...prev, icuTotal: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Ventilator Beds */}
-            <div className="p-3 border rounded-lg bg-blue-50/50 dark:bg-blue-950/10 border-blue-200">
-              <p className="font-semibold text-sm text-blue-900 dark:text-blue-300 mb-2">🌬️ Ventilator Beds</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Available Ventilator Beds</Label>
-                  <Input
-                    type="number"
-                    value={bedFormData.ventAvail}
-                    onChange={(e) => setBedFormData(prev => ({ ...prev, ventAvail: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Total Ventilator Capacity</Label>
-                  <Input
-                    type="number"
-                    value={bedFormData.ventTotal}
-                    onChange={(e) => setBedFormData(prev => ({ ...prev, ventTotal: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex justify-between gap-2">
-            <Button variant="outline" onClick={() => setIsEditBedsOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveBeds} className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium">
-              Save Bed Updates
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Add Hospital Modal */}
+      <AddHospitalModal
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
     </div>
   );
 }
