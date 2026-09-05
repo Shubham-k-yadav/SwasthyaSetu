@@ -143,3 +143,91 @@ export function calculateHospitalScore(hospital, bedType) {
   
   return Math.round(score);
 }
+
+/**
+ * Extracts exact latitude and longitude from Google Maps URLs (including shortened links).
+ */
+export async function extractCoordinatesFromGoogleUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  let targetUrl = url.trim();
+
+  // Follow redirect for shortened links (maps.app.goo.gl, goo.gl/maps)
+  if (targetUrl.includes('goo.gl') || targetUrl.includes('maps.app.')) {
+    try {
+      const res = await fetch(targetUrl, { 
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      if (res.url) {
+        targetUrl = res.url;
+      }
+    } catch (err) {
+      console.warn('Failed expanding shortened Google Maps URL:', err.message);
+    }
+  }
+
+  // 1. Match !3d(lat)!4d(lng) (Google Maps Place view)
+  const match3d = targetUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (match3d) {
+    return { 
+      lat: parseFloat(parseFloat(match3d[1]).toFixed(6)), 
+      lng: parseFloat(parseFloat(match3d[2]).toFixed(6)),
+      expandedUrl: targetUrl 
+    };
+  }
+
+  // 2. Match @(lat),(lng)
+  const matchAt = targetUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (matchAt) {
+    return { 
+      lat: parseFloat(parseFloat(matchAt[1]).toFixed(6)), 
+      lng: parseFloat(parseFloat(matchAt[2]).toFixed(6)),
+      expandedUrl: targetUrl 
+    };
+  }
+
+  // 3. Match query=(lat),(lng) or q=(lat),(lng)
+  const matchQ = targetUrl.match(/[?&](?:query|q)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (matchQ) {
+    return { 
+      lat: parseFloat(parseFloat(matchQ[1]).toFixed(6)), 
+      lng: parseFloat(parseFloat(matchQ[2]).toFixed(6)),
+      expandedUrl: targetUrl 
+    };
+  }
+
+  // 4. Match ll=(lat),(lng)
+  const matchLl = targetUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (matchLl) {
+    return { 
+      lat: parseFloat(parseFloat(matchLl[1]).toFixed(6)), 
+      lng: parseFloat(parseFloat(matchLl[2]).toFixed(6)),
+      expandedUrl: targetUrl 
+    };
+  }
+
+  // 5. Match destination=(lat),(lng)
+  const matchDest = targetUrl.match(/[?&]destination=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (matchDest) {
+    return { 
+      lat: parseFloat(parseFloat(matchDest[1]).toFixed(6)), 
+      lng: parseFloat(parseFloat(matchDest[2]).toFixed(6)),
+      expandedUrl: targetUrl 
+    };
+  }
+
+  // 6. Match loc:(lat)+(lng) or loc:(lat),(lng)
+  const matchLoc = targetUrl.match(/loc:(-?\d+\.\d+)[+,](-?\d+\.\d+)/);
+  if (matchLoc) {
+    return { 
+      lat: parseFloat(parseFloat(matchLoc[1]).toFixed(6)), 
+      lng: parseFloat(parseFloat(matchLoc[2]).toFixed(6)),
+      expandedUrl: targetUrl 
+    };
+  }
+
+  return null;
+}
+

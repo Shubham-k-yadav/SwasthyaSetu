@@ -169,13 +169,16 @@ export default function RegisterPage() {
     let lat = null;
     let lng = null;
     if (url) {
-      const match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
+      const match = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
+                    url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
                     url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                    url.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                    url.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                    url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                    url.match(/loc:(-?\d+\.\d+)[+,](-?\d+\.\d+)/);
       if (match) {
         lat = match[1];
         lng = match[2];
-        toast.success(`Exact coordinates extracted from Google Maps: (${lat}, ${lng})`);
+        toast.success(`Exact coordinates locked from Google Maps: (${lat}, ${lng})`);
       }
     }
     setter(prev => ({

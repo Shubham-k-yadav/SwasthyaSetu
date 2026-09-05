@@ -10,6 +10,26 @@
 export function getHospitalCoordinates(hospital) {
   if (!hospital) return null;
 
+  // 1. First priority: Extract exact coordinates from googleMapsUrl if present
+  const url = (hospital.googleMapsUrl || hospital.mapLink || '').trim();
+  if (url) {
+    const match = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
+                  url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
+                  url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                  url.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                  url.match(/[?&]destination=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                  url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                  url.match(/loc:(-?\d+\.\d+)[+,](-?\d+\.\d+)/);
+    if (match) {
+      const parsedLat = parseFloat(match[1]);
+      const parsedLng = parseFloat(match[2]);
+      if (!isNaN(parsedLat) && !isNaN(parsedLng) && (parsedLat !== 0 || parsedLng !== 0)) {
+        return { lat: parsedLat, lng: parsedLng };
+      }
+    }
+  }
+
+  // 2. Second priority: Hospital's coordinates field
   let lat = hospital.coordinates?.lat;
   let lng = hospital.coordinates?.lng;
 
@@ -18,23 +38,6 @@ export function getHospitalCoordinates(hospital) {
 
   if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
     return { lat, lng };
-  }
-
-  // Attempt extraction from Google Maps URL if available
-  const url = (hospital.googleMapsUrl || hospital.mapLink || '').trim();
-  if (url) {
-    const match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
-                  url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                  url.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                  url.match(/loc:(-?\d+\.\d+)\+(-?\d+\.\d+)/) ||
-                  url.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (match) {
-      const parsedLat = parseFloat(match[1]);
-      const parsedLng = parseFloat(match[2]);
-      if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
-        return { lat: parsedLat, lng: parsedLng };
-      }
-    }
   }
 
   return null;

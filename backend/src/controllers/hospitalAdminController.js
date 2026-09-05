@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Hospital from '../models/Hospital.js';
 import User from '../models/User.js';
 import { emitRegistrationRequest } from '../services/socket.js';
-import { geocodeFullAddress } from '../utils/geo.js';
+import { geocodeFullAddress, extractCoordinatesFromGoogleUrl } from '../utils/geo.js';
 
 // Public registration request for new hospitals
 export const registerHospitalRequest = async (req, res) => {
@@ -43,23 +43,13 @@ export const registerHospitalRequest = async (req, res) => {
 
     // Parse Google Maps location link if provided
     const rawMapUrl = (req.body.googleMapsUrl || req.body.mapLink || '').trim();
-    let extractedLat = null;
-    let extractedLng = null;
-    if (rawMapUrl) {
-      const match = rawMapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
-                    rawMapUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                    rawMapUrl.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (match) {
-        extractedLat = Number(match[1]);
-        extractedLng = Number(match[2]);
-      }
-    }
+    const googleCoords = rawMapUrl ? await extractCoordinatesFromGoogleUrl(rawMapUrl) : null;
 
     // Automatically geocode full hospital address or city via OpenStreetMap if coordinates not passed
     const coordinates = (req.body.lat && req.body.lng) 
       ? { lat: Number(req.body.lat), lng: Number(req.body.lng) } 
-      : (extractedLat && extractedLng)
-        ? { lat: extractedLat, lng: extractedLng }
+      : (googleCoords)
+        ? { lat: googleCoords.lat, lng: googleCoords.lng }
         : await geocodeFullAddress(address, city, state);
 
     const finalGoogleMapsUrl = rawMapUrl || '';

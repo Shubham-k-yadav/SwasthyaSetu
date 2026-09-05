@@ -5,6 +5,7 @@ import BloodStock from '../models/BloodStock.js';
 import User from '../models/User.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { getIO, emitRegistrationRequest } from '../services/socket.js';
+import { extractCoordinatesFromGoogleUrl, geocodeFullAddress } from '../utils/geo.js';
 
 const router = express.Router();
 
@@ -55,18 +56,16 @@ router.post('/register-request', async (req, res) => {
 
     // Parse Google Maps location link or coordinates
     const rawMapUrl = (req.body.googleMapsUrl || req.body.mapLink || '').trim();
-    let lat = req.body.lat ? Number(req.body.lat) : 25.4316;
-    let lng = req.body.lng ? Number(req.body.lng) : 81.8520;
-    if (rawMapUrl) {
-      const match = rawMapUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
-                    rawMapUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                    rawMapUrl.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/);
-      if (match) {
-        lat = Number(match[1]);
-        lng = Number(match[2]);
-      }
+    const googleCoords = rawMapUrl ? await extractCoordinatesFromGoogleUrl(rawMapUrl) : null;
+    let lat = req.body.lat ? Number(req.body.lat) : (googleCoords ? googleCoords.lat : null);
+    let lng = req.body.lng ? Number(req.body.lng) : (googleCoords ? googleCoords.lng : null);
+
+    if (!lat || !lng) {
+      const geocoded = await geocodeFullAddress(address, city, state);
+      lat = geocoded.lat;
+      lng = geocoded.lng;
     }
-    const finalMapUrl = rawMapUrl || `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    const finalMapUrl = rawMapUrl || '';
 
     // Create BloodStock document for this blood bank
     const newStock = new BloodStock({
