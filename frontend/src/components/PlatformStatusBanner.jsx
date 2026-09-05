@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { systemApi } from '@/lib/api';
-import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 import { ShieldCheck, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -68,12 +67,12 @@ export function PlatformStatusBanner() {
 
         {/* Banner Right Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <HospitalRegisterModal>
+          <Link to="/register">
             <Button size="sm" className="h-6 sm:h-7 text-[10px] sm:text-xs px-2.5 sm:px-3.5 font-bold gap-1 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-xs whitespace-nowrap">
               Join Network
               <ArrowRight className="h-3 w-3 hidden sm:inline-block" />
             </Button>
-          </HospitalRegisterModal>
+          </Link>
 
           <button
             onClick={handleDismiss}

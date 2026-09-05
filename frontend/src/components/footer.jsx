@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
-import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 
 export function Footer() {
   return (
@@ -53,17 +52,14 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* For Hospitals */}
+          {/* For Facilities */}
           <div className="md:col-span-2 space-y-3">
-            <h4 className="font-bold text-sm text-gray-900 dark:text-white">For Hospitals</h4>
+            <h4 className="font-bold text-sm text-gray-900 dark:text-white">Facility Onboarding</h4>
             <ul className="space-y-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-              <li>
-                <HospitalRegisterModal>
-                  <button className="hover:text-red-600 transition-colors text-left">Register Hospital</button>
-                </HospitalRegisterModal>
-              </li>
+              <li><Link to="/register?type=hospital" className="hover:text-red-600 transition-colors">Register Hospital</Link></li>
+              <li><Link to="/register?type=blood-bank" className="hover:text-red-600 transition-colors">Register Blood Bank</Link></li>
+              <li><Link to="/register?type=ambulance" className="hover:text-red-600 transition-colors">Register Ambulance</Link></li>
               <li><Link to="/admin/login" className="hover:text-red-600 transition-colors">Admin Login</Link></li>
-              <li><Link to="/admin" className="hover:text-red-600 transition-colors">Dashboard</Link></li>
             </ul>
           </div>
 

@@ -82,7 +82,12 @@ export function Header() {
               <span className="whitespace-nowrap">{language === 'en' ? 'हिंदी (HI)' : 'English (EN)'}</span>
             </Button>
 
-            <HospitalRegisterModal />
+            <Link to="/register">
+              <Button variant="outline" size="sm" className="gap-2 border-primary/30 text-primary hover:bg-primary/10 font-semibold text-xs whitespace-nowrap">
+                <Building2 className="h-4 w-4" />
+                {t('registerHospital')}
+              </Button>
+            </Link>
 
             <Link to="/admin/login">
               <Button variant="ghost" size="sm" className="gap-1.5 font-semibold h-9 text-xs text-gray-700 hover:text-gray-900 whitespace-nowrap px-2.5">
@@ -149,7 +154,12 @@ export function Header() {
               <hr className="my-2 border-gray-200 dark:border-gray-800" />
 
               <div className="flex flex-col gap-2.5 pt-1">
-                <HospitalRegisterModal />
+                <Link to="/register" onClick={() => setOpen(false)}>
+                  <Button variant="outline" className="w-full justify-start gap-3 h-10 font-semibold text-primary border-primary/30 bg-primary/5 whitespace-nowrap">
+                    <Building2 className="h-4 w-4 text-primary shrink-0" />
+                    <span className="whitespace-nowrap font-bold">{t('registerHospital')}</span>
+                  </Button>
+                </Link>
 
                 <Button
                   variant="outline"

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { PlatformStatusBanner } from '@/components/PlatformStatusBanner';
@@ -352,12 +353,12 @@ export default function HospitalsPage() {
                 </p>
               </div>
               <div className="pt-2">
-                <HospitalRegisterModal>
+                <Link to="/register?type=hospital">
                   <Button size="lg" className="gap-2 font-bold bg-primary text-primary-foreground shadow-md">
                     <Building2 className="h-5 w-5" />
                     {t('registerFacilityCTA')}
                   </Button>
-                </HospitalRegisterModal>
+                </Link>
               </div>
             </div>
           ) : (

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { PlatformStatusBanner } from '@/components/PlatformStatusBanner';
-import { BloodBankRegisterModal } from '@/components/BloodBankRegisterModal';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Droplets, Search, Heart } from 'lucide-react';
@@ -174,7 +175,12 @@ export default function BloodPage() {
                         </p>
                       </div>
                       <div className="pt-2">
-                        <BloodBankRegisterModal />
+                        <Link to="/register?type=blood-bank">
+                          <Button className="gap-2 font-bold bg-red-600 hover:bg-red-700 text-white shadow-md">
+                            <Droplets className="h-4 w-4" />
+                            Register Blood Bank
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   ) : (
