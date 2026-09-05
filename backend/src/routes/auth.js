@@ -9,7 +9,7 @@ const router = Router();
 // Admin login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, portal } = req.body;
 
     if (!email || !password) {
       res.status(400).json({ error: 'Email and password are required' });
@@ -31,6 +31,19 @@ router.post('/login', async (req, res) => {
 
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password. Please check your credentials.' });
+    }
+
+    // Strict Portal Authorization Guard (Generic error to prevent account/role enumeration)
+    if (portal === 'hospital' && user.role === 'superadmin') {
+      return res.status(401).json({ 
+        error: 'Invalid email or password. Please check your credentials.' 
+      });
+    }
+
+    if (portal === 'superadmin' && user.role !== 'superadmin') {
+      return res.status(401).json({ 
+        error: 'Invalid email or password. Please check your credentials.' 
+      });
     }
 
     let hospital = null;

@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { systemApi } from '@/lib/api';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { HospitalRegisterModal } from '@/components/HospitalRegisterModal';
 import {
@@ -9,7 +8,6 @@ import {
   AlertTriangle,
   Menu,
   X,
-  ShieldAlert,
   LayoutDashboard,
   Phone,
   Globe,
@@ -23,13 +21,6 @@ export function Header() {
   const location = useLocation();
   const pathname = location.pathname;
   const [open, setOpen] = useState(false);
-  const [isServerOffline, setIsServerOffline] = useState(false);
-
-  useEffect(() => {
-    systemApi.getStatus()
-      .then(res => setIsServerOffline(!res.databaseConnected))
-      .catch(() => setIsServerOffline(true));
-  }, []);
 
   const navItems = [
     { href: '/hospitals', label: t('navHospitals'), icon: Building2 },
@@ -39,12 +30,6 @@ export function Header() {
 
   return (
     <>
-      {isServerOffline && (
-        <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-800 dark:text-amber-300 px-4 py-1.5 text-xs text-center font-medium flex items-center justify-center gap-2">
-          <ShieldAlert className="h-3.5 w-3.5 text-amber-600 animate-pulse shrink-0" />
-          <span>Live healthcare network connecting...</span>
-        </div>
-      )}
       <header className="sticky top-0 z-[999] w-full border-b bg-white/95 dark:bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-xs">
         <div className="container mx-auto max-w-[1440px] flex h-12 sm:h-14 md:h-16 items-center justify-between px-3 sm:px-6">
           {/* Brand */}

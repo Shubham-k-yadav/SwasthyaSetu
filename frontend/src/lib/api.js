@@ -172,10 +172,10 @@ export const emergencyApi = {
 
 // Auth APIs
 export const authApi = {
-  login: (email, password) =>
+  login: (email, password, portal) =>
     apiCall('/api/auth/login', {
       method: 'POST',
-      body: { email, password },
+      body: { email, password, portal },
     }),
 
   getMe: (token) => apiCall('/api/auth/me', { token }),

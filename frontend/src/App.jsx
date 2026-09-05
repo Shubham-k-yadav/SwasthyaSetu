@@ -15,6 +15,17 @@ import AdminLayout from '@/pages/admin/AdminLayout';
 import AdminHospitalsPage from '@/pages/admin/AdminHospitalsPage';
 import AdminBloodPage from '@/pages/admin/AdminBloodPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
+import SuperAdminDashboard from '@/pages/admin/SuperAdminDashboard';
+import HospitalAdminDashboard from '@/pages/admin/HospitalAdminDashboard';
+import { useAuth } from '@/lib/auth-context';
+
+function AdminDashboardDispatcher() {
+  const { user } = useAuth();
+  if (user?.role === 'superadmin') {
+    return <SuperAdminDashboard />;
+  }
+  return <HospitalAdminDashboard />;
+}
 
 import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
@@ -93,7 +104,7 @@ export default function App() {
 
               {/* Admin Protected Dashboard */}
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminHospitalsPage />} />
+                <Route index element={<AdminDashboardDispatcher />} />
                 <Route path="hospitals" element={<AdminHospitalsPage />} />
                 <Route path="blood" element={<AdminBloodPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />

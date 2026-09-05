@@ -30,6 +30,7 @@ router.get('/status', async (req, res) => {
     }
 
     res.json({
+      databaseConnected: mongoose.connection.readyState === 1,
       verifiedHospitalsCount,
       verifiedBloodBanksCount,
       verifiedAmbulancesCount,
@@ -41,6 +42,7 @@ router.get('/status', async (req, res) => {
   } catch (error) {
     console.error('Error fetching system status:', error);
     res.json({
+      databaseConnected: false,
       verifiedHospitalsCount: 0,
       verifiedBloodBanksCount: 0,
       verifiedAmbulancesCount: 0,

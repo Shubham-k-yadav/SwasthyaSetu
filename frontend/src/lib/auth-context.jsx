@@ -42,8 +42,8 @@ export function AuthProvider({ children }) {
     refreshUser();
   }, [refreshUser]);
 
-  const login = async (email, password) => {
-    const response = await api.auth.login(email, password);
+  const login = async (email, password, portal) => {
+    const response = await api.auth.login(email, password, portal);
     localStorage.setItem('swasthya_setu_token', response.token);
     setUser(response.user);
     return true;

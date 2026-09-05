@@ -24,10 +24,16 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 
 const superAdminNavItems = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin', icon: LayoutDashboard, label: 'Control Room' },
   { href: '/admin/hospitals', icon: Building2, label: 'Hospitals' },
   { href: '/admin/blood', icon: Droplets, label: 'Blood Stock' },
   { href: '/admin/analytics', icon: Activity, label: 'Analytics' },
+];
+
+const hospitalStaffNavItems = [
+  { href: '/admin', icon: LayoutDashboard, label: 'Beds & Inventory' },
+  { href: '/admin?tab=reservations', icon: Siren, label: 'Patient Holds' },
+  { href: '/admin?tab=fleet', icon: Building2, label: 'Ambulance Fleet' },
 ];
 
 export default function AdminLayout() {
@@ -35,6 +41,8 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+
+  const navItems = user?.role === 'superadmin' ? superAdminNavItems : hospitalStaffNavItems;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -59,22 +67,19 @@ export default function AdminLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Header */}
-        <div className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-red-600 flex items-center justify-center text-white">
-              <Siren className="h-5 w-5" />
-            </div>
-            <span className="font-bold text-lg text-slate-900 dark:text-white">SwasthyaSetu</span>
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-5 w-5" />
-          </Button>
+        {/* Logo */}
+        <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800">
+          <div className="h-9 w-9 rounded-xl bg-red-600 flex items-center justify-center text-white font-extrabold shadow-sm shrink-0">
+            S
+          </div>
+          <div>
+            <span className="font-bold text-base text-slate-900 dark:text-white block leading-tight">
+              SwasthyaSetu
+            </span>
+            <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">
+              {user?.role === 'superadmin' ? 'Super Admin' : 'Hospital Staff'}
+            </span>
+          </div>
         </div>
 
         {/* User Info */}
@@ -88,7 +93,7 @@ export default function AdminLayout() {
                 {user?.name || 'Admin User'}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 capitalize truncate">
-                {user?.role || 'Super Admin'}
+                {user?.role === 'superadmin' ? 'Super Admin' : (user?.hospital?.name || 'Hospital Admin')}
               </p>
             </div>
           </div>
@@ -96,7 +101,7 @@ export default function AdminLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {superAdminNavItems.map((item) => {
+          {navItems.map((item) => {
             const isActive = location.pathname === item.href || (item.href !== '/admin' && location.pathname.startsWith(item.href));
             const Icon = item.icon;
             return (
