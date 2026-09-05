@@ -56,11 +56,11 @@ export default function SuperAdminDashboard() {
       setPendingBloodBanks(bbList);
       setPendingAmbulances(ambList);
 
-      if (sysStatus && (sysStatus.verifiedHospitalsCount > 0 || sysStatus.verifiedBloodBanksCount > 0 || sysStatus.verifiedAmbulancesCount > 0)) {
+      if (sysStatus) {
         setStats({
-          verifiedHospitalsCount: sysStatus.verifiedHospitalsCount || 0,
-          verifiedBloodBanksCount: sysStatus.verifiedBloodBanksCount || 0,
-          verifiedAmbulancesCount: sysStatus.verifiedAmbulancesCount || 0,
+          verifiedHospitalsCount: Number(sysStatus.verifiedHospitalsCount || 0),
+          verifiedBloodBanksCount: Number(sysStatus.verifiedBloodBanksCount || 0),
+          verifiedAmbulancesCount: Number(sysStatus.verifiedAmbulancesCount || 0),
         });
       } else {
         // Fetch active lists over public API as robust fallback
@@ -71,9 +71,9 @@ export default function SuperAdminDashboard() {
         ]);
 
         setStats({
-          verifiedHospitalsCount: (hRes?.hospitals || hRes || []).length || 5,
-          verifiedBloodBanksCount: (bRes?.bloodBanks || bRes || []).length || 3,
-          verifiedAmbulancesCount: (aRes?.ambulances || aRes || []).length || 4,
+          verifiedHospitalsCount: Number((hRes?.hospitals || hRes || []).length || 0),
+          verifiedBloodBanksCount: Number((bRes?.bloodBanks || bRes || []).length || 0),
+          verifiedAmbulancesCount: Number((aRes?.ambulances || aRes || []).length || 0),
         });
       }
     } catch (err) {

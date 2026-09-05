@@ -41,50 +41,6 @@ import {
   AreaChart,
 } from 'recharts';
 
-// Mock data for charts
-const emergencyTrends = [
-  { month: 'Jan', requests: 245, resolved: 238, avgTime: 12 },
-  { month: 'Feb', requests: 312, resolved: 305, avgTime: 11 },
-  { month: 'Mar', requests: 289, resolved: 280, avgTime: 10 },
-  { month: 'Apr', requests: 378, resolved: 365, avgTime: 9 },
-  { month: 'May', requests: 421, resolved: 412, avgTime: 8 },
-  { month: 'Jun', requests: 356, resolved: 348, avgTime: 9 },
-];
-
-const bedOccupancy = [
-  { day: 'Mon', icu: 85, general: 72, emergency: 90 },
-  { day: 'Tue', icu: 88, general: 75, emergency: 85 },
-  { day: 'Wed', icu: 82, general: 70, emergency: 88 },
-  { day: 'Thu', icu: 90, general: 78, emergency: 92 },
-  { day: 'Fri', icu: 92, general: 80, emergency: 95 },
-  { day: 'Sat', icu: 78, general: 65, emergency: 75 },
-  { day: 'Sun', icu: 75, general: 60, emergency: 70 },
-];
-
-const bloodUsage = [
-  { name: 'A+', value: 28, color: '#ef4444' },
-  { name: 'A-', value: 6, color: '#f97316' },
-  { name: 'B+', value: 24, color: '#eab308' },
-  { name: 'B-', value: 5, color: '#22c55e' },
-  { name: 'AB+', value: 11, color: '#06b6d4' },
-  { name: 'AB-', value: 3, color: '#3b82f6' },
-  { name: 'O+', value: 22, color: '#8b5cf6' },
-  { name: 'O-', value: 1, color: '#ec4899' },
-];
-
-const regionData = [
-  { region: 'North', hospitals: 42, emergencies: 156, satisfaction: 94 },
-  { region: 'South', hospitals: 38, emergencies: 142, satisfaction: 92 },
-  { region: 'East', hospitals: 28, emergencies: 98, satisfaction: 88 },
-  { region: 'West', hospitals: 35, emergencies: 128, satisfaction: 91 },
-  { region: 'Central', hospitals: 13, emergencies: 45, satisfaction: 89 },
-];
-
-const hourlyActivity = Array.from({ length: 24 }, (_, i) => ({
-  hour: `${i.toString().padStart(2, '0')}:00`,
-  requests: Math.floor(Math.random() * 30) + 5,
-  responses: Math.floor(Math.random() * 28) + 3,
-}));
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('7d');
