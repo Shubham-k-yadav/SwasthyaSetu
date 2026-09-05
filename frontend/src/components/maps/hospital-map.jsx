@@ -5,7 +5,8 @@ import L from 'leaflet';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Navigation, Phone, Shield, Radio, Clock, Route, Activity } from 'lucide-react';
+import { Navigation, Phone, Shield, Radio, Clock, Route, Activity, ExternalLink } from 'lucide-react';
+import { getHospitalCoordinates, openHospitalDirections } from '@/lib/navigation';
 import 'leaflet/dist/leaflet.css';
 
 // Distance calculation helper (Haversine formula)
@@ -96,21 +97,24 @@ export function HospitalMap({
   let center = defaultCenter;
   let zoom = defaultZoom;
 
-  const validHospitals = hospitals.filter(
-    h => h?.coordinates && typeof h.coordinates.lat === 'number' && typeof h.coordinates.lng === 'number'
-  );
+  // Resolve hospitals with coordinates (including those parsed from googleMapsUrl)
+  const validHospitalsWithCoords = hospitals
+    .map(h => ({ hospital: h, coords: getHospitalCoordinates(h) }))
+    .filter(item => item.coords !== null);
 
-  if (selectedHospital?.coordinates) {
-    center = [selectedHospital.coordinates.lat, selectedHospital.coordinates.lng];
+  const selectedCoords = getHospitalCoordinates(selectedHospital);
+
+  if (selectedCoords) {
+    center = [selectedCoords.lat, selectedCoords.lng];
     zoom = 14;
   } else if (userLocation) {
     center = [userLocation.lat, userLocation.lng];
     zoom = 12;
-  } else if (validHospitals.length > 0) {
-    const uniqueCities = new Set(validHospitals.map(h => h.city));
+  } else if (validHospitalsWithCoords.length > 0) {
+    const uniqueCities = new Set(validHospitalsWithCoords.map(item => item.hospital.city).filter(Boolean));
     if (uniqueCities.size === 1) {
-      const avgLat = validHospitals.reduce((sum, h) => sum + h.coordinates.lat, 0) / validHospitals.length;
-      const avgLng = validHospitals.reduce((sum, h) => sum + h.coordinates.lng, 0) / validHospitals.length;
+      const avgLat = validHospitalsWithCoords.reduce((sum, item) => sum + item.coords.lat, 0) / validHospitalsWithCoords.length;
+      const avgLng = validHospitalsWithCoords.reduce((sum, item) => sum + item.coords.lng, 0) / validHospitalsWithCoords.length;
       center = [avgLat, avgLng];
       zoom = 12;
     } else {
@@ -312,69 +316,85 @@ export function HospitalMap({
 
         {/* Hospital Markers */}
         {hospitals.map(hospital => {
-          if (!hospital.coordinates?.lat || !hospital.coordinates?.lng) return null;
-          const totalAvailable = hospital.beds.icu.available + 
-                                hospital.beds.general.available + 
-                                hospital.beds.ventilator.available;
+          const coords = getHospitalCoordinates(hospital);
+          if (!coords) return null;
           
+          const totalAvailable = (hospital.beds?.icu?.available || 0) + 
+                                (hospital.beds?.general?.available || 0) + 
+                                (hospital.beds?.ventilator?.available || 0);
+          
+          const hasGoogleUrl = Boolean(hospital.googleMapsUrl && hospital.googleMapsUrl.trim());
+
           return (
             <Marker
-              key={hospital._id}
-              position={[hospital.coordinates.lat, hospital.coordinates.lng]}
+              key={hospital._id || hospital.id}
+              position={[coords.lat, coords.lng]}
               icon={createCustomIcon(totalAvailable)}
               eventHandlers={{
                 click: () => onHospitalSelect?.(hospital)
               }}
             >
               <Popup minWidth={280} maxWidth={320}>
-                <div className="space-y-3">
+                <div className="space-y-3 p-1">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-base leading-tight">{hospital.name}</h3>
+                    <div>
+                      <h3 className="font-bold text-base leading-tight text-gray-950 dark:text-white">{hospital.name}</h3>
+                      {hasGoogleUrl && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          ✓ Verified Google Maps Pin
+                        </span>
+                      )}
+                    </div>
                     {hospital.isVerified && (
-                      <Badge variant="secondary" className="gap-1 shrink-0">
+                      <Badge variant="secondary" className="gap-1 shrink-0 bg-emerald-50 text-emerald-700 border-emerald-200">
                         <Shield className="h-3 w-3" />
                         Verified
                       </Badge>
                     )}
                   </div>
                   
-                  <p className="text-sm text-muted-foreground">{hospital.address}</p>
+                  <div 
+                    className="text-xs text-muted-foreground hover:text-foreground cursor-pointer flex items-start gap-1 group transition-colors"
+                    onClick={() => openHospitalDirections(hospital)}
+                    title="Click to view hospital address in Google Maps"
+                  >
+                    <span className="leading-snug">{hospital.address || `${hospital.city}, ${hospital.state || 'India'}`}</span>
+                  </div>
                   
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="p-2 bg-secondary rounded">
-                      <p className="text-sm font-bold">{hospital.beds.icu.available}</p>
-                      <p className="text-xs text-muted-foreground">ICU</p>
+                    <div className="p-2 bg-secondary rounded-lg">
+                      <p className="text-sm font-bold">{hospital.beds?.icu?.available || 0}</p>
+                      <p className="text-[11px] text-muted-foreground">ICU</p>
                     </div>
-                    <div className="p-2 bg-secondary rounded">
-                      <p className="text-sm font-bold">{hospital.beds.general.available}</p>
-                      <p className="text-xs text-muted-foreground">General</p>
+                    <div className="p-2 bg-secondary rounded-lg">
+                      <p className="text-sm font-bold">{hospital.beds?.general?.available || 0}</p>
+                      <p className="text-[11px] text-muted-foreground">General</p>
                     </div>
-                    <div className="p-2 bg-secondary rounded">
-                      <p className="text-sm font-bold">{hospital.beds.ventilator.available}</p>
-                      <p className="text-xs text-muted-foreground">Ventilator</p>
+                    <div className="p-2 bg-secondary rounded-lg">
+                      <p className="text-sm font-bold">{hospital.beds?.ventilator?.available || 0}</p>
+                      <p className="text-[11px] text-muted-foreground">Ventilator</p>
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-1">
+                    {hospital.phone && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1 gap-1 text-xs"
+                        onClick={() => window.open(`tel:${hospital.phone}`, '_self')}
+                      >
+                        <Phone className="h-3 w-3 text-emerald-600" />
+                        Call
+                      </Button>
+                    )}
                     <Button 
                       size="sm" 
-                      variant="outline" 
-                      className="flex-1 gap-1"
-                      onClick={() => window.open(`tel:${hospital.phone}`, '_self')}
-                    >
-                      <Phone className="h-3 w-3" />
-                      Call
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      className="flex-1 gap-1"
-                      onClick={() => {
-                        const url = `https://www.google.com/maps/dir/?api=1&destination=${hospital.coordinates.lat},${hospital.coordinates.lng}`;
-                        window.open(url, '_blank');
-                      }}
+                      className="flex-1 gap-1 text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs"
+                      onClick={() => openHospitalDirections(hospital)}
                     >
                       <Navigation className="h-3 w-3" />
-                      Directions
+                      Get Directions
                     </Button>
                   </div>
                 </div>

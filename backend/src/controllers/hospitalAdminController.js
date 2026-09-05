@@ -62,7 +62,7 @@ export const registerHospitalRequest = async (req, res) => {
         ? { lat: extractedLat, lng: extractedLng }
         : await geocodeFullAddress(address, city, state);
 
-    const finalGoogleMapsUrl = rawMapUrl || `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lng}`;
+    const finalGoogleMapsUrl = rawMapUrl || '';
 
     const parsedSpecialties = Array.isArray(specialties) 
       ? specialties.filter(s => typeof s === 'string' && s.trim().length > 0)

@@ -19,6 +19,7 @@ import { getFreshnessStatus } from '@/lib/freshness';
 import { useLanguage } from '@/lib/language-context';
 import { BedIndicator } from './BedIndicator';
 import { BedHoldModal } from './BedHoldModal';
+import { openHospitalDirections } from '@/lib/navigation';
 
 export { BedIndicator };
 
@@ -169,9 +170,8 @@ export function HospitalCard({
             <Button
               size="sm"
               variant="outline"
-              className="gap-1.5 font-semibold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl border-gray-300 hover:bg-gray-50"
-              onClick={onGetDirections}
-              disabled={!hasAvailability}
+              className="gap-1.5 font-semibold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl border-gray-300 hover:bg-gray-50 cursor-pointer"
+              onClick={onGetDirections || (() => openHospitalDirections(hospital))}
             >
               <Navigation className="h-3.5 w-3.5 text-gray-600" />
               {t('directions')}

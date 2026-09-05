@@ -25,8 +25,13 @@ export const getHospitals = async (req, res) => {
 
     const total = await Hospital.countDocuments(filter);
 
+    const sanitizedHospitals = hospitals.map(h => ({
+      ...h,
+      googleMapsUrl: (h.googleMapsUrl || '').trim()
+    }));
+
     res.json({
-      hospitals,
+      hospitals: sanitizedHospitals,
       pagination: {
         total,
         page: Number(page),
@@ -82,6 +87,7 @@ export const searchHospitals = async (req, res) => {
 
     const scored = filtered.map(hospital => ({
       ...hospital,
+      googleMapsUrl: (hospital.googleMapsUrl || '').trim(),
       score: calculateHospitalScore(hospital, bedType)
     }));
 
@@ -142,6 +148,7 @@ export const getHospitalById = async (req, res) => {
       return res.status(404).json({ error: 'Hospital not found' });
     }
 
+    hospital.googleMapsUrl = (hospital.googleMapsUrl || '').trim();
     const bloodStock = await BloodStock.find({ hospitalId: hospital._id }).lean();
 
     res.json({ hospital, bloodStock });
@@ -162,6 +169,7 @@ export const createHospital = async (req, res) => {
       coordinates,
       phone,
       email,
+      googleMapsUrl = '',
       beds,
       specialties,
       emergencyServices = true,
@@ -189,6 +197,7 @@ export const createHospital = async (req, res) => {
       beds: defaultBeds,
       specialties: specialties || [],
       emergencyServices,
+      googleMapsUrl: (googleMapsUrl || '').trim(),
       isVerified
     });
 

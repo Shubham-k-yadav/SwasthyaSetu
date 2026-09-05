@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Navigation, Phone, Shield, Star, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { openHospitalDirections } from '@/lib/navigation';
 
 export function EmergencyResultsList({
   results,
@@ -15,9 +16,7 @@ export function EmergencyResultsList({
   onModifySearch
 }) {
   const handleNavigate = (hospital) => {
-    if (!hospital.coordinates?.lat || !hospital.coordinates?.lng) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${hospital.coordinates.lat},${hospital.coordinates.lng}&travelmode=driving`;
-    window.open(url, '_blank');
+    openHospitalDirections(hospital);
   };
 
   return (

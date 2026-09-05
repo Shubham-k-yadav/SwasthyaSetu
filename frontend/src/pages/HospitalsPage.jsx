@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useLanguage } from '@/lib/language-context';
 import { HospitalMap } from '@/components/maps/hospital-map';
+import { openHospitalDirections } from '@/lib/navigation';
 
 const bedTypes = ['All Types', 'icu', 'general', 'ventilator'];
 
@@ -133,8 +134,7 @@ export default function HospitalsPage() {
   const totalVentBeds = hospitals.reduce((acc, h) => acc + (h.beds?.ventilator?.available || 0), 0);
 
   const handleGetDirections = (hospital) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${hospital.coordinates?.lat},${hospital.coordinates?.lng}`;
-    window.open(url, '_blank');
+    openHospitalDirections(hospital);
   };
 
   return (
