@@ -11,55 +11,68 @@ export const registerHospitalRequest = async (req, res) => {
       name,
       type = 'private',
       licenseNumber,
+      registrationNumber,
       address,
       city,
       state,
       phone,
       email,
       password,
-      generalBeds = 100,
-      icuBeds = 20,
-      ventilatorBeds = 5,
-      specialties = ['Emergency', 'ICU', 'General Care']
+      generalBeds = 0,
+      icuBeds = 0,
+      ventilatorBeds = 0,
+      specialties = [],
+      emergencyServices = false
     } = req.body;
 
     if (!name || !city || !email || !password) {
       return res.status(400).json({ error: 'Hospital Name, City, Admin Email, and Password are required' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
     // Check if user already exists
     if (mongoose.connection.readyState === 1) {
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne({ email: cleanEmail });
       if (existingUser) {
         return res.status(400).json({ error: 'An admin account with this email already exists' });
       }
     }
 
-    const regNo = licenseNumber || `HFR-${Date.now().toString().slice(-6)}`;
+    const regNo = (licenseNumber || registrationNumber || '').trim() || `HFR-${Date.now().toString().slice(-6)}`;
 
     // Automatically geocode full hospital address or city via OpenStreetMap
     const coordinates = (req.body.lat && req.body.lng) 
       ? { lat: Number(req.body.lat), lng: Number(req.body.lng) } 
       : await geocodeFullAddress(address, city, state);
 
+    const parsedSpecialties = Array.isArray(specialties) 
+      ? specialties.filter(s => typeof s === 'string' && s.trim().length > 0)
+      : (typeof specialties === 'string' && specialties.trim() ? [specialties.trim()] : []);
+
+    const isEmergencyEnabled = emergencyServices === true || emergencyServices === 'true' || emergencyServices === 1;
+
     // Create unverified hospital
     const newHospital = new Hospital({
-      name,
+      name: name.trim(),
       type,
       registrationNumber: regNo,
+      licenseNumber: regNo,
       address: address || `${city}, ${state || 'India'}`,
-      city,
+      city: city.trim(),
       state: state || 'India',
       phone: phone || '+91-9876543210',
-      email,
+      email: cleanEmail,
+      adminEmail: cleanEmail,
       isVerified: false,
       isSimulated: false,
       beds: {
-        general: { total: Number(generalBeds), available: Number(generalBeds) },
-        icu: { total: Number(icuBeds), available: Number(icuBeds) },
-        ventilator: { total: Number(ventilatorBeds), available: Number(ventilatorBeds) },
+        general: { total: Math.max(0, Number(generalBeds) || 0), available: Math.max(0, Number(generalBeds) || 0) },
+        icu: { total: Math.max(0, Number(icuBeds) || 0), available: Math.max(0, Number(icuBeds) || 0) },
+        ventilator: { total: Math.max(0, Number(ventilatorBeds) || 0), available: Math.max(0, Number(ventilatorBeds) || 0) },
       },
-      specialties: Array.isArray(specialties) ? specialties : [specialties],
+      specialties: parsedSpecialties,
+      emergencyServices: isEmergencyEnabled,
       coordinates,
       lastUpdated: new Date()
     });
@@ -68,9 +81,9 @@ export const registerHospitalRequest = async (req, res) => {
 
     // Create admin user (inactive until Super Admin approval)
     const newAdmin = new User({
-      email,
+      email: cleanEmail,
       password,
-      name: `${name} Admin`,
+      name: `${name.trim()} Admin`,
       role: 'admin',
       hospitalId: newHospital._id,
       isActive: false
@@ -84,7 +97,7 @@ export const registerHospitalRequest = async (req, res) => {
     res.status(201).json({
       message: 'Hospital registration application submitted successfully! Super Admin review pending.',
       hospital: newHospital,
-      adminEmail: email
+      adminEmail: cleanEmail
     });
   } catch (error) {
     console.error('Error submitting hospital registration request:', error);
@@ -102,7 +115,31 @@ export const getPendingQueue = async (req, res) => {
       ]
     }).sort({ createdAt: -1 }).lean();
 
-    res.json({ queue: pending });
+    // Enrich missing emails or license numbers from linked User account
+    const enrichedQueue = await Promise.all(pending.map(async (hosp) => {
+      let adminEmail = hosp.adminEmail || hosp.email;
+      if (!adminEmail) {
+        const linkedUser = await User.findOne({
+          $or: [
+            { hospitalId: hosp._id },
+            { hospitalId: hosp._id.toString() }
+          ]
+        }).lean();
+        if (linkedUser) {
+          adminEmail = linkedUser.email;
+        }
+      }
+
+      return {
+        ...hosp,
+        email: adminEmail || hosp.email || 'N/A',
+        adminEmail: adminEmail || hosp.adminEmail || 'N/A',
+        registrationNumber: hosp.registrationNumber || hosp.licenseNumber || hosp.registrationCertificate || 'HFR-SYSTEM-PENDING',
+        licenseNumber: hosp.licenseNumber || hosp.registrationNumber || 'HFR-SYSTEM-PENDING'
+      };
+    }));
+
+    res.json({ queue: enrichedQueue });
   } catch (error) {
     console.error('Error fetching pending hospitals queue:', error);
     res.status(500).json({ error: 'Failed to fetch verification queue' });

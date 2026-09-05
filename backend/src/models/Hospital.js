@@ -29,7 +29,11 @@ const HospitalSchema = new Schema({
     ventilator: { type: BedCountSchema, required: true }
   },
   specialties: [{ type: String }],
-  emergencyServices: { type: Boolean, default: true },
+  emergencyServices: { type: Boolean, default: false },
+  registrationNumber: { type: String, default: '' },
+  licenseNumber: { type: String, default: '' },
+  email: { type: String, trim: true },
+  adminEmail: { type: String, trim: true },
   isVerified: { type: Boolean, default: false, index: true },
   isSimulated: { type: Boolean, default: true, index: true },
   registrationCertificate: { type: String, default: '' },

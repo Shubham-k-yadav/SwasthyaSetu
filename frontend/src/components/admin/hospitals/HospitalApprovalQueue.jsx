@@ -205,7 +205,7 @@ export function HospitalApprovalQueue({
                         </Badge>
                       ))
                     ) : (
-                      <span className="text-xs text-muted-foreground">General Medical Care, Emergency Support</span>
+                      <span className="text-xs text-muted-foreground italic">No specific departments declared</span>
                     )}
                   </div>
                 </div>
@@ -215,11 +215,11 @@ export function HospitalApprovalQueue({
                   <span className="font-semibold text-foreground">24/7 Emergency & Critical Care Status</span>
                   <Badge variant="outline" className={cn(
                     "font-bold text-[10px] px-2 py-0.5",
-                    selectedHospital.emergencyServices !== false
+                    selectedHospital.emergencyServices === true
                       ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/30"
-                      : "text-red-600 bg-red-50 dark:bg-red-950/40 border-red-500/30"
+                      : "text-amber-600 bg-amber-50 dark:bg-amber-950/40 border-amber-500/30"
                   )}>
-                    {selectedHospital.emergencyServices !== false ? '✓ 24/7 Emergency Enabled' : 'Disabled'}
+                    {selectedHospital.emergencyServices === true ? '✓ 24/7 Emergency Enabled' : '✗ 24/7 Emergency Disabled'}
                   </Badge>
                 </div>
               </div>
