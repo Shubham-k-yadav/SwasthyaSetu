@@ -32,6 +32,22 @@ export function BedHoldModal({
   const [secondsRemaining, setSecondsRemaining] = useState(600);
   const [error, setError] = useState('');
 
+  const icuAvail = Number(hospital?.beds?.icu?.available) || 0;
+  const genAvail = Number(hospital?.beds?.general?.available) || 0;
+  const ventAvail = Number(hospital?.beds?.ventilator?.available) || 0;
+  const totalAvailable = icuAvail + genAvail + ventAvail;
+
+  // Auto-switch to an available bed category whenever modal opens or hospital/bedType changes
+  useEffect(() => {
+    if (!open) return;
+    const currentAvail = Number(hospital?.beds?.[bedType]?.available) || 0;
+    if (currentAvail <= 0) {
+      if (icuAvail > 0) setBedType('icu');
+      else if (genAvail > 0) setBedType('general');
+      else if (ventAvail > 0) setBedType('ventilator');
+    }
+  }, [open, hospital, bedType, icuAvail, genAvail, ventAvail, setBedType]);
+
   // Live countdown timer effect for active bed reservation
   useEffect(() => {
     let timer;
@@ -63,10 +79,22 @@ export function BedHoldModal({
       setError('Patient name and contact phone are required.');
       return;
     }
+    if (totalAvailable <= 0) {
+      setError('No beds are currently available at this hospital.');
+      return;
+    }
+    const chosenBedAvail = Number(hospital?.beds?.[bedType]?.available) || 0;
+    if (chosenBedAvail <= 0) {
+      setError(`No ${bedType?.toUpperCase()} beds are currently available to hold. Please select another category.`);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     try {
-      const res = await hospitalApi.requestOtp(contactPhone);
+      const res = await hospitalApi.requestOtp(contactPhone, {
+        hospitalId: hospital._id || hospital.id,
+        bedType
+      });
       setReceivedOtp(res.otp || '');
       setStep('otp');
     } catch (err) {
@@ -82,11 +110,16 @@ export function BedHoldModal({
       setError('Please enter the OTP sent to your phone.');
       return;
     }
+    const chosenBedType = bedType || 'icu';
+    const chosenBedAvail = Number(hospital?.beds?.[chosenBedType]?.available) || 0;
+    if (chosenBedAvail <= 0) {
+      setError(`No ${chosenBedType.toUpperCase()} beds are currently available.`);
+      return;
+    }
     setIsSubmitting(true);
     setError('');
     try {
       await hospitalApi.verifyOtp(contactPhone, otpInput);
-      const chosenBedType = bedType || 'icu';
       const res = await hospitalApi.reserveBed(hospital._id || hospital.id, {
         bedType: chosenBedType,
         patientName,
@@ -145,6 +178,16 @@ export function BedHoldModal({
           </div>
         )}
 
+        {totalAvailable <= 0 && (
+          <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 text-sm flex items-start gap-2.5">
+            <AlertCircle className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
+            <div>
+              <p className="font-bold">No Beds Available</p>
+              <p className="text-xs mt-0.5">Currently, this hospital has 0 available beds across all categories. Bed holds cannot be placed right now.</p>
+            </div>
+          </div>
+        )}
+
         {step === 'input' && (
           <form onSubmit={handleRequestOtp} className="space-y-4 py-2">
             <div className="space-y-2">
@@ -154,6 +197,7 @@ export function BedHoldModal({
                 placeholder="Enter patient full name"
                 value={patientName}
                 onChange={(e) => setPatientName(e.target.value)}
+                disabled={totalAvailable <= 0}
                 required
               />
             </div>
@@ -170,6 +214,7 @@ export function BedHoldModal({
                   className="pl-12"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, ''))}
+                  disabled={totalAvailable <= 0}
                   required
                 />
               </div>
@@ -179,42 +224,60 @@ export function BedHoldModal({
               <Label className="text-xs font-bold text-gray-800 dark:text-gray-200">Select Bed Category to Hold</Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { type: 'icu', label: 'ICU Bed', avail: hospital.beds?.icu?.available ?? 0 },
-                  { type: 'general', label: 'General Bed', avail: hospital.beds?.general?.available ?? 0 },
-                  { type: 'ventilator', label: 'Ventilator', avail: hospital.beds?.ventilator?.available ?? 0 }
+                  { type: 'icu', label: 'ICU Bed', avail: icuAvail },
+                  { type: 'general', label: 'General Bed', avail: genAvail },
+                  { type: 'ventilator', label: 'Ventilator', avail: ventAvail }
                 ].map((b) => {
-                  const isSelected = bedType === b.type;
+                  const isAvailable = b.avail > 0;
+                  const isSelected = isAvailable && bedType === b.type;
                   return (
                     <button
                       key={b.type}
                       type="button"
-                      disabled={b.avail <= 0}
-                      onClick={() => setBedType(b.type)}
+                      disabled={!isAvailable}
+                      onClick={() => {
+                        if (isAvailable) {
+                          setBedType(b.type);
+                          setError('');
+                        }
+                      }}
                       className={cn(
-                        'p-2.5 rounded-xl border text-center transition-all cursor-pointer relative select-none',
+                        'p-2.5 rounded-xl border text-center transition-all relative select-none',
+                        isAvailable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50 bg-gray-100/60 dark:bg-gray-800/40',
                         isSelected 
                           ? 'border-2 border-red-600 bg-red-50 dark:bg-red-950/40 font-bold shadow-xs text-red-600 ring-1 ring-red-600' 
-                          : 'border-gray-200 dark:border-gray-800 hover:bg-muted/50 text-gray-700 dark:text-gray-300',
-                        b.avail <= 0 && 'opacity-40 cursor-not-allowed'
+                          : 'border-gray-200 dark:border-gray-800 hover:bg-muted/50 text-gray-700 dark:text-gray-300'
                       )}
                     >
                       <p className="text-xs font-bold leading-tight">{b.label}</p>
-                      <p className={cn('text-sm font-black mt-0.5', b.avail > 0 ? (isSelected ? 'text-red-600' : 'text-emerald-600') : 'text-red-500')}>
+                      <p className={cn('text-sm font-black mt-0.5', isAvailable ? (isSelected ? 'text-red-600' : 'text-emerald-600') : 'text-red-500 line-through')}>
                         {b.avail} left
                       </p>
-                      {isSelected && (
+                      {isSelected ? (
                         <span className="inline-block text-[9px] font-black uppercase text-red-600 bg-red-100 dark:bg-red-900/50 px-1.5 py-0.2 rounded-full mt-1">
                           ✓ Selected
                         </span>
-                      )}
+                      ) : !isAvailable ? (
+                        <span className="inline-block text-[9px] font-bold uppercase text-red-500 bg-red-50 dark:bg-red-950/50 px-1.5 py-0.2 rounded-full mt-1">
+                          Full / 0 Left
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11" disabled={isSubmitting}>
-              {isSubmitting ? 'Generating One-Time Lock...' : 'Proceed with Phone Verification'}
+            <Button 
+              type="submit" 
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 disabled:opacity-50 disabled:cursor-not-allowed" 
+              disabled={isSubmitting || totalAvailable <= 0 || (Number(hospital?.beds?.[bedType]?.available) || 0) <= 0}
+            >
+              {totalAvailable <= 0 
+                ? 'No Beds Available to Hold' 
+                : (Number(hospital?.beds?.[bedType]?.available) || 0) <= 0
+                  ? 'Selected Bed Category Full'
+                  : (isSubmitting ? 'Generating One-Time Lock...' : 'Proceed with Phone Verification')}
             </Button>
           </form>
         )}

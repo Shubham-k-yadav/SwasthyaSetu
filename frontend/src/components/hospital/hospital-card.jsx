@@ -47,12 +47,25 @@ export function HospitalCard({
     }
   }, [initialBedType]);
 
-  const totalAvailable = (hospital.beds?.icu?.available || 0) +
-    (hospital.beds?.general?.available || 0) +
-    (hospital.beds?.ventilator?.available || 0);
+  const icuAvail = Number(hospital.beds?.icu?.available) || 0;
+  const genAvail = Number(hospital.beds?.general?.available) || 0;
+  const ventAvail = Number(hospital.beds?.ventilator?.available) || 0;
+  const totalAvailable = icuAvail + genAvail + ventAvail;
 
   const hasAvailability = totalAvailable > 0;
   const freshness = getFreshnessStatus(hospital.lastUpdated);
+
+  const handleOpenHoldModal = (preferredType) => {
+    if (!hasAvailability) return;
+    let targetType = preferredType || bedType;
+    if ((Number(hospital.beds?.[targetType]?.available) || 0) <= 0) {
+      if (icuAvail > 0) targetType = 'icu';
+      else if (genAvail > 0) targetType = 'general';
+      else if (ventAvail > 0) targetType = 'ventilator';
+    }
+    setBedType(targetType);
+    setIsReserveOpen(true);
+  };
 
   return (
     <>
@@ -117,35 +130,26 @@ export function HospitalCard({
             <BedIndicator
               label="ICU"
               icon={Heart}
-              available={hospital.beds?.icu?.available || 0}
+              available={icuAvail}
               total={hospital.beds?.icu?.total || 0}
-              isSelected={bedType === 'icu'}
-              onClick={() => {
-                setBedType('icu');
-                setIsReserveOpen(true);
-              }}
+              isSelected={bedType === 'icu' && icuAvail > 0}
+              onClick={() => handleOpenHoldModal('icu')}
             />
             <BedIndicator
               label="General"
               icon={Bed}
-              available={hospital.beds?.general?.available || 0}
+              available={genAvail}
               total={hospital.beds?.general?.total || 0}
-              isSelected={bedType === 'general'}
-              onClick={() => {
-                setBedType('general');
-                setIsReserveOpen(true);
-              }}
+              isSelected={bedType === 'general' && genAvail > 0}
+              onClick={() => handleOpenHoldModal('general')}
             />
             <BedIndicator
               label="Ventilator"
               icon={Wind}
-              available={hospital.beds?.ventilator?.available || 0}
+              available={ventAvail}
               total={hospital.beds?.ventilator?.total || 0}
-              isSelected={bedType === 'ventilator'}
-              onClick={() => {
-                setBedType('ventilator');
-                setIsReserveOpen(true);
-              }}
+              isSelected={bedType === 'ventilator' && ventAvail > 0}
+              onClick={() => handleOpenHoldModal('ventilator')}
             />
           </div>
 
@@ -172,12 +176,17 @@ export function HospitalCard({
           <div className="grid grid-cols-2 gap-2 pt-0.5">
             <Button
               size="sm"
-              className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl shadow-xs"
-              onClick={() => setIsReserveOpen(true)}
+              className={cn(
+                "gap-1.5 font-bold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl shadow-xs",
+                hasAvailability 
+                  ? "bg-amber-600 hover:bg-amber-700 text-white cursor-pointer" 
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700"
+              )}
+              onClick={() => handleOpenHoldModal()}
               disabled={!hasAvailability}
             >
               <Zap className="h-3.5 w-3.5" />
-              {t('holdBed')}
+              {hasAvailability ? t('holdBed') : (t('noBedsAvailable') || 'No Beds Available')}
             </Button>
             <Button
               size="sm"

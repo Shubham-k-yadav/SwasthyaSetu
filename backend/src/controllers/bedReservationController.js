@@ -8,12 +8,35 @@ const otpStore = new Map();
 // Request Verification OTP (Patient Verification Guard)
 export const requestOtp = async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, hospitalId, bedType } = req.body;
     const cleanPhone = String(phone || '').trim().replace(/[\s\-\+]/g, '');
     const phoneRegex = /^[6-9]\d{9}$/;
 
     if (!phoneRegex.test(cleanPhone)) {
       return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6-9.' });
+    }
+
+    // Verify bed availability if hospitalId and bedType are provided
+    if (hospitalId) {
+      const hospital = await Hospital.findById(hospitalId);
+      if (hospital) {
+        if (bedType) {
+          const avail = hospital.beds?.[bedType]?.available || 0;
+          if (avail <= 0) {
+            return res.status(400).json({
+              error: `No ${bedType.toUpperCase()} beds are currently available at this hospital.`
+            });
+          }
+        }
+        const totalAvail = (hospital.beds?.icu?.available || 0) +
+          (hospital.beds?.general?.available || 0) +
+          (hospital.beds?.ventilator?.available || 0);
+        if (totalAvail <= 0) {
+          return res.status(400).json({
+            error: 'No beds are currently available at this hospital. All beds are occupied.'
+          });
+        }
+      }
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -71,6 +94,28 @@ export const reserveBed = async (req, res) => {
 
     if (!['icu', 'general', 'ventilator'].includes(bedType)) {
       return res.status(400).json({ error: 'Invalid bed type specified' });
+    }
+
+    // Verify hospital exists and has availability
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
+
+    const availableBeds = hospital.beds?.[bedType]?.available || 0;
+    if (availableBeds <= 0) {
+      return res.status(400).json({
+        error: `No ${bedType.toUpperCase()} beds are currently available at ${hospital.name}.`
+      });
+    }
+
+    const totalAvail = (hospital.beds?.icu?.available || 0) +
+      (hospital.beds?.general?.available || 0) +
+      (hospital.beds?.ventilator?.available || 0);
+    if (totalAvail <= 0) {
+      return res.status(400).json({
+        error: `No beds are currently available at ${hospital.name}. All beds are occupied.`
+      });
     }
 
     // Prevent duplicate active holds for the same phone number

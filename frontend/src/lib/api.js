@@ -79,8 +79,8 @@ export const hospitalApi = {
   reserveBed: (hospitalId, payload) =>
     apiCall(`/api/hospitals/${hospitalId}/reserve-bed`, { method: 'POST', body: payload }),
 
-  requestOtp: (phone) =>
-    apiCall('/api/hospitals/request-otp', { method: 'POST', body: { phone } }),
+  requestOtp: (phone, extra = {}) =>
+    apiCall('/api/hospitals/request-otp', { method: 'POST', body: { phone, ...extra } }),
 
   verifyOtp: (phone, otp) =>
     apiCall('/api/hospitals/verify-otp', { method: 'POST', body: { phone, otp } }),

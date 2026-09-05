@@ -42,6 +42,7 @@ const translations = {
     quickEmergencyTitle: 'Need Emergency Medical Help?',
     quickEmergencyDesc: 'Hold an ICU/Ventilator bed for 10 minutes with guaranteed availability while you reach the hospital.',
     reserveBedNow: 'Reserve ICU Bed Now',
+    noBedsAvailable: 'No Beds Available',
 
     // Problem Statement & Features
     problemWeSolveTitle: 'The Problem We Solve',
@@ -208,6 +209,7 @@ const translations = {
     quickEmergencyTitle: 'क्या आपको आपातकालीन चिकित्सा सहायता चाहिए?',
     quickEmergencyDesc: 'अस्पताल पहुँचने तक 10 मिनट के लिए गारंटीकृत ICU / वेंटिलेटर बेड तुरंत रिज़र्व करें।',
     reserveBedNow: 'अभी ICU बेड रिज़र्व करें',
+    noBedsAvailable: 'कोई बेड उपलब्ध नहीं',
 
     // Problem Statement & Features
     problemWeSolveTitle: 'जिस समस्या का हम समाधान करते हैं',
