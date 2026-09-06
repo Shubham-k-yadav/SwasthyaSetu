@@ -1,7 +1,9 @@
 import Hospital from '../models/Hospital.js';
 import BloodStock from '../models/BloodStock.js';
-import { haversineDistance, calculateHospitalScore } from '../utils/geo.js';
+import User from '../models/User.js';
+import { haversineDistance, calculateHospitalScore, geocodeFullAddress, extractCoordinatesFromGoogleUrl } from '../utils/geo.js';
 import { emitBedUpdate } from '../services/socket.js';
+
 
 // Get all hospitals with filters
 export const getHospitals = async (req, res) => {
@@ -164,52 +166,124 @@ export const createHospital = async (req, res) => {
   try {
     const {
       name,
+      type = 'private',
+      licenseNumber,
+      registrationNumber,
       address,
       city,
-      state,
-      coordinates,
+      state = 'Uttar Pradesh',
       phone,
       email,
-      googleMapsUrl = '',
+      password,
+      adminPassword,
+      generalBeds = 0,
+      icuBeds = 0,
+      ventilatorBeds = 0,
       beds,
-      specialties,
+      specialties = [],
       emergencyServices = true,
+      googleMapsUrl = '',
       isVerified = true
     } = req.body;
 
-    if (!name || !address || !city || !state || !coordinates || !phone || !email) {
-      return res.status(400).json({ error: 'Missing required hospital fields' });
+    if (!name || !city || !email) {
+      return res.status(400).json({ error: 'Hospital Name, City, and Admin Email are required' });
     }
 
-    const defaultBeds = {
-      icu: { total: beds?.icu?.total || 0, available: beds?.icu?.available || 0 },
-      general: { total: beds?.general?.total || 0, available: beds?.general?.available || 0 },
-      ventilator: { total: beds?.ventilator?.total || 0, available: beds?.ventilator?.available || 0 }
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if user already exists
+    const finalPassword = password || adminPassword || 'HospitalAdmin@2026';
+    let existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser && existingUser.hospitalId) {
+      return res.status(400).json({ error: 'An admin account with this email is already linked to another hospital' });
+    }
+
+    const regNo = (licenseNumber || registrationNumber || '').trim() || `HFR-${Date.now().toString().slice(-6)}`;
+
+    // Parse Google Maps location link if provided
+    const rawMapUrl = (googleMapsUrl || req.body.mapLink || '').trim();
+    const googleCoords = rawMapUrl ? await extractCoordinatesFromGoogleUrl(rawMapUrl) : null;
+
+    // Automatically geocode full hospital address or city via OpenStreetMap if coordinates not passed
+    const coordinates = (req.body.lat && req.body.lng)
+      ? { lat: Number(req.body.lat), lng: Number(req.body.lng) }
+      : (googleCoords)
+        ? { lat: googleCoords.lat, lng: googleCoords.lng }
+        : await geocodeFullAddress(address, city, state);
+
+    const parsedBeds = {
+      general: {
+        total: Math.max(0, Number(beds?.general?.total ?? generalBeds ?? 0)),
+        available: Math.max(0, Number(beds?.general?.available ?? beds?.general?.total ?? generalBeds ?? 0))
+      },
+      icu: {
+        total: Math.max(0, Number(beds?.icu?.total ?? icuBeds ?? 0)),
+        available: Math.max(0, Number(beds?.icu?.available ?? beds?.icu?.total ?? icuBeds ?? 0))
+      },
+      ventilator: {
+        total: Math.max(0, Number(beds?.ventilator?.total ?? ventilatorBeds ?? 0)),
+        available: Math.max(0, Number(beds?.ventilator?.available ?? beds?.ventilator?.total ?? ventilatorBeds ?? 0))
+      }
     };
 
+    const parsedSpecialties = Array.isArray(specialties)
+      ? specialties.filter(s => typeof s === 'string' && s.trim().length > 0)
+      : (typeof specialties === 'string' && specialties.trim() ? [specialties.trim()] : []);
+
     const hospital = new Hospital({
-      name,
-      address,
-      city,
-      state,
+      name: name.trim(),
+      type,
+      registrationNumber: regNo,
+      licenseNumber: regNo,
+      address: address || `${city}, ${state || 'India'}`,
+      city: city.trim(),
+      state: state || 'India',
       coordinates,
-      phone,
-      email,
-      beds: defaultBeds,
-      specialties: specialties || [],
-      emergencyServices,
-      googleMapsUrl: (googleMapsUrl || '').trim(),
-      isVerified
+      phone: phone || '+91-9876543210',
+      email: cleanEmail,
+      adminEmail: cleanEmail,
+      googleMapsUrl: rawMapUrl,
+      beds: parsedBeds,
+      specialties: parsedSpecialties,
+      emergencyServices: Boolean(emergencyServices),
+      isVerified: Boolean(isVerified),
+      verificationStatus: isVerified ? 'approved' : 'pending',
+      isSimulated: false,
+      lastUpdated: new Date()
     });
 
     await hospital.save();
 
-    res.status(201).json({ message: 'Hospital created successfully', hospital });
+    // Create or link Hospital Admin User
+    if (!existingUser) {
+      existingUser = new User({
+        email: cleanEmail,
+        password: finalPassword,
+        name: `${name.trim()} Admin`,
+        role: 'admin',
+        hospitalId: hospital._id,
+        isActive: true
+      });
+      await existingUser.save();
+    } else {
+      existingUser.hospitalId = hospital._id;
+      existingUser.isActive = true;
+      existingUser.role = 'admin';
+      await existingUser.save();
+    }
+
+    res.status(201).json({
+      message: `${hospital.name} created and verified successfully! Admin account configured for ${cleanEmail}.`,
+      hospital,
+      adminEmail: cleanEmail
+    });
   } catch (error) {
     console.error('Error creating hospital:', error);
-    res.status(500).json({ error: 'Failed to create hospital' });
+    res.status(500).json({ error: 'Failed to create hospital: ' + error.message });
   }
 };
+
 
 // Update hospital details (Superadmin only)
 export const updateHospital = async (req, res) => {

@@ -359,7 +359,9 @@ export default function HospitalsAdminPage() {
       <AddHospitalModal
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
+        onSuccess={fetchHospitals}
       />
     </div>
   );
 }
+
