@@ -39,14 +39,27 @@ export function RequestBedUpgradeModal({
     }
   }, [open, hospital]);
 
-  const icuDelta = Number(requestedIcu) - currentIcu;
-  const genDelta = Number(requestedGeneral) - currentGeneral;
-  const ventDelta = Number(requestedVent) - currentVent;
+  const numIcu = requestedIcu === '' ? currentIcu : Number(requestedIcu);
+  const numGen = requestedGeneral === '' ? currentGeneral : Number(requestedGeneral);
+  const numVent = requestedVent === '' ? currentVent : Number(requestedVent);
+
+  const icuDelta = numIcu - currentIcu;
+  const genDelta = numGen - currentGeneral;
+  const ventDelta = numVent - currentVent;
   const hasIncrease = icuDelta > 0 || genDelta > 0 || ventDelta > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!hasIncrease) {
+    const finalIcu = requestedIcu === '' ? currentIcu : Number(requestedIcu);
+    const finalGen = requestedGeneral === '' ? currentGeneral : Number(requestedGeneral);
+    const finalVent = requestedVent === '' ? currentVent : Number(requestedVent);
+
+    if (finalIcu < currentIcu || finalGen < currentGeneral || finalVent < currentVent) {
+      toast.error('Requested total cannot be less than your current verified capacity.');
+      return;
+    }
+
+    if (finalIcu === currentIcu && finalGen === currentGeneral && finalVent === currentVent) {
       toast.error('Requested total beds must exceed current capacity in at least one category.');
       return;
     }
@@ -60,9 +73,9 @@ export function RequestBedUpgradeModal({
       setSubmitting(true);
       await onSubmitUpgrade({
         requestedBeds: {
-          icu: { total: Number(requestedIcu) },
-          general: { total: Number(requestedGeneral) },
-          ventilator: { total: Number(requestedVent) }
+          icu: { total: finalIcu },
+          general: { total: finalGen },
+          ventilator: { total: finalVent }
         },
         reason: reason.trim()
       });
@@ -122,7 +135,15 @@ export function RequestBedUpgradeModal({
                   type="number"
                   min={currentIcu}
                   value={requestedIcu}
-                  onChange={(e) => setRequestedIcu(Math.max(currentIcu, Number(e.target.value) || 0))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRequestedIcu(val === '' ? '' : Math.max(0, parseInt(val, 10) || 0));
+                  }}
+                  onBlur={() => {
+                    if (requestedIcu === '' || Number(requestedIcu) < currentIcu) {
+                      setRequestedIcu(currentIcu);
+                    }
+                  }}
                   className="font-bold text-center text-base"
                 />
               </div>
@@ -156,7 +177,15 @@ export function RequestBedUpgradeModal({
                   type="number"
                   min={currentGeneral}
                   value={requestedGeneral}
-                  onChange={(e) => setRequestedGeneral(Math.max(currentGeneral, Number(e.target.value) || 0))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRequestedGeneral(val === '' ? '' : Math.max(0, parseInt(val, 10) || 0));
+                  }}
+                  onBlur={() => {
+                    if (requestedGeneral === '' || Number(requestedGeneral) < currentGeneral) {
+                      setRequestedGeneral(currentGeneral);
+                    }
+                  }}
                   className="font-bold text-center text-base"
                 />
               </div>
@@ -190,7 +219,15 @@ export function RequestBedUpgradeModal({
                   type="number"
                   min={currentVent}
                   value={requestedVent}
-                  onChange={(e) => setRequestedVent(Math.max(currentVent, Number(e.target.value) || 0))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRequestedVent(val === '' ? '' : Math.max(0, parseInt(val, 10) || 0));
+                  }}
+                  onBlur={() => {
+                    if (requestedVent === '' || Number(requestedVent) < currentVent) {
+                      setRequestedVent(currentVent);
+                    }
+                  }}
                   className="font-bold text-center text-base"
                 />
               </div>
@@ -206,6 +243,7 @@ export function RequestBedUpgradeModal({
               </div>
             </div>
           </div>
+
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground block">
