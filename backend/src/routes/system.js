@@ -51,4 +51,29 @@ router.get('/status', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/system/contact
+ * Handle contact form submissions
+ */
+router.post('/contact', async (req, res) => {
+
+  try {
+    const { name, email, phone, subject, message } = req.body;
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: 'Name, email, and message are required.' });
+    }
+    console.log(`[Contact Form Received] From: ${name} (${email}, Phone: ${phone || 'N/A'}) - Subject: ${subject || 'General Inquiry'}`);
+    console.log(`Message: ${message}`);
+
+    res.json({
+      success: true,
+      message: 'Thank you for reaching out! Our 24/7 coordination & support team has received your message and will respond shortly.'
+    });
+  } catch (error) {
+    console.error('Error handling contact form:', error);
+    res.status(500).json({ error: 'Failed to submit contact request' });
+  }
+});
+
 export default router;
+

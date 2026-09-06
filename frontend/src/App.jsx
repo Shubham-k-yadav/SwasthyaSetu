@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/lib/auth-context';
 import { LanguageProvider } from '@/lib/language-context';
 import { Toaster } from 'sonner';
@@ -10,6 +10,8 @@ import BloodPage from '@/pages/BloodPage';
 import EmergencyPage from '@/pages/EmergencyPage';
 import DriverLocationPage from '@/pages/DriverLocationPage';
 import RegisterPage from '@/pages/RegisterPage';
+import ContactPage from '@/pages/ContactPage';
+
 
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
@@ -101,6 +103,7 @@ export default function App() {
               <Route path="/driver/:ambulanceId" element={<DriverLocationPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/:type" element={<RegisterPage />} />
+              <Route path="/contact" element={<ContactPage />} />
 
               {/* Admin Authentication */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -112,7 +115,11 @@ export default function App() {
                 <Route path="blood" element={<AdminBloodPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />
               </Route>
+
+              {/* Catch-all Fallback (prevents blank screens) */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+
           </ErrorBoundary>
           {/* Global Mobile Bottom Navigation Bar on all mobile screens */}
           <MobileBottomNav />

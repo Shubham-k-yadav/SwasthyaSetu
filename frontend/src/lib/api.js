@@ -37,8 +37,10 @@ async function apiCall(endpoint, options = {}) {
 // System Status API
 export const systemApi = {
   getStatus: () => apiCall('/api/system/status'),
-  getSystemStatus: () => apiCall('/api/system/status')
+  getSystemStatus: () => apiCall('/api/system/status'),
+  sendContact: (data) => apiCall('/api/system/contact', { method: 'POST', body: data }),
 };
+
 
 // Hospital APIs
 export const hospitalApi = {
