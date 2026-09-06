@@ -9,10 +9,12 @@ import {
   HospitalStatsCards,
   HospitalFiltersBar,
   HospitalApprovalQueue,
+  BedUpgradeApprovalQueue,
   HospitalTableView,
   EditBedsModal,
   AddHospitalModal
 } from '@/components/admin/hospitals';
+
 
 const INDIAN_STATES_AND_UTS = [
   'Andaman & Nicobar', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
@@ -36,8 +38,44 @@ export default function HospitalsAdminPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [upgradeRequests, setUpgradeRequests] = useState([]);
+
+  const fetchUpgradeRequests = async () => {
+    if (!isSuperAdmin) return;
+    try {
+      const token = localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token');
+      const data = await api.hospitals.getBedUpgradeQueue(token);
+      setUpgradeRequests(data?.requests || []);
+    } catch (err) {
+      console.error('Failed to load bed upgrade queue:', err);
+    }
+  };
+
+  const handleApproveBedUpgrade = async (req) => {
+    try {
+      const token = localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token');
+      await api.hospitals.reviewBedUpgrade(req._id, 'approve', '', token);
+      toast.success(`Approved capacity upgrade for ${req.hospitalName}!`);
+      fetchUpgradeRequests();
+      fetchHospitals();
+    } catch (err) {
+      toast.error('Failed to approve upgrade: ' + (err.message || 'Server error'));
+    }
+  };
+
+  const handleRejectBedUpgrade = async (req, rejectionReason) => {
+    try {
+      const token = localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token');
+      await api.hospitals.reviewBedUpgrade(req._id, 'reject', rejectionReason, token);
+      toast.info(`Rejected capacity upgrade for ${req.hospitalName}`);
+      fetchUpgradeRequests();
+    } catch (err) {
+      toast.error('Failed to reject upgrade: ' + (err.message || 'Server error'));
+    }
+  };
 
   // Edit Beds Modal State
+
   const [isEditBedsOpen, setIsEditBedsOpen] = useState(false);
   const [editingHospital, setEditingHospital] = useState(null);
   const [bedFormData, setBedFormData] = useState({
@@ -124,7 +162,11 @@ export default function HospitalsAdminPage() {
 
   useEffect(() => {
     fetchHospitals();
-  }, []);
+    if (isSuperAdmin) {
+      fetchUpgradeRequests();
+    }
+  }, [isSuperAdmin]);
+
 
   const availableStates = Array.from(
     new Set([
@@ -269,6 +311,16 @@ export default function HospitalsAdminPage() {
           onReject={handleRejectHospital}
         />
       )}
+
+      {/* Bed Capacity Upgrade Requests Queue */}
+      {!isLoading && isSuperAdmin && (
+        <BedUpgradeApprovalQueue
+          upgradeRequests={upgradeRequests}
+          onApprove={handleApproveBedUpgrade}
+          onReject={handleRejectBedUpgrade}
+        />
+      )}
+
 
       {/* Stats Cards */}
       <HospitalStatsCards hospitals={hospitals} />

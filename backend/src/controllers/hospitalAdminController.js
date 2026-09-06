@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import Hospital from '../models/Hospital.js';
 import User from '../models/User.js';
-import { emitRegistrationRequest } from '../services/socket.js';
+import BedUpgradeRequest from '../models/BedUpgradeRequest.js';
+import { emitRegistrationRequest, emitBedUpgradeRequest, emitBedUpdate } from '../services/socket.js';
 import { geocodeFullAddress, extractCoordinatesFromGoogleUrl } from '../utils/geo.js';
 
 // Public registration request for new hospitals
@@ -203,3 +204,190 @@ export const verifyHospital = async (req, res) => {
     res.status(500).json({ error: 'Failed to verify hospital' });
   }
 };
+
+// Submit Bed Capacity Upgrade Request (Hospital Admin)
+export const createBedUpgradeRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { requestedBeds, reason, documentUrl } = req.body;
+
+    // Check authority: user must be admin of this hospital or superadmin
+    const userHospId = req.user.hospitalId ? String(req.user.hospitalId._id || req.user.hospitalId) : null;
+    if (req.user.role !== 'superadmin' && userHospId !== String(id)) {
+      return res.status(403).json({ error: 'Unauthorized to submit upgrade request for this hospital' });
+    }
+
+    const hospital = await Hospital.findById(id);
+    if (!hospital) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Reason for capacity upgrade is required' });
+    }
+
+    if (!requestedBeds) {
+      return res.status(400).json({ error: 'Requested bed capacity numbers are required' });
+    }
+
+    // Check if there is already a pending request
+    const existingPending = await BedUpgradeRequest.findOne({
+      hospitalId: id,
+      status: 'pending'
+    });
+
+    if (existingPending) {
+      return res.status(400).json({
+        error: 'A bed capacity upgrade request is already pending review by Super Admin.',
+        pendingRequest: existingPending
+      });
+    }
+
+    const currentBeds = {
+      icu: { total: hospital.beds?.icu?.total || 0 },
+      general: { total: hospital.beds?.general?.total || 0 },
+      ventilator: { total: hospital.beds?.ventilator?.total || 0 }
+    };
+
+    const newRequestedBeds = {
+      icu: { total: Math.max(currentBeds.icu.total, Number(requestedBeds.icu?.total ?? currentBeds.icu.total)) },
+      general: { total: Math.max(currentBeds.general.total, Number(requestedBeds.general?.total ?? currentBeds.general.total)) },
+      ventilator: { total: Math.max(currentBeds.ventilator.total, Number(requestedBeds.ventilator?.total ?? currentBeds.ventilator.total)) }
+    };
+
+    // Check if any bed count actually increased
+    const hasIncrease = 
+      newRequestedBeds.icu.total > currentBeds.icu.total ||
+      newRequestedBeds.general.total > currentBeds.general.total ||
+      newRequestedBeds.ventilator.total > currentBeds.ventilator.total;
+
+    if (!hasIncrease) {
+      return res.status(400).json({
+        error: 'Requested total beds must be greater than current registered capacity in at least one category.'
+      });
+    }
+
+    const upgradeReq = new BedUpgradeRequest({
+      hospitalId: hospital._id,
+      hospitalName: hospital.name,
+      requestedBy: req.user._id,
+      requesterEmail: req.user.email,
+      currentBeds,
+      requestedBeds: newRequestedBeds,
+      reason: reason.trim(),
+      documentUrl: documentUrl || '',
+      status: 'pending'
+    });
+
+    await upgradeReq.save();
+
+    emitBedUpgradeRequest(upgradeReq);
+
+    res.status(201).json({
+      message: 'Bed capacity upgrade request submitted successfully! Super Admin review pending.',
+      request: upgradeReq
+    });
+  } catch (error) {
+    console.error('Error submitting bed upgrade request:', error);
+    res.status(500).json({ error: 'Failed to submit bed upgrade request: ' + error.message });
+  }
+};
+
+// Get upgrade requests for a single hospital (Hospital Admin / Super Admin)
+export const getHospitalUpgradeRequests = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userHospId = req.user.hospitalId ? String(req.user.hospitalId._id || req.user.hospitalId) : null;
+    if (req.user.role !== 'superadmin' && userHospId !== String(id)) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const requests = await BedUpgradeRequest.find({ hospitalId: id }).sort({ createdAt: -1 }).lean();
+    res.json({ requests });
+  } catch (error) {
+    console.error('Error fetching hospital upgrade requests:', error);
+    res.status(500).json({ error: 'Failed to fetch upgrade requests' });
+  }
+};
+
+// Get all upgrade requests queue (Super Admin only)
+export const getAllBedUpgradeRequests = async (req, res) => {
+  try {
+    const { status } = req.query;
+    const filter = status ? { status } : {};
+    const requests = await BedUpgradeRequest.find(filter)
+      .populate('hospitalId', 'name city state phone isVerified address')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ requests });
+  } catch (error) {
+    console.error('Error fetching bed upgrade queue:', error);
+    res.status(500).json({ error: 'Failed to fetch bed upgrade queue' });
+  }
+};
+
+// Review Bed Upgrade Request: Approve or Reject (Super Admin only)
+export const handleBedUpgradeRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { action, rejectionReason } = req.body;
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be either "approve" or "reject"' });
+    }
+
+    const upgradeReq = await BedUpgradeRequest.findById(requestId);
+    if (!upgradeReq) {
+      return res.status(404).json({ error: 'Upgrade request not found' });
+    }
+
+    if (upgradeReq.status !== 'pending') {
+      return res.status(400).json({ error: `Request has already been ${upgradeReq.status}` });
+    }
+
+    upgradeReq.reviewedBy = req.user._id;
+    upgradeReq.reviewedAt = new Date();
+
+    if (action === 'approve') {
+      upgradeReq.status = 'approved';
+      await upgradeReq.save();
+
+      // Update Hospital's registered bed capacity in database
+      const hospital = await Hospital.findById(upgradeReq.hospitalId);
+      if (hospital) {
+        if (!hospital.beds) hospital.beds = {};
+        if (!hospital.beds.icu) hospital.beds.icu = { total: 0, available: 0 };
+        if (!hospital.beds.general) hospital.beds.general = { total: 0, available: 0 };
+        if (!hospital.beds.ventilator) hospital.beds.ventilator = { total: 0, available: 0 };
+
+        hospital.beds.icu.total = upgradeReq.requestedBeds.icu.total;
+        hospital.beds.general.total = upgradeReq.requestedBeds.general.total;
+        hospital.beds.ventilator.total = upgradeReq.requestedBeds.ventilator.total;
+        hospital.lastUpdated = new Date();
+
+        await hospital.save();
+
+        emitBedUpdate(hospital._id, hospital.beds);
+      }
+
+      return res.json({
+        message: `Capacity upgrade for ${upgradeReq.hospitalName} approved successfully!`,
+        request: upgradeReq
+      });
+    } else {
+      upgradeReq.status = 'rejected';
+      upgradeReq.rejectionReason = rejectionReason || 'Request rejected by platform administration.';
+      await upgradeReq.save();
+
+      return res.json({
+        message: `Capacity upgrade for ${upgradeReq.hospitalName} rejected.`,
+        request: upgradeReq
+      });
+    }
+  } catch (error) {
+    console.error('Error reviewing bed upgrade request:', error);
+    res.status(500).json({ error: 'Failed to process bed upgrade review: ' + error.message });
+  }
+};
+

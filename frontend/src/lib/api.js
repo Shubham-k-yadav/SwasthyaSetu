@@ -98,7 +98,24 @@ export const hospitalApi = {
 
   getReservations: (hospitalId, token) =>
     apiCall(`/api/hospitals/${hospitalId}/reservations`, { token }),
+
+  requestBedUpgrade: (hospitalId, data, token) =>
+    apiCall(`/api/hospitals/${hospitalId}/bed-upgrade-request`, { method: 'POST', body: data, token }),
+
+  getHospitalBedUpgrades: (hospitalId, token) =>
+    apiCall(`/api/hospitals/${hospitalId}/bed-upgrade-requests`, { token }),
+
+  getBedUpgradeQueue: (token) =>
+    apiCall('/api/hospitals/admin/bed-upgrade-requests', { token }),
+
+  reviewBedUpgrade: (requestId, action, rejectionReason, token) =>
+    apiCall(`/api/hospitals/admin/bed-upgrade-requests/${requestId}`, {
+      method: 'PATCH',
+      body: { action, rejectionReason },
+      token
+    }),
 };
+
 
 // Blood APIs
 export const bloodApi = {

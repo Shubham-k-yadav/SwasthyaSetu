@@ -25,8 +25,10 @@ import {
   BedInventoryManager,
   PatientReservationsTable,
   AdmissionQrScannerModal,
-  AmbulanceFleetManager
+  AmbulanceFleetManager,
+  RequestBedUpgradeModal
 } from '@/components/admin/dashboard';
+
 
 export default function HospitalAdminDashboard() {
   const { user } = useAuth();
@@ -52,6 +54,10 @@ export default function HospitalAdminDashboard() {
   const [scannedCodeInput, setScannedCodeInput] = useState('');
   const [isVerifyingScan, setIsVerifyingScan] = useState(false);
   const [cameraError, setCameraError] = useState('');
+
+  // Bed Capacity Upgrade Modal & State
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [pendingUpgradeRequest, setPendingUpgradeRequest] = useState(null);
 
   const [bedsForm, setBedsForm] = useState(() => ({
     icuAvailable: user?.hospital?.beds?.icu?.available ?? 0,
@@ -94,10 +100,11 @@ export default function HospitalAdminDashboard() {
     setLoading(true);
     try {
       const token = localStorage.getItem('swasthya_setu_token') || user?.token;
-      const [hospRes, ambRes, resvRes] = await Promise.all([
+      const [hospRes, ambRes, resvRes, upgradesRes] = await Promise.all([
         api.hospitals.getById(hospitalId).catch(() => null),
         api.ambulances.getByHospital(hospitalId, token).catch(() => ({ ambulances: [] })),
-        api.hospitals.getReservations(hospitalId, token).catch(() => ({ reservations: [] }))
+        api.hospitals.getReservations(hospitalId, token).catch(() => ({ reservations: [] })),
+        api.hospitals.getHospitalBedUpgrades(hospitalId, token).catch(() => ({ requests: [] }))
       ]);
 
       const h = hospRes?.hospital || hospRes;
@@ -116,6 +123,9 @@ export default function HospitalAdminDashboard() {
       }
       setAmbulances(ambRes?.ambulances || []);
       setReservations(resvRes?.reservations || []);
+
+      const pendingReq = (upgradesRes?.requests || []).find(r => r.status === 'pending');
+      setPendingUpgradeRequest(pendingReq || null);
     } catch (err) {
       console.error('Error fetching hospital admin details:', err);
       toast.error('Failed to load hospital data');
@@ -123,6 +133,13 @@ export default function HospitalAdminDashboard() {
       setLoading(false);
     }
   };
+
+  const handleSubmitBedUpgrade = async (data) => {
+    const token = localStorage.getItem('swasthya_setu_token') || user?.token;
+    await api.hospitals.requestBedUpgrade(hospitalId, data, token);
+    fetchHospitalData();
+  };
+
 
   useEffect(() => {
     fetchHospitalData();
@@ -457,6 +474,8 @@ export default function HospitalAdminDashboard() {
             setBedsForm={setBedsForm}
             updatingBeds={updatingBeds}
             onUpdateBeds={handleUpdateBeds}
+            onOpenUpgradeModal={() => setIsUpgradeModalOpen(true)}
+            pendingUpgradeRequest={pendingUpgradeRequest}
           />
         </TabsContent>
 
@@ -503,6 +522,15 @@ export default function HospitalAdminDashboard() {
         onAutoConfirmScan={handleAutoConfirmScan}
         onScanSubmit={handleScanSubmit}
       />
+
+      {/* REQUEST BED CAPACITY UPGRADE MODAL */}
+      <RequestBedUpgradeModal
+        open={isUpgradeModalOpen}
+        onOpenChange={setIsUpgradeModalOpen}
+        hospital={hospital}
+        onSubmitUpgrade={handleSubmitBedUpgrade}
+      />
     </div>
   );
 }
+

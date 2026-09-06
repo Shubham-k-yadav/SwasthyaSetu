@@ -1,13 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, RefreshCw, Heart, Bed, Wind, Lock, ShieldCheck, Info } from 'lucide-react';
+import { Save, RefreshCw, Heart, Bed, Wind, Lock, ShieldCheck, Info, ArrowUpCircle, Clock } from 'lucide-react';
 
 export function BedInventoryManager({
   bedsForm,
   setBedsForm,
   updatingBeds,
-  onUpdateBeds
+  onUpdateBeds,
+  onOpenUpgradeModal,
+  pendingUpgradeRequest
 }) {
   const icuTotal = Number(bedsForm.icuTotal) || 0;
   const generalTotal = Number(bedsForm.generalTotal) || 0;
@@ -32,20 +34,66 @@ export function BedInventoryManager({
               Update real-time bed availability. Changes broadcast live instantly to patients and emergency services.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full font-semibold shrink-0 self-start sm:self-auto">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Verified Capacity Limits Active</span>
+          <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full font-semibold">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Verified Capacity Active</span>
+            </div>
+            {onOpenUpgradeModal && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenUpgradeModal}
+                disabled={!!pendingUpgradeRequest}
+                className="gap-1.5 text-xs font-bold border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/10 shadow-xs"
+              >
+                <ArrowUpCircle className="h-3.5 w-3.5 text-indigo-600" />
+                {pendingUpgradeRequest ? 'Upgrade Under Review' : 'Request Bed Upgrade'}
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Pending Upgrade Status Alert Banner */}
+        {pendingUpgradeRequest && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3 shadow-xs">
+            <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+            <div className="space-y-1">
+              <div className="font-bold flex flex-wrap items-center gap-2">
+                <span>Bed Capacity Upgrade Application Pending Super Admin Review</span>
+                <span className="text-[10px] bg-amber-500/20 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full font-mono">
+                  Submitted {new Date(pendingUpgradeRequest.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="text-muted-foreground">
+                Requested Capacity:{' '}
+                {pendingUpgradeRequest.requestedBeds?.icu?.total !== pendingUpgradeRequest.currentBeds?.icu?.total && (
+                  <span className="font-semibold text-foreground ml-1">ICU: {pendingUpgradeRequest.currentBeds?.icu?.total} ➔ {pendingUpgradeRequest.requestedBeds?.icu?.total} beds; </span>
+                )}
+                {pendingUpgradeRequest.requestedBeds?.general?.total !== pendingUpgradeRequest.currentBeds?.general?.total && (
+                  <span className="font-semibold text-foreground ml-1">General: {pendingUpgradeRequest.currentBeds?.general?.total} ➔ {pendingUpgradeRequest.requestedBeds?.general?.total} beds; </span>
+                )}
+                {pendingUpgradeRequest.requestedBeds?.ventilator?.total !== pendingUpgradeRequest.currentBeds?.ventilator?.total && (
+                  <span className="font-semibold text-foreground ml-1">Ventilators: {pendingUpgradeRequest.currentBeds?.ventilator?.total} ➔ {pendingUpgradeRequest.requestedBeds?.ventilator?.total} units; </span>
+                )}
+              </p>
+              <p className="text-[11px] italic text-muted-foreground">
+                Reason: "{pendingUpgradeRequest.reason}"
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Informative quota notice */}
         <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2.5">
           <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            <strong>Fixed Registered Capacity:</strong> Total bed counts are certified during registration and locked by Super Admin verification. You can update currently available beds (between <strong>0</strong> and your verified maximum capacity). To upgrade total bed capacity, submit updated medical licenses to Super Admin.
+            <strong>Fixed Registered Capacity:</strong> Total bed counts are certified during registration and locked by Super Admin verification. You can update currently available beds (between <strong>0</strong> and your verified maximum capacity). To upgrade total bed capacity, use the <strong>Request Bed Upgrade</strong> button above to submit an infrastructure expansion application.
           </p>
         </div>
+
 
         <form onSubmit={onUpdateBeds} className="space-y-6">
           <div className="grid gap-6 md:grid-cols-3">

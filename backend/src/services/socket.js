@@ -121,3 +121,14 @@ export const emitRegistrationRequest = (type, data) => {
     });
   }
 };
+
+export const emitBedUpgradeRequest = (request) => {
+  if (io) {
+    io.emit('new-bed-upgrade-request', {
+      requestId: request._id,
+      hospitalName: request.hospitalName,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
