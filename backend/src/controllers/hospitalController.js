@@ -268,19 +268,74 @@ export const updateBeds = async (req, res) => {
       return res.status(404).json({ error: 'Hospital not found' });
     }
 
-    // Merge existing bed structure safely with numeric validation
+    const isSuperAdmin = req.user?.role === 'superadmin';
+
+    // Strict validation: Hospital Admin cannot increase total beds beyond verified registered capacity,
+    // and available beds can never exceed total capacity.
+    for (const type of ['icu', 'general', 'ventilator']) {
+      const existingTotal = Number(existingHospital.beds?.[type]?.total) || 0;
+      
+      // If Hospital Admin tries to alter total capacity beyond registered
+      if (!isSuperAdmin && beds[type]?.total !== undefined && Number(beds[type].total) > existingTotal) {
+        return res.status(400).json({
+          error: `Cannot increase registered ${type.toUpperCase()} bed capacity beyond ${existingTotal}. Total capacity is locked by registration. Contact Super Admin to request quota expansion.`
+        });
+      }
+
+      const effectiveTotal = (isSuperAdmin && beds[type]?.total !== undefined)
+        ? Math.max(0, Number(beds[type].total) || 0)
+        : existingTotal;
+
+      // Check if available exceeds total
+      if (beds[type]?.available !== undefined) {
+        const reqAvail = Number(beds[type].available);
+        if (reqAvail > effectiveTotal) {
+          return res.status(400).json({
+            error: `Available ${type.toUpperCase()} beds (${reqAvail}) cannot exceed the hospital's registered capacity of ${effectiveTotal} beds.`
+          });
+        }
+        if (reqAvail < 0) {
+          return res.status(400).json({
+            error: `Available ${type.toUpperCase()} beds cannot be negative.`
+          });
+        }
+      }
+    }
+
+    // Merge existing bed structure safely with numeric validation & boundary constraints
     const updatedBeds = {
       icu: {
-        total: beds.icu?.total !== undefined ? Math.max(0, Number(beds.icu.total) || 0) : (existingHospital.beds?.icu?.total || 0),
-        available: beds.icu?.available !== undefined ? Math.max(0, Number(beds.icu.available) || 0) : (existingHospital.beds?.icu?.available || 0)
+        total: isSuperAdmin && beds.icu?.total !== undefined 
+          ? Math.max(0, Number(beds.icu.total) || 0) 
+          : (Number(existingHospital.beds?.icu?.total) || 0),
+        available: beds.icu?.available !== undefined 
+          ? Math.min(
+              isSuperAdmin && beds.icu?.total !== undefined ? Math.max(0, Number(beds.icu.total) || 0) : (Number(existingHospital.beds?.icu?.total) || 0),
+              Math.max(0, Number(beds.icu.available) || 0)
+            ) 
+          : (Number(existingHospital.beds?.icu?.available) || 0)
       },
       general: {
-        total: beds.general?.total !== undefined ? Math.max(0, Number(beds.general.total) || 0) : (existingHospital.beds?.general?.total || 0),
-        available: beds.general?.available !== undefined ? Math.max(0, Number(beds.general.available) || 0) : (existingHospital.beds?.general?.available || 0)
+        total: isSuperAdmin && beds.general?.total !== undefined 
+          ? Math.max(0, Number(beds.general.total) || 0) 
+          : (Number(existingHospital.beds?.general?.total) || 0),
+        available: beds.general?.available !== undefined 
+          ? Math.min(
+              isSuperAdmin && beds.general?.total !== undefined ? Math.max(0, Number(beds.general.total) || 0) : (Number(existingHospital.beds?.general?.total) || 0),
+              Math.max(0, Number(beds.general.available) || 0)
+            ) 
+          : (Number(existingHospital.beds?.general?.available) || 0)
       },
       ventilator: {
-        total: beds.ventilator?.total !== undefined ? Math.max(0, Number(beds.ventilator.total) || 0) : (existingHospital.beds?.ventilator?.total || 0),
-        available: beds.ventilator?.available !== undefined ? Math.max(0, Number(beds.ventilator.available) || 0) : (existingHospital.beds?.ventilator?.available || 0)
+        total: isSuperAdmin && beds.ventilator?.total !== undefined 
+          ? Math.max(0, Number(beds.ventilator.total) || 0) 
+          : (Number(existingHospital.beds?.ventilator?.total) || 0),
+        available: beds.ventilator?.available !== undefined 
+          ? Math.min(
+              isSuperAdmin && beds.ventilator?.total !== undefined ? Math.max(0, Number(beds.ventilator.total) || 0) : (Number(existingHospital.beds?.ventilator?.total) || 0),
+              Math.max(0, Number(beds.ventilator.available) || 0)
+            ) 
+          : (Number(existingHospital.beds?.ventilator?.available) || 0)
       }
     };
 

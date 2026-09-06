@@ -179,13 +179,34 @@ export default function HospitalAdminDashboard() {
   const handleUpdateBeds = async (e) => {
     e.preventDefault();
     if (!hospitalId) return;
+
+    const icuAvail = Number(bedsForm.icuAvailable) || 0;
+    const icuTotal = Number(bedsForm.icuTotal) || 0;
+    const genAvail = Number(bedsForm.generalAvailable) || 0;
+    const genTotal = Number(bedsForm.generalTotal) || 0;
+    const ventAvail = Number(bedsForm.ventilatorAvailable) || 0;
+    const ventTotal = Number(bedsForm.ventilatorTotal) || 0;
+
+    if (icuAvail > icuTotal) {
+      toast.error(`Available ICU beds (${icuAvail}) cannot exceed verified capacity (${icuTotal})`);
+      return;
+    }
+    if (genAvail > genTotal) {
+      toast.error(`Available General beds (${genAvail}) cannot exceed verified capacity (${genTotal})`);
+      return;
+    }
+    if (ventAvail > ventTotal) {
+      toast.error(`Available Ventilators (${ventAvail}) cannot exceed verified capacity (${ventTotal})`);
+      return;
+    }
+
     setUpdatingBeds(true);
     try {
       const token = localStorage.getItem('swasthya_setu_token') || user?.token;
       const bedsPayload = {
-        icu: { available: Number(bedsForm.icuAvailable), total: Number(bedsForm.icuTotal) },
-        general: { available: Number(bedsForm.generalAvailable), total: Number(bedsForm.generalTotal) },
-        ventilator: { available: Number(bedsForm.ventilatorAvailable), total: Number(bedsForm.ventilatorTotal) }
+        icu: { available: icuAvail, total: icuTotal },
+        general: { available: genAvail, total: genTotal },
+        ventilator: { available: ventAvail, total: ventTotal }
       };
 
       const res = await api.hospitals.updateBeds(hospitalId, bedsPayload, token);
