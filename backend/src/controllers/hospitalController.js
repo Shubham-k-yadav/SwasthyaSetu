@@ -1,4 +1,5 @@
 import Hospital from '../models/Hospital.js';
+import BloodStock from '../models/BloodStock.js';
 import { haversineDistance, calculateHospitalScore } from '../utils/geo.js';
 import { emitBedUpdate } from '../services/socket.js';
 
@@ -267,19 +268,19 @@ export const updateBeds = async (req, res) => {
       return res.status(404).json({ error: 'Hospital not found' });
     }
 
-    // Merge existing bed structure safely
+    // Merge existing bed structure safely with numeric validation
     const updatedBeds = {
       icu: {
-        total: beds.icu?.total ?? existingHospital.beds.icu.total,
-        available: beds.icu?.available ?? existingHospital.beds.icu.available
+        total: beds.icu?.total !== undefined ? Math.max(0, Number(beds.icu.total) || 0) : (existingHospital.beds?.icu?.total || 0),
+        available: beds.icu?.available !== undefined ? Math.max(0, Number(beds.icu.available) || 0) : (existingHospital.beds?.icu?.available || 0)
       },
       general: {
-        total: beds.general?.total ?? existingHospital.beds.general.total,
-        available: beds.general?.available ?? existingHospital.beds.general.available
+        total: beds.general?.total !== undefined ? Math.max(0, Number(beds.general.total) || 0) : (existingHospital.beds?.general?.total || 0),
+        available: beds.general?.available !== undefined ? Math.max(0, Number(beds.general.available) || 0) : (existingHospital.beds?.general?.available || 0)
       },
       ventilator: {
-        total: beds.ventilator?.total ?? existingHospital.beds.ventilator.total,
-        available: beds.ventilator?.available ?? existingHospital.beds.ventilator.available
+        total: beds.ventilator?.total !== undefined ? Math.max(0, Number(beds.ventilator.total) || 0) : (existingHospital.beds?.ventilator?.total || 0),
+        available: beds.ventilator?.available !== undefined ? Math.max(0, Number(beds.ventilator.available) || 0) : (existingHospital.beds?.ventilator?.available || 0)
       }
     };
 

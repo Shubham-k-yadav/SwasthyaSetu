@@ -49,7 +49,7 @@ router.post('/login', async (req, res) => {
     let hospital = null;
     if (user.hospitalId) {
       hospital = await Hospital.findById(user.hospitalId)
-        .select('name city state isVerified')
+        .select('name address city state phone email beds isVerified')
         .lean();
 
       if (user.role === 'admin' && hospital) {
@@ -75,6 +75,7 @@ router.post('/login', async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        hospitalId: user.hospitalId || hospital?._id || null,
         hospital
       }
     });
@@ -113,7 +114,7 @@ router.get('/me', authenticate, async (req, res) => {
     if (user?.hospitalId) {
       if (mongoose.Types.ObjectId.isValid(user.hospitalId)) {
         hospital = await Hospital.findById(user.hospitalId)
-          .select('name city state beds')
+          .select('name address city state phone email beds isVerified')
           .lean();
       }
     }
@@ -124,6 +125,7 @@ router.get('/me', authenticate, async (req, res) => {
         email: user?.email,
         name: user?.name,
         role: user?.role,
+        hospitalId: user?.hospitalId || hospital?._id || null,
         hospital
       }
     });

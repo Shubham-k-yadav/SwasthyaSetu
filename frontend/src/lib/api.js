@@ -13,8 +13,10 @@ async function apiCall(endpoint, options = {}) {
     'Content-Type': 'application/json',
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  const authToken = token || (typeof window !== 'undefined' ? (localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token')) : null);
+
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {

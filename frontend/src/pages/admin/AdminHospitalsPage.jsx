@@ -65,7 +65,7 @@ export default function HospitalsAdminPage() {
   const handleSaveBeds = async () => {
     if (!editingHospital) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token');
       const payload = {
         general: { total: Number(bedFormData.generalTotal), available: Number(bedFormData.generalAvail) },
         icu: { total: Number(bedFormData.icuTotal), available: Number(bedFormData.icuAvail) },

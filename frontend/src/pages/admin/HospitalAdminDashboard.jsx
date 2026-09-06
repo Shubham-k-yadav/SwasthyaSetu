@@ -39,7 +39,7 @@ export default function HospitalAdminDashboard() {
     setSearchParams({ tab: newTab });
   };
   
-  const [hospital, setHospital] = useState(null);
+  const [hospital, setHospital] = useState(() => user?.hospital || null);
   const [ambulances, setAmbulances] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,14 +53,14 @@ export default function HospitalAdminDashboard() {
   const [isVerifyingScan, setIsVerifyingScan] = useState(false);
   const [cameraError, setCameraError] = useState('');
 
-  const [bedsForm, setBedsForm] = useState({
-    icuAvailable: 0,
-    icuTotal: 0,
-    generalAvailable: 0,
-    generalTotal: 0,
-    ventilatorAvailable: 0,
-    ventilatorTotal: 0,
-  });
+  const [bedsForm, setBedsForm] = useState(() => ({
+    icuAvailable: user?.hospital?.beds?.icu?.available ?? 0,
+    icuTotal: user?.hospital?.beds?.icu?.total ?? 0,
+    generalAvailable: user?.hospital?.beds?.general?.available ?? 0,
+    generalTotal: user?.hospital?.beds?.general?.total ?? 0,
+    ventilatorAvailable: user?.hospital?.beds?.ventilator?.available ?? 0,
+    ventilatorTotal: user?.hospital?.beds?.ventilator?.total ?? 0,
+  }));
 
   const [ambForm, setAmbForm] = useState({
     vehicleNumber: '',
@@ -68,6 +68,23 @@ export default function HospitalAdminDashboard() {
     driverPhone: '',
     equipmentLevel: 'ALS Ambulance (Advanced Life Support)'
   });
+
+  // Sync hospital from auth if loaded
+  useEffect(() => {
+    if (user?.hospital && (!hospital || !hospital.beds)) {
+      setHospital(user.hospital);
+      if (user.hospital.beds) {
+        setBedsForm({
+          icuAvailable: user.hospital.beds.icu?.available ?? 0,
+          icuTotal: user.hospital.beds.icu?.total ?? 0,
+          generalAvailable: user.hospital.beds.general?.available ?? 0,
+          generalTotal: user.hospital.beds.general?.total ?? 0,
+          ventilatorAvailable: user.hospital.beds.ventilator?.available ?? 0,
+          ventilatorTotal: user.hospital.beds.ventilator?.total ?? 0,
+        });
+      }
+    }
+  }, [user]);
 
   const fetchHospitalData = async () => {
     if (!hospitalId) {
@@ -84,16 +101,16 @@ export default function HospitalAdminDashboard() {
       ]);
 
       const h = hospRes?.hospital || hospRes;
-      if (h) {
+      if (h && (h._id || h.id || h.name)) {
         setHospital(h);
         if (h.beds) {
           setBedsForm({
-            icuAvailable: h.beds.icu?.available || 0,
-            icuTotal: h.beds.icu?.total || 0,
-            generalAvailable: h.beds.general?.available || 0,
-            generalTotal: h.beds.general?.total || 0,
-            ventilatorAvailable: h.beds.ventilator?.available || 0,
-            ventilatorTotal: h.beds.ventilator?.total || 0,
+            icuAvailable: h.beds.icu?.available ?? 0,
+            icuTotal: h.beds.icu?.total ?? 0,
+            generalAvailable: h.beds.general?.available ?? 0,
+            generalTotal: h.beds.general?.total ?? 0,
+            ventilatorAvailable: h.beds.ventilator?.available ?? 0,
+            ventilatorTotal: h.beds.ventilator?.total ?? 0,
           });
         }
       }
@@ -171,11 +188,25 @@ export default function HospitalAdminDashboard() {
         ventilator: { available: Number(bedsForm.ventilatorAvailable), total: Number(bedsForm.ventilatorTotal) }
       };
 
-      await api.hospitals.updateBeds(hospitalId, bedsPayload, token);
+      const res = await api.hospitals.updateBeds(hospitalId, bedsPayload, token);
+      const updatedH = res?.hospital;
+      if (updatedH) {
+        setHospital(updatedH);
+        if (updatedH.beds) {
+          setBedsForm({
+            icuAvailable: updatedH.beds.icu?.available ?? 0,
+            icuTotal: updatedH.beds.icu?.total ?? 0,
+            generalAvailable: updatedH.beds.general?.available ?? 0,
+            generalTotal: updatedH.beds.general?.total ?? 0,
+            ventilatorAvailable: updatedH.beds.ventilator?.available ?? 0,
+            ventilatorTotal: updatedH.beds.ventilator?.total ?? 0,
+          });
+        }
+      }
       toast.success('Hospital bed availability updated live across network!');
       fetchHospitalData();
     } catch (err) {
-      toast.error('Failed to update bed inventory');
+      toast.error(err.message || err.error || 'Failed to update bed inventory');
     } finally {
       setUpdatingBeds(false);
     }
