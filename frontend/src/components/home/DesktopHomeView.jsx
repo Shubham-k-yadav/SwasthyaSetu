@@ -228,9 +228,9 @@ export function DesktopHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 })
                     <Search className="h-6 w-6" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-bold text-base text-gray-900 dark:text-white">Smart Search</h3>
+                    <h3 className="font-bold text-base text-gray-900 dark:text-white">Smart Matching</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
-                      AI-powered search finds the best hospital based on location, bed type, and availability.
+                      Intelligent GPS triage finds the nearest verified hospital based on live bed availability.
                     </p>
                   </div>
                 </div>
@@ -260,9 +260,9 @@ export function DesktopHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 })
                     <ShieldCheck className="h-6 w-6" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-bold text-base text-gray-900 dark:text-white">Blockchain Verified</h3>
+                    <h3 className="font-bold text-base text-gray-900 dark:text-white">Admin Verified</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
-                      Hospital data verified on Polygon blockchain. Tamper-proof and trustworthy.
+                      Hospital infrastructure and bed capacity certified by Super Admin inspection.
                     </p>
                   </div>
                 </div>
@@ -428,20 +428,20 @@ export function DesktopHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 })
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <ShieldCheck className="h-12 w-12 text-white" />
-                  <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Blockchain Verified</h3>
+                  <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Admin Verified</h3>
                 </div>
                 <p className="text-sm sm:text-base text-red-100 font-medium leading-relaxed">
-                  Hospital data is verified on Polygon blockchain. Tamper-proof, transparent, and trustworthy.
+                  Hospital infrastructure, emergency wards, and bed inventory verified by Super Admin.
                 </p>
                 <ul className="space-y-3 text-sm font-semibold pt-4">
                   <li className="flex items-center gap-3">
-                    <Check className="h-5 w-5 rounded-full bg-white/20 p-1" /> Polygon Blockchain Verified
+                    <Check className="h-5 w-5 rounded-full bg-white/20 p-1" /> Super Admin Verified
                   </li>
                   <li className="flex items-center gap-3">
-                    <Check className="h-5 w-5 rounded-full bg-white/20 p-1" /> Tamper-Proof Audit Trail
+                    <Check className="h-5 w-5 rounded-full bg-white/20 p-1" /> Certified Ward Inventory
                   </li>
                   <li className="flex items-center gap-3">
-                    <Check className="h-5 w-5 rounded-full bg-white/20 p-1" /> Real-Time Smart Contract Sync
+                    <Check className="h-5 w-5 rounded-full bg-white/20 p-1" /> Live Inspection Audit
                   </li>
                 </ul>
               </div>
@@ -453,10 +453,10 @@ export function DesktopHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 })
                   <div className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
                     <Zap className="h-6 w-6" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Smart Search</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Smart Matching Engine</h3>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
-                  AI-powered search finds the best hospital based on your location, required bed type, and real-time availability.
+                  Intelligent GPS triage finds the nearest verified hospital based on your location, required bed type, and real-time availability.
                 </p>
                 <ul className="space-y-2 text-sm font-semibold text-gray-600 dark:text-gray-300 pt-2">
                   <li className="flex items-center gap-2">

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
   Search,
   Droplets,
@@ -20,18 +21,68 @@ import {
   PhoneMissed
 } from 'lucide-react';
 
+const PROBLEM_ITEMS = [
+  {
+    title: 'Golden Hour Lost',
+    desc: 'Trauma patients have 60 minutes for life-saving intervention.',
+    icon: Clock,
+  },
+  {
+    title: 'No Central System',
+    desc: 'Families call 10-15 hospitals during emergencies.',
+    icon: PhoneMissed,
+  },
+  {
+    title: 'Blood Shortage',
+    desc: 'India faces a shortage of 1.5 million blood units annually.',
+    icon: Droplets,
+  },
+];
+
 export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) {
+  const [activeProblemIndex, setActiveProblemIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveProblemIndex((prev) => (prev + 1) % PROBLEM_ITEMS.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const minSwipeDistance = 45;
+    if (distance > minSwipeDistance) {
+      // Swiped left -> next
+      setActiveProblemIndex((prev) => (prev + 1) % PROBLEM_ITEMS.length);
+    } else if (distance < -minSwipeDistance) {
+      // Swiped right -> prev
+      setActiveProblemIndex((prev) => (prev - 1 + PROBLEM_ITEMS.length) % PROBLEM_ITEMS.length);
+    }
+  };
   return (
     <div className="block md:hidden">
       {/* Mobile Hero Section (2-Row Layout: Top Side-by-Side Text & Image, Bottom Full-Width Action Buttons & Badges) */}
-      <section className="dark:bg-background relative overflow-hidden w-full pb-4">
+      <section className="bg-dark:bg-background relative overflow-hidden w-full pb-4">
         <div className="w-full relative z-10 space-y-3">
 
           {/* Row 1: Side-by-Side Text (Left) & Image (Right) */}
           <div className="flex items-stretch justify-between gap-2 w-full pl-4 pr-0">
             {/* Left Text */}
             <div className="w-[54%] space-y-1.5 text-left shrink-0 pt-3 sm:pt-4">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50/80 dark:bg-card px-2.5 py-0.5 text-[9px] font-bold text-red-600 shadow-xs w-fit">
+              <div className="inline-flex items-center gap-1.5 rounded-full  bg-red-500/10 dark:bg-card px-2.5 py-0.5 text-[9px] font-semibold  w-fit">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
@@ -39,7 +90,7 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
                 Live Updates Across India
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-[1.15]">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight leading-[1.15]">
                 Find Emergency<br />
                 Beds in <span className="text-red-600">Real-Time</span>
               </h1>
@@ -63,21 +114,21 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
           <div className="px-4 pt-1">
             <div className="flex items-center gap-2 w-full">
               <Link to="/hospitals" className="flex-1">
-                <Button size="sm" className="w-full gap-1 bg-red-600 hover:bg-red-700 text-white font-bold h-10 text-xs rounded-xl shadow-md shadow-red-600/25 px-2 whitespace-nowrap cursor-pointer">
+                <Button size="sm" className="w-full gap-1 bg-red-600 hover:bg-red-700 text-white font-bold h-10 text-xs rounded-full shadow-md shadow-red-600/25 px-2 whitespace-nowrap cursor-pointer">
                   <Bed className="h-4 w-4 shrink-0" />
                   Find Bed
                 </Button>
               </Link>
 
               <Link to="/blood" className="flex-1">
-                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-xl bg-white shadow-xs px-2 whitespace-nowrap cursor-pointer">
+                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-full bg-white shadow-xs px-2 whitespace-nowrap cursor-pointer">
                   <Droplets className="h-3.5 w-3.5 text-red-600 shrink-0" />
                   Find Blood
                 </Button>
               </Link>
 
               <Link to="/emergency" className="flex-1">
-                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-xl bg-white shadow-xs px-2 whitespace-nowrap cursor-pointer">
+                <Button size="sm" variant="outline" className="w-full gap-1 border-gray-200 text-gray-900 dark:text-gray-100 font-bold h-10 text-[11px] rounded-full bg-white shadow-xs px-2 whitespace-nowrap cursor-pointer">
                   <Siren className="h-3.5 w-3.5 text-red-600 shrink-0" />
                   Ambulance
                 </Button>
@@ -109,8 +160,8 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
                 <Building2 className="h-4.5 w-4.5 text-red-600" />
               </div>
               <div>
-                <p className="text-base font-black ">{hospCount}+</p>
-                <p className="text-[9px] font-bold text-gray-500 leading-tight">Hospitals & Beds</p>
+                <p className="text-base font-bold ">{hospCount}+</p>
+                <p className="text-[8px] font-bold text-gray-500 leading-tight">Hospitals & Beds</p>
               </div>
             </div>
 
@@ -119,8 +170,8 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
                 <Droplets className="h-4.5 w-4.5 text-red-600" />
               </div>
               <div>
-                <p className="text-base font-black ">{bloodCount}+</p>
-                <p className="text-[9px] font-bold text-gray-500 leading-tight">Blood Units Available</p>
+                <p className="text-base font-bold ">{bloodCount}+</p>
+                <p className="text-[8px] font-bold text-gray-500 leading-tight">Blood Banks Available</p>
               </div>
             </div>
 
@@ -129,8 +180,8 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
                 <Siren className="h-4.5 w-4.5 text-red-600" />
               </div>
               <div>
-                <p className="text-base font-black ">{ambCount}+</p>
-                <p className="text-[9px] font-bold text-gray-500 leading-tight">Active Ambulances</p>
+                <p className="text-base font-bold ">{ambCount}+</p>
+                <p className="text-[8px] font-bold text-gray-500 leading-tight">Active Ambulances</p>
               </div>
             </div>
 
@@ -139,8 +190,8 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
                 <ShieldCheck className="h-4.5 w-4.5 text-red-600" />
               </div>
               <div>
-                <p className="text-base font-black ">24/7</p>
-                <p className="text-[9px] font-bold text-gray-500 leading-tight">Emergency Support</p>
+                <p className="text-base font-bold ">24/7</p>
+                <p className="text-[8px] font-bold text-gray-500 leading-tight">Emergency Support</p>
               </div>
             </div>
           </div>
@@ -150,62 +201,70 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
       {/* Mobile Problem We Solve */}
       <section className="py-6 px-4 bg-white dark:bg-background">
         <div className="text-center mb-4">
-          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">The Problem We Solve</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">The Problem We Solve</h2>
           <div className="h-1 w-12 bg-red-600 rounded-full mx-auto mt-1"></div>
           <p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed max-w-xs mx-auto">
             During medical emergencies in India, families waste precious time calling hospitals.
           </p>
         </div>
 
-        <div className="space-y-2.5">
-          <Card className="bg-red-50/50 dark:bg-red-950/20 border-red-100 shadow-none rounded-xl">
-            <CardContent className="p-3 flex items-start gap-2.5">
-              <div className="h-9 w-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <Clock className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-xs text-gray-900 dark:text-white">Golden Hour Lost</h3>
-                <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">
-                  Trauma patients have 60 minutes for life-saving intervention.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Auto-sliding Carousel (Every 3 seconds & touch swipeable) */}
+        <div 
+          className="relative overflow-hidden w-full select-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div 
+            className="flex transition-transform duration-500 ease-in-out"
+            style={{ transform: `translateX(-${activeProblemIndex * 100}%)` }}
+          >
+            {PROBLEM_ITEMS.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <div key={idx} className="w-full shrink-0 px-0.5">
+                  <Card className="bg-red-50/50 dark:bg-red-950/20 border-red-100 shadow-none rounded-3xl py-0">
+                    <CardContent className="px-3 p-3 flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-xs text-gray-900 dark:text-white leading-tight">{item.title}</h3>
+                        <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-          <Card className="bg-red-50/50 dark:bg-red-950/20 border-red-100 shadow-none rounded-xl">
-            <CardContent className="p-3 flex items-start gap-2.5">
-              <div className="h-9 w-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <PhoneMissed className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-xs text-gray-900 dark:text-white">No Central System</h3>
-                <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">
-                  Families call 10-15 hospitals during emergencies.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-red-50/50 dark:bg-red-950/20 border-red-100 shadow-none rounded-xl">
-            <CardContent className="p-3 flex items-start gap-2.5">
-              <div className="h-9 w-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <Droplets className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-xs text-gray-900 dark:text-white">Blood Shortage</h3>
-                <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">
-                  India faces a shortage of 1.5 million blood units annually.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Carousel Indicator Dots */}
+        <div className="flex items-center justify-center gap-1.5 mt-3">
+          {PROBLEM_ITEMS.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveProblemIndex(idx)}
+              aria-label={`Slide ${idx + 1}`}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-300 cursor-pointer",
+                activeProblemIndex === idx 
+                  ? "w-6 bg-red-600" 
+                  : "w-1.5 bg-red-200 dark:bg-gray-700"
+              )}
+            />
+          ))}
         </div>
       </section>
 
       {/* Mobile How SwasthyaSetu Helps */}
       <section className="py-6 px-4 bg-slate-50/50 dark:bg-card/30">
         <div className="text-center mb-4">
-          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">How SwasthyaSetu Helps</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">How SwasthyaSetu Helps</h2>
+          <div className="h-1 w-12 bg-red-600 rounded-full mx-auto mt-1"></div>
           <p className="mt-1 text-[11px] text-gray-500">
             A comprehensive platform connecting patients, hospitals, and donors in real-time.
           </p>
@@ -213,17 +272,17 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
 
         <div className="grid grid-cols-1 gap-2.5">
           {[
-            { title: 'Smart Search', desc: 'AI-powered search finds the best hospital based on location and bed type.', icon: Search },
+            { title: 'Smart Matching', desc: 'GPS triage finds the nearest verified hospital based on live bed availability.', icon: Search },
             { title: 'Real-Time Updates', desc: 'Live bed and blood availability updates from verified hospitals.', icon: Zap },
-            { title: 'Blockchain Verified', desc: 'Hospital data verified on Polygon blockchain. Tamper-proof.', icon: ShieldCheck },
+            { title: 'Admin Verified', desc: 'Hospital credentials and beds certified by Super Admin inspection.', icon: ShieldCheck },
             { title: 'Route Optimization', desc: 'Get the fastest route to your chosen hospital with integrated maps.', icon: MapPin },
             { title: 'Donor Network', desc: 'Connect with registered blood donors in your area during emergencies.', icon: Users },
             { title: '24x7 Support', desc: 'Emergency support team available round the clock to assist you.', icon: Headphones }
           ].map((item, idx) => {
             const Icon = item.icon;
             return (
-              <Card key={idx} className="bg-white dark:bg-card border-gray-100 shadow-xs rounded-xl">
-                <CardContent className="p-3 flex items-start gap-2.5">
+              <Card key={idx} className="bg-white dark:bg-card border-gray-100 shadow-xs rounded-xl py-0 h-20 justify-center">
+                <CardContent className="p-3 flex items-center gap-2.5">
                   <div className="h-9 w-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0">
                     <Icon className="h-4.5 w-4.5" />
                   </div>
@@ -241,7 +300,7 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
       {/* Mobile How It Works Section */}
       <section className="py-6 px-4 bg-white dark:bg-background">
         <div className="text-center mb-5">
-          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">How It Works</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">How It Works</h2>
           <div className="h-1 w-12 bg-red-600 rounded-full mx-auto mt-1"></div>
           <p className="mt-1.5 text-[11px] text-gray-500 font-medium">
             Get connected to the right hospital in three simple steps.
@@ -249,7 +308,7 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-start gap-3 bg-red-50/40 dark:bg-red-950/20 p-3.5 rounded-xl border border-red-100 dark:border-red-900/30">
+          <div className="flex items-center gap-3 bg-red-50/40 dark:bg-red-950/20 p-3.5 rounded-xl border border-red-100 dark:border-red-900/30 ">
             <div className="h-8 w-8 rounded-full bg-red-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
               1
             </div>
@@ -261,7 +320,7 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
             </div>
           </div>
 
-          <div className="flex items-start gap-3 bg-red-50/40 dark:bg-red-950/20 p-3.5 rounded-xl border border-red-100 dark:border-red-900/30">
+          <div className="flex items-center gap-3 bg-red-50/40 dark:bg-red-950/20 p-3.5 rounded-xl border border-red-100 dark:border-red-900/30">
             <div className="h-8 w-8 rounded-full bg-red-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
               2
             </div>
@@ -273,7 +332,7 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
             </div>
           </div>
 
-          <div className="flex items-start gap-3 bg-red-50/40 dark:bg-red-950/20 p-3.5 rounded-xl border border-red-100 dark:border-red-900/30">
+          <div className="flex items-center gap-3 bg-red-50/40 dark:bg-red-950/20 p-3.5 rounded-xl border border-red-100 dark:border-red-900/30">
             <div className="h-8 w-8 rounded-full bg-red-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
               3
             </div>
@@ -287,23 +346,23 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
         </div>
       </section>
 
-      {/* Mobile Dual Feature Showcase (Blockchain Verified & Smart Search) */}
+      {/* Mobile Dual Feature Showcase (Admin Verified & Smart Search) */}
       <section className="py-4 px-4 bg-white dark:bg-background space-y-3">
-        {/* Blockchain Verified Card */}
+        {/* Admin Verified Card */}
         <div className="bg-red-600 text-white p-5 rounded-2xl space-y-3 shadow-md">
           <div className="flex items-center gap-2.5">
-            <ShieldCheck className="h-7 w-7 text-white shrink-0" />
-            <h3 className="text-lg font-extrabold tracking-tight">Blockchain Verified</h3>
+            <ShieldCheck className="h-6 w-6 text-white shrink-0" />
+            <h3 className="text-base font-bold tracking-tight">Admin Verified</h3>
           </div>
           <p className="text-xs text-red-100 font-medium leading-relaxed">
-            Hospital data verified on Polygon blockchain. Tamper-proof and trustworthy.
+            Hospital infrastructure and bed capacity certified by Super Admin inspection.
           </p>
           <ul className="space-y-1.5 text-[11px] font-bold pt-1">
             <li className="flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 rounded-full bg-white/20 p-0.5 shrink-0" /> Polygon Blockchain
+              <Check className="h-3.5 w-3.5 rounded-full bg-white/20 p-0.5 shrink-0" /> Super Admin Verified
             </li>
             <li className="flex items-center gap-2">
-              <Check className="h-3.5 w-3.5 rounded-full bg-white/20 p-0.5 shrink-0" /> Tamper-proof Audit
+              <Check className="h-3.5 w-3.5 rounded-full bg-white/20 p-0.5 shrink-0" /> Certified Ward Inventory
             </li>
           </ul>
         </div>
@@ -314,10 +373,10 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
             <div className="h-8 w-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0">
               <Zap className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white">Smart Search</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Smart Matching Engine</h3>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
-            AI-powered search finds the best hospital based on location, bed type, and availability.
+            Intelligent GPS triage finds the nearest verified hospital based on live bed availability.
           </p>
           <ul className="space-y-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300">
             <li className="flex items-center gap-1.5">
@@ -333,14 +392,14 @@ export function MobileHomeView({ hospCount = 0, bloodCount = 0, ambCount = 0 }) 
       {/* Mobile Emergency CTA Banner */}
       <section className="py-4 px-4">
         <div className="bg-gradient-to-br from-red-600 to-red-700 text-white rounded-2xl p-5 shadow-lg text-center space-y-3 relative overflow-hidden">
-          <h2 className="text-lg font-black tracking-tight leading-tight">
+          <h2 className="text-lg font-bold tracking-tight leading-tight">
             Every Second Counts in an Emergency
           </h2>
           <p className="text-xs text-red-100 font-medium leading-relaxed">
             Do not waste time calling hospitals. Find available beds instantly with SwasthyaSetu.
           </p>
           <Link to="/emergency" className="block pt-1">
-            <Button size="lg" className="w-full bg-white hover:bg-gray-100 text-red-600 font-black h-11 text-xs rounded-xl shadow-md gap-1.5">
+            <Button size="lg" className="w-full bg-white hover:bg-gray-100 text-red-600 font-bold h-11 text-xs rounded-xl shadow-md gap-1.5">
               Search Now
               <ArrowRight className="h-4 w-4 text-red-600" />
             </Button>
