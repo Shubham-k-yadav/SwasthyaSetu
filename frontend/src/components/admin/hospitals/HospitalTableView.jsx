@@ -165,7 +165,7 @@ export function HospitalTableView({
                       {hospital.blockchainVerified && (
                         <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
                           <Shield className="h-3 w-3 mr-1" />
-                          Chain
+                          Certified
                         </Badge>
                       )}
                     </div>
@@ -264,7 +264,7 @@ export function HospitalTableView({
                       {hospital.blockchainVerified && (
                         <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                           <Shield className="h-3 w-3 mr-1" />
-                          Chain
+                          Certified
                         </Badge>
                       )}
                     </div>
