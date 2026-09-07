@@ -30,7 +30,6 @@ function AdminDashboardDispatcher() {
   return <HospitalAdminDashboard />;
 }
 
-import { PwaInstallBanner } from '@/components/PwaInstallBanner';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { ScrollToTop } from '@/components/ScrollToTop';
 
@@ -92,7 +91,6 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <Toaster position="top-right" />
-          <PwaInstallBanner />
           <ErrorBoundary>
             <Routes>
               {/* Public Routes */}

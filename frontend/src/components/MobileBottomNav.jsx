@@ -21,7 +21,17 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-white/95 dark:bg-card/95 border-t border-gray-200 dark:border-gray-800 backdrop-blur-md block md:hidden pb-safe shadow-2xl">
+    <div 
+      className="fixed bottom-0 left-0 right-0 z-[9999] bg-white dark:bg-card border-t border-gray-200 dark:border-gray-800 block md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)] transform-gpu"
+      style={{
+        transform: 'translate3d(0, 0, 0)',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+      }}
+    >
       <div className="flex items-center justify-around h-16 px-2 relative">
         {items.map((item, idx) => {
           if (item.isSos) {
