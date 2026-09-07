@@ -32,7 +32,7 @@ export function BedIndicator({ label, icon: Icon, available, total, onClick, isS
         <Icon className="h-3 w-3 text-muted-foreground shrink-0" />
         <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground truncate">{label}</span>
       </div>
-      <p className={cn('text-base sm:text-xl font-black tracking-tight leading-tight', textColor)}>
+      <p className={cn('text-base sm:text-xl font-bold tracking-tight leading-tight', textColor)}>
         {available || 0}
       </p>
       <div className="my-1 h-1 sm:h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden w-full">

@@ -37,24 +37,24 @@ const bedTypes = ['All Types', 'icu', 'general', 'ventilator'];
 function StatsCard({ title, value, subtitle, icon: Icon, variant = 'default' }) {
   const variantStyles = {
     default: {
-      bg: 'bg-white dark:bg-card border-gray-200 dark:border-gray-800',
-      iconBg: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
+      bg: 'bg-white dark:bg-card border-gray-100 dark:border-gray-800',
+      iconBg: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-full',
       valueColor: 'text-gray-900 dark:text-white',
     },
     success: {
-      bg: 'bg-white dark:bg-card border-emerald-200 dark:border-emerald-900/30',
-      iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
-      valueColor: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-white dark:bg-card border-gray-100 dark:border-gray-800',
+      iconBg: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-full',
+      valueColor: 'text-gray-900 dark:text-white',
     },
     warning: {
-      bg: 'bg-white dark:bg-card border-amber-200 dark:border-amber-900/30',
-      iconBg: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
-      valueColor: 'text-amber-600 dark:text-amber-400',
+      bg: 'bg-white dark:bg-card border-gray-100 dark:border-gray-800',
+      iconBg: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-full',
+      valueColor: 'text-gray-900 dark:text-white',
     },
     critical: {
-      bg: 'bg-white dark:bg-card border-red-200 dark:border-red-900/30',
-      iconBg: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400',
-      valueColor: 'text-red-600 dark:text-red-400',
+      bg: 'bg-white dark:bg-card border-gray-100 dark:border-gray-800',
+      iconBg: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-full',
+      valueColor: 'text-gray-900 dark:text-white',
     },
   };
 
@@ -62,21 +62,21 @@ function StatsCard({ title, value, subtitle, icon: Icon, variant = 'default' }) 
 
   return (
     <div className={cn(
-      'rounded-2xl border p-3.5 sm:p-5 shadow-xs transition-all hover:shadow-md flex items-center justify-between gap-3',
+      'rounded-xl sm:rounded-2xl border p-2.5 sm:p-4 shadow-xs transition-all flex items-center justify-between gap-2',
       currentVariant.bg
     )}>
-      <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
-        <p className="text-xs sm:text-sm font-semibold text-gray-500 dark:text-gray-400 truncate">{title}</p>
-        <p className={cn('text-xl sm:text-3xl font-black tracking-tight leading-tight', currentVariant.valueColor)}>
+      <div className="space-y-0.5 min-w-0 flex-1">
+        <p className="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 truncate">{title}</p>
+        <p className={cn('text-base sm:text-2xl font-bold tracking-tight leading-tight', currentVariant.valueColor)}>
           {value}
         </p>
         {subtitle && (
-          <p className="text-[10px] sm:text-xs font-medium text-gray-400 dark:text-gray-500 truncate">{subtitle}</p>
+          <p className="text-[8px] sm:text-[10px] font-medium text-gray-400 dark:text-gray-500 truncate">{subtitle}</p>
         )}
       </div>
       {Icon && (
-        <div className={cn('h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center shrink-0 shadow-xs', currentVariant.iconBg)}>
-          <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+        <div className={cn('h-8 w-8 sm:h-11 sm:w-11 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-2xs', currentVariant.iconBg)}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       )}
     </div>
@@ -92,7 +92,7 @@ export default function HospitalsPage() {
   const [selectedCity, setSelectedCity] = useState('All Cities');
   const [selectedBedType, setSelectedBedType] = useState('All Types');
   const [selectedHospital, setSelectedHospital] = useState(null);
-  const [showMap, setShowMap] = useState(true);
+  const [showMap, setShowMap] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 768 : false));
 
   useEffect(() => {
     async function fetchData() {
@@ -154,26 +154,29 @@ export default function HospitalsPage() {
       <Header />
       <PlatformStatusBanner />
       
-      <main className="flex-1 py-4 sm:py-8 md:py-10 w-full overflow-x-hidden">
+      <main className="flex-1 py-4 sm:py-8 md:py-10 pb-24 sm:pb-12 w-full overflow-x-hidden">
         <div className="container mx-auto max-w-7xl px-3 sm:px-6 w-full">
           {/* Page Header */}
-          <div className="mb-6 sm:mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-3 py-1 rounded-full">
-                <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse"></span>
+          <div className="mb-4 sm:mb-6">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 dark:bg-card px-2.5 py-0.5 text-[9px] sm:text-xs font-semibold w-fit">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
+                </span>
                 Live Bed Tracker
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
               {t('hospitalsDirectoryTitle')}
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-3xl leading-relaxed">
+            <p className="mt-1 text-xs sm:text-sm text-gray-500 dark:text-gray-400 max-w-2xl font-medium leading-normal">
               {t('hospitalsDirectoryDesc')}
             </p>
           </div>
 
           {/* Stats Cards (2x2 on mobile, 4-col on tablet/desktop) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 sm:h-28 rounded-2xl" />
@@ -213,7 +216,7 @@ export default function HospitalsPage() {
 
           {/* Interactive Map */}
           {showMap && (
-            <div id="hospital-live-map-viewport" className="mb-6 sm:mb-8 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-sm animate-in fade-in scroll-mt-24">
+            <div id="hospital-live-map-viewport" className="mb-4 sm:mb-6 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-xs animate-in fade-in scroll-mt-24">
               <HospitalMap 
                 hospitals={filteredHospitals}
                 selectedHospital={selectedHospital}
@@ -284,34 +287,47 @@ export default function HospitalsPage() {
             </div>
           </div>
 
-          {/* MOBILE SEARCH & FILTERS (Dedicated compact stack, zero horizontal overflow) */}
-          <div className="block md:hidden space-y-2 mb-4">
+          {/* MOBILE SEARCH & FILTERS (Dedicated compact stack matching home aesthetic) */}
+          <div className="block md:hidden space-y-2.5 mb-4">
             {/* Search Input + Map Button Row */}
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input 
                   placeholder={t('searchHospitalsPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-10 text-xs bg-card shadow-xs rounded-xl border-gray-200"
+                  className="pl-9 pr-8 h-10 text-xs bg-white dark:bg-card shadow-xs rounded-xl border-gray-200 dark:border-gray-800 font-medium"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold p-1 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
               <Button
-                variant={showMap ? "secondary" : "outline"}
+                variant={showMap ? "default" : "outline"}
                 size="sm"
                 onClick={() => setShowMap(!showMap)}
-                className="h-10 px-2.5 text-xs font-semibold gap-1 rounded-xl border-gray-200 shrink-0"
+                className={cn(
+                  "h-10 px-3 text-xs font-bold gap-1.5 rounded-full shrink-0 transition-all cursor-pointer shadow-xs",
+                  showMap 
+                    ? "bg-red-600 text-white hover:bg-red-700" 
+                    : "border-gray-200 bg-white dark:bg-card text-gray-800 dark:text-gray-200 hover:bg-gray-50"
+                )}
               >
-                <MapPin className="h-3.5 w-3.5 text-red-600" />
-                <span>{showMap ? 'Hide Map' : 'Map'}</span>
+                <MapPin className="h-3.5 w-3.5" />
+                <span>{showMap ? 'Hide Map' : 'Map View'}</span>
               </Button>
             </div>
 
             {/* City + Bed Type Row (Clean 50/50 split) */}
             <div className="grid grid-cols-2 gap-2">
               <Select value={selectedCity} onValueChange={setSelectedCity}>
-                <SelectTrigger className="h-10 text-xs bg-card shadow-xs rounded-xl border-gray-200">
+                <SelectTrigger className="w-full h-10 text-xs bg-white dark:bg-card shadow-xs rounded-xl border-gray-200 dark:border-gray-800 font-semibold">
                   <SelectValue placeholder={t('allCities')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -322,7 +338,7 @@ export default function HospitalsPage() {
               </Select>
 
               <Select value={selectedBedType} onValueChange={setSelectedBedType}>
-                <SelectTrigger className="h-10 text-xs bg-card shadow-xs rounded-xl border-gray-200">
+                <SelectTrigger className="w-full h-10 text-xs bg-white dark:bg-card shadow-xs rounded-xl border-gray-200 dark:border-gray-800 font-semibold">
                   <SelectValue placeholder={t('allBedTypes')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -337,11 +353,12 @@ export default function HospitalsPage() {
           </div>
 
           {/* Results Count */}
-          <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground font-medium">
-            <span>Showing {filteredHospitals.length} hospitals</span>
+          <div className="flex items-center justify-between mb-3 text-xs text-gray-500 font-medium">
+            <span>Showing <strong className="text-gray-900 dark:text-white font-bold">{filteredHospitals.length}</strong> hospitals</span>
             {filteredHospitals.some(h => h.isVerified) && (
-              <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                ✓ Verified network availability
+              <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                Verified facilities live
               </span>
             )}
           </div>

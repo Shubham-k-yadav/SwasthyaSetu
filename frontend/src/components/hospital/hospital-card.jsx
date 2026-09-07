@@ -70,8 +70,8 @@ export function HospitalCard({
   return (
     <>
       <Card className={cn(
-        'overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 border-primary/10',
-        isSelected && 'ring-2 ring-red-600 shadow-xl border-red-500/50 bg-red-50/10 dark:bg-red-950/20',
+        'overflow-hidden transition-all duration-300 hover:shadow-md border border-gray-200/80 dark:border-gray-800 rounded-2xl bg-white dark:bg-card shadow-xs',
+        isSelected && 'ring-2 ring-red-600 shadow-lg border-red-500/50 bg-red-50/10 dark:bg-red-950/20',
         (!hasAvailability || freshness.isExpired) && 'opacity-75'
       )}>
         <CardHeader 
@@ -84,12 +84,12 @@ export function HospitalCard({
               <div className="flex items-center gap-1.5 flex-wrap">
                 <CardTitle className="text-base sm:text-lg font-bold leading-snug group-hover:text-red-600 transition-colors">{hospital.name}</CardTitle>
                 {hospital.isVerified ? (
-                  <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 border-emerald-500/20 font-semibold text-[10px] px-1.5 py-0.2 shrink-0">
+                  <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40  font-bold text-[10px] px-2 py-0.5 rounded-full shrink-0">
                     <Shield className="h-2.5 w-2.5" />
                     {t('verified')}
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="gap-1 bg-amber-50 text-amber-600 dark:bg-amber-950/40 border-amber-500/20 text-[10px] px-1.5 py-0.2 shrink-0">
+                  <Badge variant="outline" className="gap-1 bg-amber-50 text-amber-600 dark:bg-amber-950/40 border  font-semibold text-[10px] px-2 py-0.5 rounded-full shrink-0">
                     {t('unverified')}
                   </Badge>
                 )}
@@ -99,7 +99,7 @@ export function HospitalCard({
                 <span className="truncate block min-w-0">{hospital.address}</span>
               </div>
               <div className="pt-0.5">
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 group-hover:underline">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 ">
                   <Navigation className="h-2.5 w-2.5" />
                   Zoom Pin on Map 📍
                 </span>
@@ -177,9 +177,9 @@ export function HospitalCard({
             <Button
               size="sm"
               className={cn(
-                "gap-1.5 font-bold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl shadow-xs",
+                "gap-1.5 font-bold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl shadow-xs transition-transform active:scale-[0.98]",
                 hasAvailability 
-                  ? "bg-amber-600 hover:bg-amber-700 text-white cursor-pointer" 
+                  ? "bg-red-500 hover:bg-red-600 text-white cursor-pointer" 
                   : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700"
               )}
               onClick={() => handleOpenHoldModal()}
@@ -191,7 +191,7 @@ export function HospitalCard({
             <Button
               size="sm"
               variant="outline"
-              className="gap-1.5 font-semibold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl border-gray-300 hover:bg-gray-50 cursor-pointer"
+              className="gap-1.5 font-bold text-xs sm:text-sm py-2 sm:py-2.5 rounded-xl border-gray-200 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 shadow-xs cursor-pointer transition-transform active:scale-[0.98]"
               onClick={onGetDirections || (() => openHospitalDirections(hospital))}
             >
               <Navigation className="h-3.5 w-3.5 text-gray-600" />
