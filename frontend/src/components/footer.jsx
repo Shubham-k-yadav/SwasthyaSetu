@@ -10,11 +10,13 @@ export function Footer() {
           {/* Brand Column */}
           <div className="md:col-span-4 space-y-4">
             <Link to="/" className="flex items-center gap-3 font-bold text-xl">
-              <div className="h-9 w-9 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-xl shadow-md">
-                S
-              </div>
+              <img 
+                src="/879879879.png" 
+                alt="SwasthyaSetu" 
+                className="h-10 w-10 object-contain shrink-0" 
+              />
               <div className="flex flex-col">
-                <span className="font-extrabold text-gray-900 dark:text-white tracking-tight text-lg leading-tight">
+                <span className="font-bold text-gray-900 dark:text-white tracking-tight text-lg leading-tight">
                   SwasthyaSetu
                 </span>
                 <span className="text-[10px] font-semibold text-gray-500 tracking-wide uppercase">

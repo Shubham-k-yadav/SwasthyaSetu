@@ -69,9 +69,11 @@ export default function AdminLayout() {
       >
         {/* Logo */}
         <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800">
-          <div className="h-9 w-9 rounded-xl bg-red-600 flex items-center justify-center text-white font-extrabold shadow-sm shrink-0">
-            S
-          </div>
+          <img 
+            src="/879879879.png" 
+            alt="SwasthyaSetu" 
+            className="h-8 w-8 object-contain shrink-0" 
+          />
           <div>
             <span className="font-bold text-base text-slate-900 dark:text-white block leading-tight">
               SwasthyaSetu
