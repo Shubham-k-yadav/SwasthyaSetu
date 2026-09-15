@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Phone, Navigation, CheckCircle2, Siren } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
 import { api } from '@/lib/api';
+import { useLanguage } from '@/lib/language-context';
 
 export function AmbulanceCardList({ ambulances = [] }) {
+  const { t } = useLanguage();
   const [dispatchingId, setDispatchingId] = useState(null);
   const [dispatchedFleet, setDispatchedFleet] = useState({});
 
@@ -39,14 +40,14 @@ export function AmbulanceCardList({ ambulances = [] }) {
               <Siren className="h-5 w-5 animate-pulse" />
             </div>
             <div>
-              <CardTitle className="text-base font-bold">Emergency Ambulance Dispatch</CardTitle>
+              <CardTitle className="text-base font-bold">{t('emergencyAmbulanceDispatch')}</CardTitle>
               <CardDescription className="text-xs">
-                Real-time GPS tracked emergency ambulances near your location
+                {t('ambulanceDispatchDesc')}
               </CardDescription>
             </div>
           </div>
           <Badge className="bg-emerald-600 text-white font-semibold text-[10px]">
-            GPS LIVE
+            {t('gpsLive')}
           </Badge>
         </div>
       </CardHeader>
@@ -55,9 +56,9 @@ export function AmbulanceCardList({ ambulances = [] }) {
         {ambulances.length === 0 ? (
           <div className="py-8 text-center text-xs text-muted-foreground space-y-2">
             <Siren className="h-8 w-8 mx-auto text-muted-foreground/50" />
-            <p className="font-semibold text-foreground">No Verified Ambulances Active Yet</p>
+            <p className="font-semibold text-foreground">{t('noAmbulancesActive')}</p>
             <p className="text-[11px] max-w-sm mx-auto">
-              No verified ambulances are currently active in this location. Dial emergency line 112 for direct government dispatch.
+              {t('noAmbulancesDesc')}
             </p>
           </div>
         ) : (
@@ -83,7 +84,7 @@ export function AmbulanceCardList({ ambulances = [] }) {
                       <h4 className="font-bold text-sm text-foreground">{amb.driverName}</h4>
                     </div>
                     <Badge variant="outline" className="text-[10px] font-bold border-red-300 text-red-600 bg-red-50">
-                      {amb.status || 'Available'}
+                      {amb.status ? (amb.status.toLowerCase() === 'available' ? t('available') : amb.status) : t('available')}
                     </Badge>
                   </div>
 
@@ -98,17 +99,17 @@ export function AmbulanceCardList({ ambulances = [] }) {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 text-xs font-semibold flex-1 gap-1"
+                      className="h-8 text-xs font-semibold flex-1 gap-1 cursor-pointer"
                       onClick={() => window.open(`tel:${amb.driverPhone || amb.phone || '112'}`)}
                     >
                       <Phone className="h-3.5 w-3.5 text-emerald-600" />
-                      Call Driver
+                      {t('callDriver')}
                     </Button>
                     <Button
                       size="sm"
                       disabled={isLoading || isDispatched}
                       className={cn(
-                        'h-8 text-xs font-bold flex-1 gap-1',
+                        'h-8 text-xs font-bold flex-1 gap-1 cursor-pointer',
                         isDispatched
                           ? 'bg-emerald-600 hover:bg-emerald-600 text-white'
                           : 'bg-red-600 hover:bg-red-700 text-white'
@@ -117,11 +118,11 @@ export function AmbulanceCardList({ ambulances = [] }) {
                     >
                       {isDispatched ? (
                         <>
-                          <CheckCircle2 className="h-3.5 w-3.5" /> En Route
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {t('enRoute')}
                         </>
                       ) : (
                         <>
-                          <Navigation className="h-3.5 w-3.5" /> Dispatch Now
+                          <Navigation className="h-3.5 w-3.5" /> {t('dispatchNow')}
                         </>
                       )}
                     </Button>

@@ -129,11 +129,32 @@ router.put('/request/:id', authenticate, authorize('admin', 'superadmin'), async
   try {
     const { status, assignedHospital, estimatedArrival, notes } = req.body;
     
+    // Authorization check: Hospital admins can only update emergencies assigned or recommended to their hospital
+    if (req.user?.role !== 'superadmin') {
+      const existingEmergency = await EmergencyRequest.findById(req.params.id);
+      if (!existingEmergency) {
+        return res.status(404).json({ error: 'Emergency request not found' });
+      }
+
+      const userHospitalId = req.user?.hospitalId?.toString();
+      const isAssigned = existingEmergency.assignedHospital?.toString() === userHospitalId;
+      const isRecommended = existingEmergency.recommendedHospitals?.some(h => h.toString() === userHospitalId);
+
+      if (!isAssigned && !isRecommended) {
+        return res.status(403).json({ error: 'Access denied: You can only manage emergencies assigned or dispatched to your hospital.' });
+      }
+    }
+
     const updateData = {};
-    if (status) updateData.status = status;
-    if (assignedHospital) updateData.assignedHospital = assignedHospital;
+    if (status && ['pending', 'dispatched', 'admitted', 'resolved', 'cancelled'].includes(status)) {
+      updateData.status = status;
+    }
+    // Only superadmin or authorized hospital can reassign hospital
+    if (assignedHospital && req.user?.role === 'superadmin') {
+      updateData.assignedHospital = assignedHospital;
+    }
     if (estimatedArrival) updateData.estimatedArrival = estimatedArrival;
-    if (notes) updateData.notes = notes;
+    if (notes) updateData.notes = String(notes).trim().slice(0, 1000);
     if (status === 'resolved') updateData.resolvedAt = new Date();
 
     const emergency = await EmergencyRequest.findByIdAndUpdate(

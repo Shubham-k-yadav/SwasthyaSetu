@@ -1,9 +1,30 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import Hospital from '../models/Hospital.js';
 import BedReservation from '../models/BedReservation.js';
 import { emitBedUpdate, emitBedHoldAlert } from '../services/socket.js';
 
+// Bounded in-memory store for OTPs with auto-cleanup
+// phone -> { hash: string, expiresAt: number, attempts: number }
 const otpStore = new Map();
+
+// Helper to hash OTP with salt
+const hashOtp = (phone, otp) => {
+  return crypto.createHmac('sha256', process.env.JWT_SECRET || 'swasthya_setu_otp_salt')
+    .update(`${phone}:${otp}`)
+    .digest('hex');
+};
+
+// Periodic cleanup of expired OTP entries every 5 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [phone, record] of otpStore.entries()) {
+    if (record.expiresAt < now) {
+      otpStore.delete(phone);
+    }
+  }
+}, 5 * 60 * 1000);
 
 // Request Verification OTP (Patient Verification Guard)
 export const requestOtp = async (req, res) => {
@@ -14,6 +35,13 @@ export const requestOtp = async (req, res) => {
 
     if (!phoneRegex.test(cleanPhone)) {
       return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number starting with 6-9.' });
+    }
+
+    // Rate limiting per phone number: max 1 OTP request per 30 seconds
+    const existing = otpStore.get(cleanPhone);
+    if (existing && existing.lastRequestedAt && (Date.now() - existing.lastRequestedAt < 30000)) {
+      const waitSec = Math.ceil((30000 - (Date.now() - existing.lastRequestedAt)) / 1000);
+      return res.status(429).json({ error: `Please wait ${waitSec} seconds before requesting a new OTP.` });
     }
 
     // Verify bed availability if hospitalId and bedType are provided
@@ -39,13 +67,24 @@ export const requestOtp = async (req, res) => {
       }
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otpStore.set(cleanPhone, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+    // Cryptographically secure 6-digit OTP
+    const rawOtp = crypto.randomInt(100000, 999999).toString();
+    const hashed = hashOtp(cleanPhone, rawOtp);
+
+    otpStore.set(cleanPhone, {
+      hash: hashed,
+      attempts: 0,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      lastRequestedAt: Date.now()
+    });
+
+    const isProduction = process.env.NODE_ENV === 'production';
 
     res.json({
       message: `Verification OTP sent to +91-${cleanPhone}`,
       expiresInSeconds: 300,
-      otp
+      // In development / demo mode, return OTP for convenience, but omit in production
+      ...(isProduction ? {} : { otp: rawOtp })
     });
   } catch (error) {
     console.error('Error in /request-otp:', error);
@@ -64,12 +103,33 @@ export const verifyOtp = async (req, res) => {
       return res.status(400).json({ error: 'OTP has expired or was not requested.' });
     }
 
-    if (record.otp !== String(otp).trim()) {
+    if (record.attempts >= 5) {
+      otpStore.delete(cleanPhone);
+      return res.status(429).json({ error: 'Too many failed attempts. Please request a new OTP.' });
+    }
+
+    const providedHash = hashOtp(cleanPhone, String(otp).trim());
+    if (record.hash !== providedHash) {
+      record.attempts += 1;
       return res.status(400).json({ error: 'Invalid verification OTP.' });
     }
 
+    // Clear the verified OTP
     otpStore.delete(cleanPhone);
-    res.json({ verified: true, message: 'Phone number verified successfully.' });
+
+    // Issue a short-lived verification token (15 mins) for bed hold authorization
+    const secret = process.env.JWT_SECRET;
+    const verificationToken = jwt.sign(
+      { phone: cleanPhone, verified: true, purpose: 'bed_reservation' },
+      secret,
+      { expiresIn: '15m' }
+    );
+
+    res.json({
+      verified: true,
+      message: 'Phone number verified successfully.',
+      verificationToken
+    });
   } catch (error) {
     console.error('Error in /verify-otp:', error);
     res.status(500).json({ error: 'Failed to verify OTP' });
@@ -79,7 +139,7 @@ export const verifyOtp = async (req, res) => {
 // Atomic Concurrency-Safe Bed Reservation (10-minute hold)
 export const reserveBed = async (req, res) => {
   try {
-    const { bedType = 'icu', patientName, contactPhone, holdMinutes = 10 } = req.body;
+    const { bedType = 'icu', patientName, contactPhone, holdMinutes = 10, verificationToken } = req.body;
     const hospitalId = req.params.id;
 
     if (!patientName || !contactPhone) {
@@ -90,6 +150,18 @@ export const reserveBed = async (req, res) => {
     const phoneRegex = /^[6-9]\d{9}$/;
     if (!phoneRegex.test(cleanPhone)) {
       return res.status(400).json({ error: 'Invalid contact phone. Please enter a valid 10-digit mobile number starting with 6-9.' });
+    }
+
+    // If verificationToken is passed, verify it matches phone
+    if (verificationToken) {
+      try {
+        const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET);
+        if (decoded.phone !== cleanPhone || decoded.purpose !== 'bed_reservation') {
+          return res.status(403).json({ error: 'Invalid or mismatched verification token' });
+        }
+      } catch (err) {
+        return res.status(403).json({ error: 'Verification token expired or invalid. Please verify phone again.' });
+      }
     }
 
     if (!['icu', 'general', 'ventilator'].includes(bedType)) {
@@ -132,7 +204,9 @@ export const reserveBed = async (req, res) => {
       });
     }
 
-    const reservationCode = `SS-HOLD-${Math.floor(100000 + Math.random() * 900000)}`;
+    // Cryptographically secure human-readable reservation code
+    const randomSuffix = crypto.randomInt(100000, 999999).toString();
+    const reservationCode = `SS-HOLD-${randomSuffix}`;
     const expiresAt = new Date(Date.now() + holdMinutes * 60 * 1000);
 
     // MONGO DB ATOMIC TRANSACTION CHECK
@@ -183,6 +257,7 @@ export const reserveBed = async (req, res) => {
 };
 
 // Confirm Bed Admission (Converts hold into permanent occupied status)
+// Only transitions: reserved -> confirmed
 export const confirmReservation = async (req, res) => {
   try {
     const { code } = req.params;
@@ -205,6 +280,7 @@ export const confirmReservation = async (req, res) => {
 };
 
 // Release Bed Hold (Cancels reservation & restores bed count atomically)
+// Only transitions: reserved -> released
 export const releaseReservation = async (req, res) => {
   try {
     const { code } = req.params;
@@ -240,12 +316,13 @@ export const releaseReservation = async (req, res) => {
 };
 
 // Discharge Patient (Frees up bed, sets status to discharged & increments available bed count atomically)
+// Only transitions: confirmed -> discharged (cannot jump directly from reserved)
 export const dischargePatient = async (req, res) => {
   try {
     const { code } = req.params;
 
     const reservation = await BedReservation.findOneAndUpdate(
-      { reservationCode: code, status: { $in: ['confirmed', 'reserved'] } },
+      { reservationCode: code, status: 'confirmed' },
       { status: 'discharged' },
       { new: true }
     );

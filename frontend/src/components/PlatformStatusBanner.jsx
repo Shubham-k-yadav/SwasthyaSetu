@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { systemApi } from '@/lib/api';
 import { ShieldCheck, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/lib/language-context';
 
 // In-memory tracking across client-side router navigation
 let initialPathname = null;
@@ -10,6 +11,7 @@ let hasNavigatedAfterLoad = false;
 let isGloballyDismissed = false;
 
 export function PlatformStatusBanner() {
+  const { t } = useLanguage();
   const [status, setStatus] = useState(null);
   const [dismissed, setDismissed] = useState(isGloballyDismissed);
   const [mobileVisible, setMobileVisible] = useState(false);
@@ -68,12 +70,12 @@ export function PlatformStatusBanner() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600"></span>
             </span>
             <span className="truncate">
-              <span className="text-red-600">{hospCount} Hospitals</span> &{' '}
-              <span className="text-red-600">{bloodCount} Blood Banks</span> Live.
+              <span className="text-red-600">{hospCount} {t('hospitalsText')}</span> &{' '}
+              <span className="text-red-600">{bloodCount} {t('bloodBanksCount')}</span> {t('verifiedFacilitiesLive')}.
             </span>
             <button
               onClick={handleDismiss}
-              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 ml-0.5 p-0.5 rounded-full"
+              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 ml-0.5 p-0.5 rounded-full cursor-pointer"
               aria-label="Close"
             >
               <X className="h-3 w-3" />
@@ -92,20 +94,20 @@ export function PlatformStatusBanner() {
               <span>
                 {hospCount > 0 || bloodCount > 0 ? (
                   <>
-                    <strong className="font-bold text-red-600">{hospCount} Hospitals</strong> &{' '}
-                    <strong className="font-bold text-red-600">{bloodCount} Blood Banks</strong> Live.
+                    <strong className="font-bold text-red-600">{hospCount} {t('hospitalsText')}</strong> &{' '}
+                    <strong className="font-bold text-red-600">{bloodCount} {t('bloodBanksCount')}</strong> {t('verifiedFacilitiesLive')}.
                   </>
                 ) : (
-                  <strong className="font-bold text-red-600">National Healthcare Network Live.</strong>
+                  <strong className="font-bold text-red-600">{t('liveHospitalNetwork')} Live.</strong>
                 )}
-                <span> Are you a hospital or blood bank?</span>
+                <span> {t('platformStatusTextBlood')}</span>
               </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               <Link to="/register">
                 <Button size="sm" className="h-7 text-xs px-3.5 font-bold gap-1 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-xs whitespace-nowrap cursor-pointer">
-                  Join Network
+                  {t('joinNetworkCTA')}
                   <ArrowRight className="h-3 w-3" />
                 </Button>
               </Link>

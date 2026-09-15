@@ -19,15 +19,16 @@ async function init() {
 
     const existingSuperAdmin = await User.findOne({ role: 'superadmin' });
     if (!existingSuperAdmin) {
+      const initialPassword = process.env.SUPERADMIN_INITIAL_PASSWORD || 'SwasthyaSetu@2026';
       const superAdmin = new User({
         name: 'Super Admin',
         email: 'superadmin@swasthyasetu.in',
-        password: 'SwasthyaSetu@2026',
+        password: initialPassword,
         role: 'superadmin',
         isActive: true
       });
       await superAdmin.save();
-      console.log('✔ Super Admin created: superadmin@swasthyasetu.in / SwasthyaSetu@2026');
+      console.log('✔ Super Admin initialized with email: superadmin@swasthyasetu.in');
     } else {
       console.log(`✔ Super Admin already exists: ${existingSuperAdmin.email}`);
     }

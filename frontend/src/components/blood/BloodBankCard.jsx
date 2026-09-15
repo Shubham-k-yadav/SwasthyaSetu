@@ -4,8 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, Phone, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getFreshnessStatus } from '@/lib/freshness';
+import { useLanguage } from '@/lib/language-context';
 
 export function BloodBankCard({ bank }) {
+  const { t } = useLanguage();
   const freshness = getFreshnessStatus(bank.lastUpdated);
 
   return (
@@ -62,7 +64,7 @@ export function BloodBankCard({ bank }) {
               )}>
                 {stock.unitsAvailable}
               </p>
-              <p className="text-[9px] sm:text-xs text-muted-foreground">units</p>
+              <p className="text-[9px] sm:text-xs text-muted-foreground">{t('units')}</p>
             </div>
           ))}
         </div>
@@ -72,22 +74,22 @@ export function BloodBankCard({ bank }) {
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-1 gap-1"
+            className="flex-1 gap-1 cursor-pointer"
             onClick={() => window.open(`tel:${bank.phone}`, '_self')}
           >
             <Phone className="h-4 w-4" />
-            Call
+            {t('call')}
           </Button>
           <Button 
             size="sm" 
-            className="flex-1 gap-1"
+            className="flex-1 gap-1 cursor-pointer"
             onClick={() => {
               const query = encodeURIComponent(bank.hospitalName + ' ' + bank.city);
               window.open(`https://www.google.com/maps/search/${query}`, '_blank');
             }}
           >
             <MapPin className="h-4 w-4" />
-            Directions
+            {t('directions')}
           </Button>
         </div>
       </CardContent>

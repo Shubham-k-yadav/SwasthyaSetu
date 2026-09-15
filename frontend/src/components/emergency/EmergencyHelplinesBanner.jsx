@@ -30,8 +30,8 @@ export function EmergencyHelplinesBanner() {
               <Phone className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-red-600 uppercase tracking-wide">Emergency Helplines</p>
-              <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">24/7 Government SOS</p>
+              <p className="text-[11px] font-bold text-red-600 uppercase tracking-wide">{t('emergencyHelplines')}</p>
+              <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{t('govtSos')}</p>
             </div>
           </div>
           <div className="flex gap-1.5 shrink-0">

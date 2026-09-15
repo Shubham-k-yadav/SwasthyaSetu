@@ -24,11 +24,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password. Please check your credentials.' });
     }
 
-    let isMatch = await user.comparePassword(password);
-    if (!isMatch && user.role === 'superadmin' && (password === 'SuperAdmin@2024' || password === 'SwasthyaSetu@2026')) {
-      isMatch = true;
-    }
-
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password. Please check your credentials.' });
     }

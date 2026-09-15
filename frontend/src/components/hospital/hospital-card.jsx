@@ -101,7 +101,7 @@ export function HospitalCard({
               <div className="pt-0.5">
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 ">
                   <Navigation className="h-2.5 w-2.5" />
-                  Zoom Pin on Map 📍
+                  {t('zoomPinOnMap')}
                 </span>
               </div>
             </div>
@@ -164,11 +164,11 @@ export function HospitalCard({
                 <span>{hospital.phone}</span>
               </a>
             ) : (
-              <span className="text-gray-400">Phone not listed</span>
+              <span className="text-gray-400">{t('phoneNotListed')}</span>
             )}
             <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-semibold bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
               <Clock className="h-3 w-3 text-emerald-600 shrink-0" />
-              <span>24/7 Emergency</span>
+              <span>{t('emergency24x7')}</span>
             </div>
           </div>
 

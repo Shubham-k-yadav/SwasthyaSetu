@@ -45,6 +45,20 @@ export default function EmergencyPage() {
   const [patientName, setPatientName] = useState('');
   const [ambulances, setAmbulances] = useState([]);
 
+  const emergencyTypes = [
+    { value: 'trauma', label: t('traumaAccident') },
+    { value: 'cardiac', label: t('cardiacEmergency') },
+    { value: 'stroke', label: t('strokeEmergency') },
+    { value: 'respiratory', label: t('respiratoryEmergency') },
+    { value: 'other', label: t('otherEmergency') },
+  ];
+
+  const bedTypes = [
+    { value: 'icu', label: t('icuBed'), description: t('icuBedDesc') },
+    { value: 'general', label: t('generalBed'), description: t('generalBedDesc') },
+    { value: 'ventilator', label: t('ventilator'), description: t('ventilatorDesc') },
+  ];
+
   useEffect(() => {
     connectSocket();
     const s = getSocket();
@@ -211,14 +225,14 @@ export default function EmergencyPage() {
             <div className="flex items-center gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2.5 py-0.5 rounded-full">
                 <Siren className="h-3 w-3 text-red-600 animate-pulse" />
-                Live SOS Dispatch
+                {t('liveSOSDispatch')}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-              Emergency Search
+              {t('emergencySearchTitle')}
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Find the nearest hospital with available beds and live ambulance support
+              {t('emergencySearchDesc')}
             </p>
           </div>
 
@@ -234,7 +248,7 @@ export default function EmergencyPage() {
               )}>
                 1
               </div>
-              <span className="font-bold text-xs sm:text-sm">Enter Details</span>
+              <span className="font-bold text-xs sm:text-sm">{t('enterDetails')}</span>
             </div>
             <div className="flex-1 h-0.5 bg-gray-200 dark:bg-gray-800">
               <div className={cn('h-full bg-red-600 transition-all duration-300', step >= 2 ? 'w-full' : 'w-0')} />
@@ -249,7 +263,7 @@ export default function EmergencyPage() {
               )}>
                 2
               </div>
-              <span className="font-bold text-xs sm:text-sm">Select Hospital</span>
+              <span className="font-bold text-xs sm:text-sm">{t('selectHospital')}</span>
             </div>
           </div>
 
@@ -275,8 +289,8 @@ export default function EmergencyPage() {
                 setPatientName={setPatientName}
                 loading={loading}
                 onSubmit={handleSearch}
-                emergencyTypes={EMERGENCY_TYPES}
-                bedTypes={BED_TYPES}
+                emergencyTypes={emergencyTypes}
+                bedTypes={bedTypes}
               />
             </div>
           )}

@@ -38,7 +38,7 @@ export function Header() {
                 SwasthyaSetu
               </span>
               <span className="text-[10px] sm:text-[11px] font-semibold text-gray-500 tracking-wide uppercase whitespace-nowrap hidden sm:block">
-                Emergency Healthcare Network
+                {t('emergencyHealthcareNetwork')}
               </span>
             </div>
           </Link>

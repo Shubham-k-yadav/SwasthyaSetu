@@ -12,7 +12,12 @@ export const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7);
-    const secret = process.env.JWT_SECRET || 'fallback_secret_key_swasthya_setu_2026';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('FATAL: JWT_SECRET environment variable is not defined.');
+      res.status(500).json({ error: 'Server configuration error' });
+      return;
+    }
 
     const decoded = jwt.verify(token, secret);
 
@@ -54,7 +59,10 @@ export const authorize = (...roles) => {
 };
 
 export const generateToken = (userOrId) => {
-  const secret = process.env.JWT_SECRET || 'fallback_secret_key_swasthya_setu_2026';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('FATAL: JWT_SECRET environment variable is not defined.');
+  }
   const userId = typeof userOrId === 'object' ? userOrId._id : userOrId;
   const email = typeof userOrId === 'object' ? userOrId.email : undefined;
   const role = typeof userOrId === 'object' ? userOrId.role : undefined;

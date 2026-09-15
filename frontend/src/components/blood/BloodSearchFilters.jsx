@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Droplets, Search, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/language-context';
 
 export function BloodSearchFilters({
   selectedBloodGroup,
@@ -21,6 +22,8 @@ export function BloodSearchFilters({
   bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
   cities = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad']
 }) {
+  const { t } = useLanguage();
+
   return (
     <>
       {/* DESKTOP SEARCH FORM (md+) */}
@@ -29,22 +32,22 @@ export function BloodSearchFilters({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Droplets className="h-5 w-5 text-primary" />
-              Search Blood Availability
+              {t('searchBloodAvailability')}
             </CardTitle>
             <CardDescription>
-              Find blood banks with available units near you
+              {t('findBloodBanksNear')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
-                <Label htmlFor="bloodGroupDesktop">Blood Group</Label>
+                <Label htmlFor="bloodGroupDesktop">{t('bloodGroup')}</Label>
                 <Select value={selectedBloodGroup} onValueChange={setSelectedBloodGroup}>
                   <SelectTrigger id="bloodGroupDesktop" className="mt-1.5">
-                    <SelectValue placeholder="Select blood group" />
+                    <SelectValue placeholder={t('selectBloodGroup')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Blood Groups</SelectItem>
+                    <SelectItem value="all">{t('allBloodGroups')}</SelectItem>
                     {bloodGroups.map(group => (
                       <SelectItem key={group} value={group}>{group}</SelectItem>
                     ))}
@@ -52,13 +55,13 @@ export function BloodSearchFilters({
                 </Select>
               </div>
               <div className="flex-1">
-                <Label htmlFor="cityDesktop">City</Label>
+                <Label htmlFor="cityDesktop">{t('city')}</Label>
                 <Select value={selectedCity} onValueChange={setSelectedCity}>
                   <SelectTrigger id="cityDesktop" className="mt-1.5">
-                    <SelectValue placeholder="Select city" />
+                    <SelectValue placeholder={t('selectCity')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Cities</SelectItem>
+                    <SelectItem value="all">{t('allCities')}</SelectItem>
                     {cities.map(city => (
                       <SelectItem key={city} value={city}>{city}</SelectItem>
                     ))}
@@ -66,9 +69,9 @@ export function BloodSearchFilters({
                 </Select>
               </div>
               <div className="flex items-end">
-                <Button onClick={onSearch} disabled={isSearching} className="gap-2 w-full md:w-auto">
+                <Button onClick={onSearch} disabled={isSearching} className="gap-2 w-full md:w-auto cursor-pointer">
                   <Search className="h-4 w-4" />
-                  {isSearching ? 'Searching...' : 'Search'}
+                  {isSearching ? t('searching') : t('search')}
                 </Button>
               </div>
             </div>
@@ -84,15 +87,15 @@ export function BloodSearchFilters({
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
                   <Droplets className="h-3.5 w-3.5 text-red-600 fill-red-600" />
-                  Blood Group
+                  {t('bloodGroup')}
                 </Label>
                 {selectedBloodGroup !== 'all' && (
                   <button
                     type="button"
                     onClick={() => setSelectedBloodGroup('all')}
-                    className="text-[11px] font-semibold text-red-600 hover:underline"
+                    className="text-[11px] font-semibold text-red-600 hover:underline cursor-pointer"
                   >
-                    Show All
+                    {t('showAll')}
                   </button>
                 )}
               </div>
@@ -101,13 +104,13 @@ export function BloodSearchFilters({
                   type="button"
                   onClick={() => setSelectedBloodGroup('all')}
                   className={cn(
-                    'py-2 px-1 rounded-xl text-xs font-black border transition-all text-center',
+                    'py-2 px-1 rounded-xl text-xs font-black border transition-all text-center cursor-pointer',
                     selectedBloodGroup === 'all'
                       ? 'bg-red-600 text-white border-red-600'
                       : 'bg-white dark:bg-card text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-800'
                   )}
                 >
-                  All
+                  {t('allCities') ? 'All' : 'All'}
                 </button>
                 {bloodGroups.map(group => (
                   <button
@@ -115,7 +118,7 @@ export function BloodSearchFilters({
                     type="button"
                     onClick={() => setSelectedBloodGroup(group)}
                     className={cn(
-                      'py-2 px-1 rounded-xl text-xs font-black border transition-all text-center',
+                      'py-2 px-1 rounded-xl text-xs font-black border transition-all text-center cursor-pointer',
                       selectedBloodGroup === group
                         ? 'bg-red-600 text-white border-red-600 scale-[1.02]'
                         : 'bg-white dark:bg-card text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-800'
@@ -132,11 +135,11 @@ export function BloodSearchFilters({
                 <SelectTrigger className="h-10 rounded-xl bg-card border-gray-200 text-xs">
                   <div className="flex items-center gap-2 truncate">
                     <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                    <SelectValue placeholder="Select City / Region" />
+                    <SelectValue placeholder={t('selectCity')} />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Cities</SelectItem>
+                  <SelectItem value="all">{t('allCities')}</SelectItem>
                   {cities.map(city => (
                     <SelectItem key={city} value={city}>{city}</SelectItem>
                   ))}
@@ -146,10 +149,10 @@ export function BloodSearchFilters({
               <Button 
                 onClick={onSearch} 
                 disabled={isSearching}
-                className="w-full h-10 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs gap-2"
+                className="w-full h-10 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs gap-2 cursor-pointer"
               >
                 <Search className="h-4 w-4" />
-                {isSearching ? 'Searching...' : 'Search Blood'}
+                {isSearching ? t('searching') : t('search')}
               </Button>
             </div>
           </CardContent>

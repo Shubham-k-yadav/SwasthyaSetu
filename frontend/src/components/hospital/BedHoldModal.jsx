@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { hospitalApi } from '@/lib/api';
 import { printOrDownloadTicket } from './bed-ticket-dialog';
+import { useLanguage } from '@/lib/language-context';
 
 export function BedHoldModal({
   open,
@@ -21,6 +22,7 @@ export function BedHoldModal({
   setBedType,
   onReservationSuccess
 }) {
+  const { t } = useLanguage();
   const [step, setStep] = useState('input'); // 'input' | 'otp' | 'confirmed'
   const [patientName, setPatientName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -164,10 +166,10 @@ export function BedHoldModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Zap className="h-5 w-5 text-amber-500" />
-            {step === 'confirmed' ? 'Bed Reservation Ticket' : 'Verified Bed Hold (10-Min Limit)'}
+            {step === 'confirmed' ? t('bedTicketTitle') : t('bedHoldModalTitle')}
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            {hospital.name} — Concurrency lock & phone OTP verification active.
+            {hospital.name} — {t('concurrencyLockNotice')}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,8 +184,8 @@ export function BedHoldModal({
           <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 text-sm flex items-start gap-2.5">
             <AlertCircle className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
             <div>
-              <p className="font-bold">No Beds Available</p>
-              <p className="text-xs mt-0.5">Currently, this hospital has 0 available beds across all categories. Bed holds cannot be placed right now.</p>
+              <p className="font-bold">{t('noBedsAvailable')}</p>
+              <p className="text-xs mt-0.5">{t('noBedsAvailableToHold')}</p>
             </div>
           </div>
         )}
@@ -191,10 +193,10 @@ export function BedHoldModal({
         {step === 'input' && (
           <form onSubmit={handleRequestOtp} className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="patientName">Patient Name</Label>
+              <Label htmlFor="patientName">{t('patientName')}</Label>
               <Input
                 id="patientName"
-                placeholder="Enter patient full name"
+                placeholder={t('enterPatientName')}
                 value={patientName}
                 onChange={(e) => setPatientName(e.target.value)}
                 disabled={totalAvailable <= 0}
@@ -203,7 +205,7 @@ export function BedHoldModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactPhone">Contact Phone Number</Label>
+              <Label htmlFor="contactPhone">{t('contactPhone')}</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-mono">+91</span>
                 <Input
@@ -221,12 +223,12 @@ export function BedHoldModal({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-gray-800 dark:text-gray-200">Select Bed Category to Hold</Label>
+              <Label className="text-xs font-bold text-gray-800 dark:text-gray-200">{t('selectBedCategoryHold')}</Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { type: 'icu', label: 'ICU Bed', avail: icuAvail },
-                  { type: 'general', label: 'General Bed', avail: genAvail },
-                  { type: 'ventilator', label: 'Ventilator', avail: ventAvail }
+                  { type: 'icu', label: t('icuBed'), avail: icuAvail },
+                  { type: 'general', label: t('generalBed'), avail: genAvail },
+                  { type: 'ventilator', label: t('ventilator'), avail: ventAvail }
                 ].map((b) => {
                   const isAvailable = b.avail > 0;
                   const isSelected = isAvailable && bedType === b.type;
@@ -251,15 +253,15 @@ export function BedHoldModal({
                     >
                       <p className="text-xs font-bold leading-tight">{b.label}</p>
                       <p className={cn('text-sm font-black mt-0.5', isAvailable ? (isSelected ? 'text-red-600' : 'text-emerald-600') : 'text-red-500 line-through')}>
-                        {b.avail} left
+                        {b.avail} {t('bedsLeft')}
                       </p>
                       {isSelected ? (
                         <span className="inline-block text-[9px] font-black uppercase text-red-600 bg-red-100 dark:bg-red-900/50 px-1.5 py-0.2 rounded-full mt-1">
-                          ✓ Selected
+                          ✓ {t('selected')}
                         </span>
                       ) : !isAvailable ? (
                         <span className="inline-block text-[9px] font-bold uppercase text-red-500 bg-red-50 dark:bg-red-950/50 px-1.5 py-0.2 rounded-full mt-1">
-                          Full / 0 Left
+                          {t('fullZeroLeft')}
                         </span>
                       ) : null}
                     </button>
@@ -274,10 +276,10 @@ export function BedHoldModal({
               disabled={isSubmitting || totalAvailable <= 0 || (Number(hospital?.beds?.[bedType]?.available) || 0) <= 0}
             >
               {totalAvailable <= 0 
-                ? 'No Beds Available to Hold' 
+                ? t('noBedsAvailableToHold') 
                 : (Number(hospital?.beds?.[bedType]?.available) || 0) <= 0
-                  ? 'Selected Bed Category Full'
-                  : (isSubmitting ? 'Generating One-Time Lock...' : 'Proceed with Phone Verification')}
+                  ? t('selectedBedCategoryFull')
+                  : (isSubmitting ? t('generatingLock') : t('proceedPhoneVerification'))}
             </Button>
           </form>
         )}
@@ -285,14 +287,14 @@ export function BedHoldModal({
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtpAndReserve} className="space-y-4 py-2">
             <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
-              📱 OTP sent to <strong>+91-{contactPhone}</strong>
+              📱 {t('otpSentTo')} <strong>+91-{contactPhone}</strong>
               {receivedOtp && (
                 <span> (Verification Code: <strong>{receivedOtp}</strong>)</span>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="otp">Enter 6-Digit OTP</Label>
+              <Label htmlFor="otp">{t('enterOtp')}</Label>
               <Input
                 id="otp"
                 maxLength={6}
@@ -306,10 +308,10 @@ export function BedHoldModal({
 
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => setStep('input')} className="flex-1">
-                Back
+                {t('back')}
               </Button>
               <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isSubmitting}>
-                {isSubmitting ? 'Verifying & Holding...' : 'Verify OTP & Hold Bed'}
+                {isSubmitting ? t('verifyingHolding') : t('verifyOtpHold')}
               </Button>
             </div>
           </form>
@@ -321,7 +323,7 @@ export function BedHoldModal({
               <div className="flex items-center justify-center gap-1.5">
                 <CheckCircle className="h-5 w-5 sm:h-7 sm:w-7 text-emerald-600" />
                 <h3 className="text-sm sm:text-base font-bold text-emerald-800 dark:text-emerald-300">
-                  Bed Hold Active!
+                  {t('bedHoldActive')}
                 </h3>
               </div>
 
@@ -337,13 +339,13 @@ export function BedHoldModal({
                   className="w-24 h-24 sm:w-40 sm:h-40 object-contain rounded-lg border bg-white p-1"
                 />
                 <span className="text-[9px] sm:text-[10px] font-mono text-emerald-700 dark:text-emerald-300 font-bold mt-1 uppercase">
-                  📱 Show QR Pass at Hospital Desk
+                  📱 {t('showQrAtDesk')}
                 </span>
               </div>
 
               {/* Live Countdown Timer Display */}
               <div className="p-1.5 sm:p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs">
-                <span className="font-semibold text-amber-800 dark:text-amber-300 text-[11px] sm:text-xs">⏳ Time Remaining:</span>
+                <span className="font-semibold text-amber-800 dark:text-amber-300 text-[11px] sm:text-xs">⏳ {t('timeRemaining')}</span>
                 <span className="font-mono font-black text-sm sm:text-base text-amber-600 dark:text-amber-400">
                   {secondsRemaining > 0 ? formatTimer(secondsRemaining) : 'EXPIRED'}
                 </span>
@@ -351,9 +353,9 @@ export function BedHoldModal({
             </div>
 
             <div className="text-[11px] sm:text-xs grid grid-cols-2 gap-1 text-muted-foreground border-t pt-2">
-              <p className="truncate">👤 <strong>Patient:</strong> {patientName}</p>
-              <p>🛏️ <strong>Bed:</strong> {(bedType || 'ICU').toUpperCase()}</p>
-              <p className="col-span-2 truncate">🏥 <strong>Hospital:</strong> {hospital.name}</p>
+              <p className="truncate">👤 <strong>{t('patientLabel')}</strong> {patientName}</p>
+              <p>🛏️ <strong>{t('bedLabel')}</strong> {(bedType || 'ICU').toUpperCase()}</p>
+              <p className="col-span-2 truncate">🏥 <strong>{t('hospitalLabel')}</strong> {hospital.name}</p>
             </div>
 
             <Button
@@ -362,15 +364,15 @@ export function BedHoldModal({
               onClick={() => printOrDownloadTicket({ reservation, hospital, patientName, contactPhone, bedType })}
             >
               <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              Print / Save PDF Ticket (with QR Code)
+              {t('printTicket')}
             </Button>
 
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <Button variant="outline" className="h-9 sm:h-9 text-xs sm:text-sm rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleReleaseHold} disabled={isReleasing}>
-                {isReleasing ? 'Releasing...' : 'Release Hold'}
+                {isReleasing ? t('releasing') : t('releaseHold')}
               </Button>
               <Button className="h-9 sm:h-9 text-xs sm:text-sm rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => onOpenChange(false)}>
-                Done
+                {t('done')}
               </Button>
             </div>
           </div>

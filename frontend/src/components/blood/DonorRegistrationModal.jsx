@@ -20,6 +20,7 @@ import {
 import { UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { useLanguage } from '@/lib/language-context';
 
 export function DonorRegistrationModal({
   open,
@@ -27,6 +28,7 @@ export function DonorRegistrationModal({
   bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
   cities = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad']
 }) {
+  const { t } = useLanguage();
   const [isRegistering, setIsRegistering] = useState(false);
   const [donorForm, setDonorForm] = useState({
     name: '',
@@ -82,22 +84,22 @@ export function DonorRegistrationModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className="w-full mt-6 gap-2">
+        <Button className="w-full mt-6 gap-2 cursor-pointer">
           <UserPlus className="h-4 w-4" />
-          Register as Donor
+          {t('registerDonorBtn')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Register as Blood Donor</DialogTitle>
+          <DialogTitle>{t('registerAsBloodDonor')}</DialogTitle>
           <DialogDescription>
-            Fill in your details to join our donor network
+            {t('joinDonorNetworkDesc')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleRegister} className="space-y-4 mt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="donorName">Full Name</Label>
+              <Label htmlFor="donorName">{t('fullName')}</Label>
               <Input 
                 id="donorName" 
                 required
@@ -106,7 +108,7 @@ export function DonorRegistrationModal({
               />
             </div>
             <div>
-              <Label htmlFor="donorPhone">Phone</Label>
+              <Label htmlFor="donorPhone">{t('phone')}</Label>
               <Input 
                 id="donorPhone" 
                 type="tel" 
@@ -117,7 +119,7 @@ export function DonorRegistrationModal({
             </div>
           </div>
           <div>
-            <Label htmlFor="donorEmail">Email</Label>
+            <Label htmlFor="donorEmail">{t('email')}</Label>
             <Input 
               id="donorEmail" 
               type="email" 
@@ -128,13 +130,13 @@ export function DonorRegistrationModal({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="donorBloodGroup">Blood Group</Label>
+              <Label htmlFor="donorBloodGroup">{t('bloodGroup')}</Label>
               <Select 
                 value={donorForm.bloodGroup} 
                 onValueChange={v => setDonorForm({...donorForm, bloodGroup: v})}
               >
                 <SelectTrigger id="donorBloodGroup">
-                  <SelectValue placeholder="Select" />
+                  <SelectValue placeholder={t('selectBloodGroup')} />
                 </SelectTrigger>
                 <SelectContent>
                   {bloodGroups.map(group => (
@@ -144,13 +146,13 @@ export function DonorRegistrationModal({
               </Select>
             </div>
             <div>
-              <Label htmlFor="donorCity">City</Label>
+              <Label htmlFor="donorCity">{t('city')}</Label>
               <Select 
                 value={donorForm.city} 
                 onValueChange={v => setDonorForm({...donorForm, city: v})}
               >
                 <SelectTrigger id="donorCity">
-                  <SelectValue placeholder="Select" />
+                  <SelectValue placeholder={t('selectCity')} />
                 </SelectTrigger>
                 <SelectContent>
                   {cities.map(city => (
@@ -162,7 +164,7 @@ export function DonorRegistrationModal({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="donorAge">Age</Label>
+              <Label htmlFor="donorAge">{t('ageYears')}</Label>
               <Input 
                 id="donorAge" 
                 type="number" 
@@ -174,7 +176,7 @@ export function DonorRegistrationModal({
               />
             </div>
             <div>
-              <Label htmlFor="donorWeight">Weight (kg)</Label>
+              <Label htmlFor="donorWeight">{t('weightKg')}</Label>
               <Input 
                 id="donorWeight" 
                 type="number" 
@@ -185,8 +187,8 @@ export function DonorRegistrationModal({
               />
             </div>
           </div>
-          <Button type="submit" className="w-full" disabled={isRegistering}>
-            {isRegistering ? 'Registering...' : 'Register'}
+          <Button type="submit" className="w-full cursor-pointer" disabled={isRegistering}>
+            {isRegistering ? t('submittingApp') : t('registerDonorBtn')}
           </Button>
         </form>
       </DialogContent>

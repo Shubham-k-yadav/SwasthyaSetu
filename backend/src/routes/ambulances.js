@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import Ambulance from '../models/Ambulance.js';
 import User from '../models/User.js';
 import { authenticate, authorize } from '../middleware/auth.js';
@@ -149,7 +150,13 @@ router.post('/hospital-add', authenticate, authorize('admin', 'superadmin'), asy
     }
 
     const cleanVehicle = vehicleNumber.trim().toUpperCase();
-    const targetHospitalId = hospitalId || req.user?.hospitalId || req.user?.hospital;
+    // Scope check: hospital admin can only add ambulances for their assigned hospital
+    let targetHospitalId = req.user?.hospitalId || req.user?.hospital;
+    if (req.user?.role === 'superadmin' && hospitalId) {
+      targetHospitalId = hospitalId;
+    } else if (hospitalId && hospitalId.toString() !== targetHospitalId?.toString() && req.user?.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied: You cannot add an ambulance to another hospital.' });
+    }
 
     if (mongoose.connection.readyState === 1) {
       const existing = await Ambulance.findOne({ vehicleNumber: cleanVehicle });
@@ -208,27 +215,58 @@ router.post('/hospital-add', authenticate, authorize('admin', 'superadmin'), asy
 /**
  * PATCH /api/ambulances/:id/status
  * Update ambulance status (available, busy, maintenance, offline)
+ * Authorized for driver with valid driverToken OR authenticated hospital_admin / superadmin
  */
 router.patch('/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, driverToken } = req.body;
     const ambulanceId = req.params.id;
     let ambulance = null;
 
+    if (!status || !['available', 'en_route', 'busy', 'offline', 'maintenance'].includes(status)) {
+      return res.status(400).json({ error: 'Valid status is required' });
+    }
+
     if (mongoose.connection.readyState === 1) {
       if (mongoose.Types.ObjectId.isValid(ambulanceId)) {
-        ambulance = await Ambulance.findByIdAndUpdate(
-          ambulanceId,
-          { status, lastUpdated: new Date() },
-          { new: true }
-        );
+        ambulance = await Ambulance.findById(ambulanceId);
       } else {
-        ambulance = await Ambulance.findOneAndUpdate(
-          { driverToken: ambulanceId },
-          { status, lastUpdated: new Date() },
-          { new: true }
-        );
+        ambulance = await Ambulance.findOne({ driverToken: ambulanceId });
       }
+
+      if (!ambulance) {
+        return res.status(404).json({ error: 'Ambulance not found' });
+      }
+
+      // Check authorization: Bearer token OR matching driverToken
+      const authHeader = req.headers.authorization;
+      let isAuthorized = false;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const jwtToken = authHeader.substring(7);
+          const decoded = jwt.verify(jwtToken, process.env.JWT_SECRET);
+          if (decoded.role === 'superadmin') {
+            isAuthorized = true;
+          } else if (decoded.role === 'admin' && ambulance.hospitalId && decoded.hospitalId?.toString() === ambulance.hospitalId?.toString()) {
+            isAuthorized = true;
+          }
+        } catch (err) {}
+      }
+
+      // Driver token authorization
+      const providedToken = driverToken || (req.headers['x-driver-token']) || (!mongoose.Types.ObjectId.isValid(ambulanceId) ? ambulanceId : null);
+      if (providedToken && ambulance.driverToken && providedToken === ambulance.driverToken) {
+        isAuthorized = true;
+      }
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: 'Unauthorized: Valid driver token or admin credentials required.' });
+      }
+
+      ambulance.status = status;
+      ambulance.lastUpdated = new Date();
+      await ambulance.save();
     }
 
     if (!ambulance) {
@@ -282,9 +320,20 @@ router.post('/:id/update-location', ambulanceLocationLimiter, async (req, res) =
       return res.status(400).json({ error: 'Latitude (lat) and Longitude (lng) are required' });
     }
 
+    const numLat = Number(lat);
+    const numLng = Number(lng);
+
+    if (isNaN(numLat) || numLat < -90 || numLat > 90) {
+      return res.status(400).json({ error: 'Invalid latitude. Must be a number between -90 and 90.' });
+    }
+
+    if (isNaN(numLng) || numLng < -180 || numLng > 180) {
+      return res.status(400).json({ error: 'Invalid longitude. Must be a number between -180 and 180.' });
+    }
+
     const updateFields = {
-      currentLat: Number(lat),
-      currentLng: Number(lng),
+      currentLat: numLat,
+      currentLng: numLng,
       lastUpdated: new Date()
     };
 
@@ -294,20 +343,40 @@ router.post('/:id/update-location', ambulanceLocationLimiter, async (req, res) =
 
     let ambulance = null;
     if (mongoose.connection.readyState === 1) {
-      // Find by ID or driverToken
       if (mongoose.Types.ObjectId.isValid(ambulanceId)) {
-        ambulance = await Ambulance.findByIdAndUpdate(
-          ambulanceId,
-          { $set: updateFields },
-          { new: true }
-        );
+        ambulance = await Ambulance.findById(ambulanceId);
       } else {
-        ambulance = await Ambulance.findOneAndUpdate(
-          { driverToken: ambulanceId },
-          { $set: updateFields },
-          { new: true }
-        );
+        ambulance = await Ambulance.findOne({ driverToken: ambulanceId });
       }
+
+      if (!ambulance) {
+        return res.status(404).json({ error: 'Ambulance not found' });
+      }
+
+      // Authorization guard: verify driverToken or JWT
+      let isAuthorized = false;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const jwtToken = authHeader.substring(7);
+          const decoded = jwt.verify(jwtToken, process.env.JWT_SECRET);
+          if (decoded.role === 'superadmin' || (decoded.role === 'admin' && ambulance.hospitalId && decoded.hospitalId?.toString() === ambulance.hospitalId?.toString())) {
+            isAuthorized = true;
+          }
+        } catch (err) {}
+      }
+
+      const providedToken = token || (req.headers['x-driver-token']) || (!mongoose.Types.ObjectId.isValid(ambulanceId) ? ambulanceId : null);
+      if (providedToken && ambulance.driverToken && providedToken === ambulance.driverToken) {
+        isAuthorized = true;
+      }
+
+      if (!isAuthorized) {
+        return res.status(403).json({ error: 'Unauthorized: Driver token or admin credentials required to update GPS coordinates.' });
+      }
+
+      Object.assign(ambulance, updateFields);
+      await ambulance.save();
     }
 
     if (!ambulance) {

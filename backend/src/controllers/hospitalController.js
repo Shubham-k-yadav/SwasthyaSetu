@@ -8,21 +8,24 @@ import { emitBedUpdate } from '../services/socket.js';
 // Get all hospitals with filters
 export const getHospitals = async (req, res) => {
   try {
-    const { city, state, bedType, hasAvailability, includeUnverified, limit = 50, page = 1 } = req.query;
+    const { city, state, bedType, hasAvailability, includeUnverified } = req.query;
+
+    const safePage = Math.max(Number(req.query.page) || 1, 1);
+    const safeLimit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
 
     const filter = {};
     if (includeUnverified !== 'true') {
       filter.isVerified = true;
     }
-    if (city) filter.city = new RegExp(city, 'i');
-    if (state) filter.state = new RegExp(state, 'i');
+    if (city) filter.city = new RegExp(String(city).slice(0, 50), 'i');
+    if (state) filter.state = new RegExp(String(state).slice(0, 50), 'i');
     if (hasAvailability === 'true' && bedType) {
       filter[`beds.${bedType}.available`] = { $gt: 0 };
     }
 
     const hospitals = await Hospital.find(filter)
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
+      .limit(safeLimit)
+      .skip((safePage - 1) * safeLimit)
       .sort({ lastUpdated: -1 })
       .lean();
 
@@ -37,9 +40,9 @@ export const getHospitals = async (req, res) => {
       hospitals: sanitizedHospitals,
       pagination: {
         total,
-        page: Number(page),
-        limit: Number(limit),
-        pages: Math.ceil(total / Number(limit)) || 1
+        page: safePage,
+        limit: safeLimit,
+        pages: Math.ceil(total / safeLimit) || 1
       }
     });
   } catch (error) {
@@ -192,8 +195,16 @@ export const createHospital = async (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check if user already exists
-    const finalPassword = password || adminPassword || 'HospitalAdmin@2026';
+    // Require or cryptographically generate password for admin
+    let finalPassword = (password || adminPassword || '').trim();
+    if (!finalPassword) {
+      // If registering without an explicit password, require minimum 8 characters
+      return res.status(400).json({ error: 'Admin password is required (minimum 8 characters)' });
+    }
+    if (finalPassword.length < 8) {
+      return res.status(400).json({ error: 'Admin password must be at least 8 characters long' });
+    }
+
     let existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser && existingUser.hospitalId) {
       return res.status(400).json({ error: 'An admin account with this email is already linked to another hospital' });
@@ -288,9 +299,43 @@ export const createHospital = async (req, res) => {
 // Update hospital details (Superadmin only)
 export const updateHospital = async (req, res) => {
   try {
+    const {
+      name,
+      address,
+      city,
+      state,
+      pincode,
+      phone,
+      email,
+      emergencyContact,
+      facilities,
+      specialties,
+      website,
+      coordinates
+    } = req.body;
+
+    const allowedUpdates = { lastUpdated: new Date() };
+    if (name) allowedUpdates.name = String(name).trim();
+    if (address) allowedUpdates.address = String(address).trim();
+    if (city) allowedUpdates.city = String(city).trim();
+    if (state) allowedUpdates.state = String(state).trim();
+    if (pincode) allowedUpdates.pincode = String(pincode).trim();
+    if (phone) allowedUpdates.phone = String(phone).trim();
+    if (email) allowedUpdates.email = String(email).trim().toLowerCase();
+    if (emergencyContact) allowedUpdates.emergencyContact = String(emergencyContact).trim();
+    if (Array.isArray(facilities)) allowedUpdates.facilities = facilities.map(f => String(f).trim());
+    if (Array.isArray(specialties)) allowedUpdates.specialties = specialties.map(s => String(s).trim());
+    if (website) allowedUpdates.website = String(website).trim();
+    if (coordinates && typeof coordinates === 'object' && coordinates.lat && coordinates.lng) {
+      allowedUpdates.coordinates = {
+        lat: Number(coordinates.lat),
+        lng: Number(coordinates.lng)
+      };
+    }
+
     const hospital = await Hospital.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, lastUpdated: new Date() },
+      { $set: allowedUpdates },
       { new: true, runValidators: true }
     );
 

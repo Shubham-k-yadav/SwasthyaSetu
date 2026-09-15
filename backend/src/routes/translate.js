@@ -2,31 +2,55 @@ import { Router } from 'express';
 
 const router = Router();
 
-// In-memory LRU translation cache to ensure 0ms instant rendering for repeated phrases
-const translationCache = new Map();
+// Bounded in-memory LRU translation cache (max 500 entries)
+const MAX_CACHE_SIZE = 500;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const translationCache = new Map(); // key -> { translated: string, timestamp: number }
+
+const getCachedTranslation = (key) => {
+  const item = translationCache.get(key);
+  if (!item) return null;
+  if (Date.now() - item.timestamp > CACHE_TTL_MS) {
+    translationCache.delete(key);
+    return null;
+  }
+  return item.translated;
+};
+
+const setCachedTranslation = (key, translated) => {
+  if (translationCache.size >= MAX_CACHE_SIZE) {
+    // Evict oldest entry
+    const oldestKey = translationCache.keys().next().value;
+    if (oldestKey) translationCache.delete(oldestKey);
+  }
+  translationCache.set(key, { translated, timestamp: Date.now() });
+};
 
 /**
  * AI Translation Engine with Gemini, OpenAI & Free Engine Support
  */
 async function translateText(text, targetLang = 'hi') {
   if (!text || targetLang === 'en') return text;
-  
-  const cacheKey = `${targetLang}:${text}`;
-  if (translationCache.has(cacheKey)) {
-    return translationCache.get(cacheKey);
+
+  // Cap input text length to prevent DoS
+  const safeText = String(text).slice(0, 1000);
+  const cacheKey = `${targetLang}:${safeText}`;
+  const cached = getCachedTranslation(cacheKey);
+  if (cached) {
+    return cached;
   }
 
   // 1. Try Google Gemini AI API if GEMINI_API_KEY is configured in backend/.env
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey && geminiKey !== 'your_gemini_api_key_here') {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3.6-flash:generateContent?key=${geminiKey}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `Translate the following medical/healthcare text into target language code "${targetLang}" accurately. Return ONLY the translated string with no explanations or quotes:\n\n${text}` }]
+            parts: [{ text: `Translate the following medical/healthcare text into target language code "${targetLang}" accurately. Return ONLY the translated string with no explanations or quotes:\n\n${safeText}` }]
           }]
         })
       });

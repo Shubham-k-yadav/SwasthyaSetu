@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, Navigation, Phone, Shield, Star, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { openHospitalDirections } from '@/lib/navigation';
+import { useLanguage } from '@/lib/language-context';
 
 export function EmergencyResultsList({
   results,
@@ -15,8 +16,17 @@ export function EmergencyResultsList({
   bedType,
   onModifySearch
 }) {
+  const { t } = useLanguage();
+
   const handleNavigate = (hospital) => {
     openHospitalDirections(hospital);
+  };
+
+  const getBedLabel = (type) => {
+    if (type === 'icu') return t('icuBeds');
+    if (type === 'general') return t('generalBeds');
+    if (type === 'ventilator') return t('ventilatorBeds');
+    return `${type.toUpperCase()} Beds`;
   };
 
   return (
@@ -36,15 +46,15 @@ export function EmergencyResultsList({
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-            Recommended Hospitals ({results.length})
+            {t('recommendedHospitals')} ({results.length})
           </h3>
           <Button 
             variant="ghost" 
             size="sm"
             onClick={onModifySearch}
-            className="text-xs gap-1 font-bold text-red-600 hover:bg-red-50"
+            className="text-xs gap-1 font-bold text-red-600 hover:bg-red-50 cursor-pointer"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Modify Search
+            <ArrowLeft className="h-3.5 w-3.5" /> {t('modifySearch')}
           </Button>
         </div>
 
@@ -88,7 +98,7 @@ export function EmergencyResultsList({
                         {hospital.isVerified && (
                           <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-600 text-[10px] px-1.5 py-0.2 font-semibold">
                             <Shield className="h-2.5 w-2.5" />
-                            Verified
+                            {t('verified')}
                           </Badge>
                         )}
                         <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0.2 border-gray-200">
@@ -105,14 +115,14 @@ export function EmergencyResultsList({
                           {hospital.beds?.[bedType]?.available || 0}
                         </p>
                         <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">
-                          {bedType.toUpperCase()} Beds
+                          {getBedLabel(bedType)}
                         </p>
                       </div>
                       <div className="text-left">
                         <p className="text-base sm:text-lg font-black text-gray-900 dark:text-white leading-tight">
                           {hospital.score || 95}%
                         </p>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">AI Match</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">{t('aiMatch')}</p>
                       </div>
                       <div className="flex items-center gap-1 ml-auto">
                         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -125,25 +135,25 @@ export function EmergencyResultsList({
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="h-9 rounded-xl font-bold text-xs gap-1 border-gray-300"
+                        className="h-9 rounded-xl font-bold text-xs gap-1 border-gray-300 cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           window.open(`tel:${hospital.phone || '102'}`, '_self');
                         }}
                       >
                         <Phone className="h-3.5 w-3.5 text-emerald-600" />
-                        Call Hospital
+                        {t('callHospital')}
                       </Button>
                       <Button 
                         size="sm" 
-                        className="h-9 rounded-xl font-bold text-xs gap-1 bg-red-600 hover:bg-red-700 text-white shadow-xs"
+                        className="h-9 rounded-xl font-bold text-xs gap-1 bg-red-600 hover:bg-red-700 text-white shadow-xs cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleNavigate(hospital);
                         }}
                       >
                         <Navigation className="h-3.5 w-3.5" />
-                        Directions
+                        {t('directions')}
                       </Button>
                     </div>
                   </div>
@@ -158,9 +168,9 @@ export function EmergencyResultsList({
       <Button 
         variant="outline" 
         onClick={onModifySearch}
-        className="w-full sm:w-auto h-11 rounded-xl font-bold gap-2 text-xs sm:text-sm border-gray-300"
+        className="w-full sm:w-auto h-11 rounded-xl font-bold gap-2 text-xs sm:text-sm border-gray-300 cursor-pointer"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to Search Form
+        <ArrowLeft className="h-4 w-4" /> {t('backToSearchForm')}
       </Button>
     </div>
   );

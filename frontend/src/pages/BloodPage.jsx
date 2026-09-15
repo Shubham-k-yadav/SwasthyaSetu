@@ -119,9 +119,9 @@ export default function BloodPage() {
           {/* Page Header */}
           <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Blood Finder</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('bloodFinder')}</h1>
               <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
-                Find blood availability and register as a donor
+                {t('bloodFinderDesc')}
               </p>
             </div>
             <BloodBankRegisterModal />
@@ -131,11 +131,11 @@ export default function BloodPage() {
             <TabsList className="grid w-full sm:max-w-md grid-cols-2">
               <TabsTrigger value="search" className="gap-2">
                 <Search className="h-4 w-4" />
-                Find Blood
+                {t('findBloodTab')}
               </TabsTrigger>
               <TabsTrigger value="donate" className="gap-2">
                 <Heart className="h-4 w-4" />
-                Donate Blood
+                {t('donateBloodTab')}
               </TabsTrigger>
             </TabsList>
 
@@ -156,7 +156,7 @@ export default function BloodPage() {
               {hasSearched && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground font-medium">
-                    <span>Found {searchResults.length} blood bank{searchResults.length !== 1 ? 's' : ''}</span>
+                    <span>{t('foundBloodBanks')} {searchResults.length} {t('bloodBanksCount')}</span>
                     {selectedBloodGroup !== 'all' && (
                       <span className="text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full border border-red-200">
                         {selectedBloodGroup}
@@ -177,9 +177,9 @@ export default function BloodPage() {
                       </div>
                       <div className="pt-2">
                         <Link to="/register?type=blood-bank">
-                          <Button className="gap-2 font-bold bg-red-600 hover:bg-red-700 text-white shadow-md">
+                          <Button className="gap-2 font-bold bg-red-600 hover:bg-red-700 text-white shadow-md cursor-pointer">
                             <Droplets className="h-4 w-4" />
-                            Register Blood Bank
+                            {t('registerBloodBank')}
                           </Button>
                         </Link>
                       </div>
@@ -198,9 +198,9 @@ export default function BloodPage() {
                 <Card className="bg-primary/5 border-primary/20">
                   <CardContent className="py-8 text-center">
                     <Droplets className="h-12 w-12 mx-auto text-primary mb-4" />
-                    <h3 className="text-lg font-semibold">Search for Blood</h3>
+                    <h3 className="text-lg font-semibold">{t('searchBloodAvailability')}</h3>
                     <p className="text-muted-foreground mt-2 max-w-md mx-auto text-sm">
-                      Select a blood group and city to find available blood units at nearby blood banks.
+                      {t('findBloodBanksNear')}
                     </p>
                   </CardContent>
                 </Card>

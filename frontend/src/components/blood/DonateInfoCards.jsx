@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Heart, Clock, CheckCircle2 } from 'lucide-react';
 import { DonorRegistrationModal } from './DonorRegistrationModal';
+import { useLanguage } from '@/lib/language-context';
 
 export function DonateInfoCards({
   registerOpen,
@@ -8,6 +9,8 @@ export function DonateInfoCards({
   bloodGroups,
   cities
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="grid md:grid-cols-2 gap-6">
       {/* Why Donate */}
@@ -15,7 +18,7 @@ export function DonateInfoCards({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Heart className="h-5 w-5 text-primary" />
-            Why Donate Blood?
+            {t('whyDonateBlood')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -24,9 +27,9 @@ export function DonateInfoCards({
               <Heart className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-medium text-sm">Save Lives</h4>
+              <h4 className="font-medium text-sm">{t('saveLives')}</h4>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                One donation can save up to 3 lives
+                {t('saveLivesDesc')}
               </p>
             </div>
           </div>
@@ -35,9 +38,9 @@ export function DonateInfoCards({
               <Clock className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-medium text-sm">Quick Process</h4>
+              <h4 className="font-medium text-sm">{t('quickProcess')}</h4>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                The entire process takes only 30-45 minutes
+                {t('quickProcessDesc')}
               </p>
             </div>
           </div>
@@ -46,9 +49,9 @@ export function DonateInfoCards({
               <CheckCircle2 className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h4 className="font-medium text-sm">Health Benefits</h4>
+              <h4 className="font-medium text-sm">{t('healthBenefits')}</h4>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Free health checkup and reduced heart disease risk
+                {t('healthBenefitsDesc')}
               </p>
             </div>
           </div>
@@ -58,29 +61,29 @@ export function DonateInfoCards({
       {/* Eligibility */}
       <Card>
         <CardHeader>
-          <CardTitle>Eligibility Criteria</CardTitle>
+          <CardTitle>{t('eligibilityCriteria')}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2 text-xs sm:text-sm">
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-              Age between 18-65 years
+              {t('eligibilityAge')}
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-              Weight at least 50 kg
+              {t('eligibilityWeight')}
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-              Hemoglobin level above 12.5 g/dL
+              {t('eligibilityHemoglobin')}
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-              No major illness in last 6 months
+              {t('eligibilityIllness')}
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-              56 days gap from last donation
+              {t('eligibilityGap')}
             </li>
           </ul>
           

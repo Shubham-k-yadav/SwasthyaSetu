@@ -2,9 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/lib/language-context';
 
 export function BloodBankRegisterModal({ children }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleClick = (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -20,10 +22,10 @@ export function BloodBankRegisterModal({ children }) {
   return (
     <Button
       onClick={handleClick}
-      className="gap-2 font-bold bg-red-600 hover:bg-red-700 text-white shadow-md"
+      className="gap-2 font-bold bg-red-600 hover:bg-red-700 text-white shadow-md cursor-pointer"
     >
       <Droplets className="h-4 w-4" />
-      Register Blood Bank
+      {t('registerBloodBank')}
     </Button>
   );
 }

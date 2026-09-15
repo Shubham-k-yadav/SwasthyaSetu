@@ -49,3 +49,16 @@ export const ambulanceLocationLimiter = rateLimit({
     error: 'Location update rate limit exceeded. Updates allowed once every 2 seconds.'
   }
 });
+
+// OTP Request rate limiter (protect SMS/OTP abuse)
+export const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDev ? 100 : 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => isDev,
+  message: {
+    error: 'Too many OTP requests from this IP. Please try again after 15 minutes.'
+  }
+});
+

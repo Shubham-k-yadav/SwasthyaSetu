@@ -110,14 +110,14 @@ router.post('/register-request', async (req, res) => {
     newStock.bloodBankId = newBloodBank._id;
     await newStock.save();
 
-    // Create admin User for Blood Bank
+    // Create admin User for Blood Bank (pending superadmin approval)
     const newAdmin = new User({
       email,
       password,
       name: `${name} Admin`,
       role: 'blood_bank_admin',
       bloodBankId: newBloodBank._id,
-      isActive: true
+      isActive: false
     });
 
     await newAdmin.save();

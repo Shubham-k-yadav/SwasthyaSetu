@@ -28,7 +28,7 @@ const BedReservationSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['reserved', 'confirmed', 'released', 'expired'],
+    enum: ['reserved', 'confirmed', 'released', 'expired', 'discharged'],
     default: 'reserved',
     index: true
   },

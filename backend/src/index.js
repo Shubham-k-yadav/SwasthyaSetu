@@ -6,7 +6,7 @@ import { createServer } from 'http';
 import mongoose from 'mongoose';
 import mongoSanitize from 'express-mongo-sanitize';
 import cron from 'node-cron';
-import { apiLimiter, authLimiter } from './middleware/rateLimiter.js';
+import { apiLimiter, authLimiter, otpLimiter } from './middleware/rateLimiter.js';
 import connectDB from './config/db.js';
 import { initializeSocket } from './services/socket.js';
 import BedReservation from './models/BedReservation.js';
@@ -32,8 +32,19 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+  : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'];
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS policy: Not allowed by CORS origin restriction'));
+  },
   credentials: true
 }));
 
@@ -46,6 +57,7 @@ app.use(mongoSanitize());
 // Rate Limiting Middlewares
 app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
+app.use('/api/hospitals/request-otp', otpLimiter);
 
 // Health check & System Status
 app.get(['/health', '/api/status'], (req, res) => {
@@ -76,10 +88,10 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler
+// Error handler - mask internal stack traces from clients
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('Server error:', err.message);
+  res.status(err.status || 500).json({ error: err.message && process.env.NODE_ENV !== 'production' ? err.message : 'Internal server error' });
 });
 
 // Start server
@@ -108,16 +120,23 @@ const startServer = async () => {
 
         if (expiredReservations.length === 0) return;
 
-        // For each expired reservation, atomically restore the bed count
+        // For each expired reservation, atomically transition status first
         for (const reservation of expiredReservations) {
-          const bedField = `beds.${reservation.bedType}.available`;
-
-          await Hospital.findByIdAndUpdate(
-            reservation.hospitalId,
-            { $inc: { [bedField]: 1 }, $set: { lastUpdated: now } }
+          // Atomically acquire and mark as expired to prevent duplicate processing by concurrent instances
+          const updated = await BedReservation.findOneAndUpdate(
+            { _id: reservation._id, status: 'reserved' },
+            { $set: { status: 'expired' } },
+            { new: true }
           );
 
-          await BedReservation.findByIdAndUpdate(reservation._id, { status: 'expired' });
+          // Only restore bed count if THIS instance successfully transitioned the state
+          if (updated) {
+            const bedField = `beds.${reservation.bedType}.available`;
+            await Hospital.findByIdAndUpdate(
+              reservation.hospitalId,
+              { $inc: { [bedField]: 1 }, $set: { lastUpdated: now } }
+            );
+          }
         }
 
         console.log(`[Cron] Auto-expired ${expiredReservations.length} reservation(s) & restored bed count(s)`);

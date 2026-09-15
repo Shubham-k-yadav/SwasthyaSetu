@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/language-context';
 
 export function EmergencyDetailsForm({
   emergencyType,
@@ -26,23 +27,25 @@ export function EmergencyDetailsForm({
   emergencyTypes = [],
   bedTypes = []
 }) {
+  const { t } = useLanguage();
+
   return (
     <Card className="rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
       <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-3">
         <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-bold">
           <AlertTriangle className="h-5 w-5 text-red-600" />
-          Emergency Details
+          {t('emergencyDetails')}
         </CardTitle>
         <CardDescription className="text-xs sm:text-sm">
-          Help us find the right hospital and equipment for your needs
+          {t('emergencyDetailsDesc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 pt-0 space-y-3.5">
         <div>
-          <Label className="text-xs font-semibold">Emergency Type</Label>
+          <Label className="text-xs font-semibold">{t('emergencyType')}</Label>
           <Select value={emergencyType} onValueChange={setEmergencyType}>
             <SelectTrigger className="mt-1 h-10 sm:h-11 rounded-xl text-xs sm:text-sm">
-              <SelectValue placeholder="Select emergency type" />
+              <SelectValue placeholder={t('selectEmergencyType')} />
             </SelectTrigger>
             <SelectContent>
               {emergencyTypes.map(type => (
@@ -55,7 +58,7 @@ export function EmergencyDetailsForm({
         </div>
 
         <div>
-          <Label className="text-xs font-semibold">Required Bed Type</Label>
+          <Label className="text-xs font-semibold">{t('requiredBedType')}</Label>
           <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:gap-3">
             {bedTypes.map(type => {
               const isSelected = bedType === type.value;
@@ -81,7 +84,7 @@ export function EmergencyDetailsForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="contactPhone" className="text-xs font-semibold">Contact Phone *</Label>
+            <Label htmlFor="contactPhone" className="text-xs font-semibold">{t('contactPhoneLabel')}</Label>
             <Input 
               id="contactPhone"
               type="tel"
@@ -92,7 +95,7 @@ export function EmergencyDetailsForm({
             />
           </div>
           <div>
-            <Label htmlFor="patientName" className="text-xs font-semibold">Patient Name (Optional)</Label>
+            <Label htmlFor="patientName" className="text-xs font-semibold">{t('patientNameLabel')}</Label>
             <Input 
               id="patientName"
               placeholder="Patient name"
@@ -105,7 +108,7 @@ export function EmergencyDetailsForm({
 
         <Button 
           onClick={onSubmit} 
-          className="w-full h-11 sm:h-12 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-md gap-2 text-sm sm:text-base mt-2"
+          className="w-full h-11 sm:h-12 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-md gap-2 text-sm sm:text-base mt-2 cursor-pointer"
           disabled={loading}
         >
           {loading ? (
@@ -113,7 +116,7 @@ export function EmergencyDetailsForm({
           ) : (
             <AlertTriangle className="h-4 w-4" />
           )}
-          {loading ? 'Searching Hospitals...' : 'Find Emergency Beds'}
+          {loading ? t('findingHospitals') : t('findHospitalsButton')}
         </Button>
       </CardContent>
     </Card>

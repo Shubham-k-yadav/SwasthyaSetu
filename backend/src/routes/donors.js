@@ -118,14 +118,14 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Update donor availability
-router.put('/:id/availability', async (req, res) => {
+// Update donor availability (Admin/Superadmin only)
+router.put('/:id/availability', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     const { isAvailable } = req.body;
     
     const donor = await Donor.findByIdAndUpdate(
       req.params.id,
-      { isAvailable },
+      { isAvailable: Boolean(isAvailable) },
       { new: true }
     );
 

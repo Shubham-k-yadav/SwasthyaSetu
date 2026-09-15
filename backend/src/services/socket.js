@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
 
 let io;
 
@@ -18,12 +19,40 @@ export const initializeSocket = (httpServer) => {
     pingTimeout: 60000
   });
 
+  // Socket authentication middleware
+  io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '');
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded;
+      } catch (err) {
+        // Allow unauthenticated connection for public broadcasts, but mark user as null
+        socket.user = null;
+      }
+    } else {
+      socket.user = null;
+    }
+    next();
+  });
+
   io.on('connection', (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
     socket.on('join-hospital', (hospitalId) => {
+      // Authorization guard: Superadmin can join any hospital room.
+      // Hospital admin can ONLY join their own hospital room.
+      // Unauthenticated client cannot eavesdrop on private hospital rooms.
+      if (!socket.user) {
+        return socket.emit('error', { message: 'Authentication required to join hospital room' });
+      }
+
+      if (socket.user.role !== 'superadmin' && socket.user.hospitalId?.toString() !== hospitalId?.toString()) {
+        return socket.emit('error', { message: 'Forbidden: Cannot join another hospital room' });
+      }
+
       socket.join(`hospital-${hospitalId}`);
-      console.log(`Socket ${socket.id} joined hospital-${hospitalId}`);
+      console.log(`Socket ${socket.id} (user: ${socket.user.userId || socket.user.email}) joined hospital-${hospitalId}`);
     });
 
     socket.on('join-city', (city) => {
@@ -68,10 +97,16 @@ export const emitBedUpdate = (hospitalId, beds) => {
 
 export const emitBedHoldAlert = (hospitalId, reservation, hospitalName) => {
   if (io) {
+    // Mask phone number for privacy: e.g. 98765*****
+    const rawPhone = reservation.contactPhone || '';
+    const maskedPhone = rawPhone.length === 10
+      ? `${rawPhone.slice(0, 5)}*****`
+      : '**********';
+
     io.to(`hospital-${hospitalId}`).emit('hospital-bed-hold', {
       reservationCode: reservation.reservationCode,
       patientName: reservation.patientName,
-      contactPhone: reservation.contactPhone,
+      contactPhone: maskedPhone,
       bedType: reservation.bedType,
       hospitalName,
       createdAt: reservation.createdAt || new Date(),

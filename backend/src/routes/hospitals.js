@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { requireHospitalScope } from '../middleware/ownership.js';
+import BedReservation from '../models/BedReservation.js';
 import {
   getHospitals,
   searchHospitals,
@@ -31,6 +33,12 @@ import {
 
 const router = Router();
 
+// Helper to resolve hospitalId from reservationCode
+const resolveHospitalFromReservation = async (req) => {
+  const reservation = await BedReservation.findOne({ reservationCode: req.params.code }).select('hospitalId');
+  return reservation ? reservation.hospitalId : null;
+};
+
 // ─── DIRECTORY & SEARCH ROUTES ─────────────────────────────────────────────
 router.get('/', getHospitals);
 router.get('/search', searchHospitals);
@@ -46,9 +54,9 @@ router.post('/register-request', registerHospitalRequest);
 // ─── BED RESERVATION & OTP AUTH ROUTES ─────────────────────────────────────
 router.post('/request-otp', requestOtp);
 router.post('/verify-otp', verifyOtp);
-router.post('/reservations/:code/confirm', confirmReservation);
-router.post('/reservations/:code/release', releaseReservation);
-router.post('/reservations/:code/discharge', dischargePatient);
+router.post('/reservations/:code/confirm', authenticate, authorize('admin', 'superadmin'), requireHospitalScope({ resolver: resolveHospitalFromReservation }), confirmReservation);
+router.post('/reservations/:code/release', authenticate, authorize('admin', 'superadmin'), requireHospitalScope({ resolver: resolveHospitalFromReservation }), releaseReservation);
+router.post('/reservations/:code/discharge', authenticate, authorize('admin', 'superadmin'), requireHospitalScope({ resolver: resolveHospitalFromReservation }), dischargePatient);
 
 // ─── HOSPITAL CRUD & BED MANAGEMENT ROUTES ─────────────────────────────────
 router.post('/', authenticate, authorize('superadmin'), createHospital);
@@ -56,11 +64,11 @@ router.get('/:id', getHospitalById);
 router.put('/:id', authenticate, authorize('superadmin'), updateHospital);
 router.delete('/:id', authenticate, authorize('superadmin'), deleteHospital);
 
-router.put('/:id/beds', authenticate, authorize('admin', 'superadmin'), updateBeds);
-router.post('/:id/bed-upgrade-request', authenticate, authorize('admin', 'superadmin'), createBedUpgradeRequest);
-router.get('/:id/bed-upgrade-requests', authenticate, authorize('admin', 'superadmin'), getHospitalUpgradeRequests);
+router.put('/:id/beds', authenticate, authorize('admin', 'superadmin'), requireHospitalScope({ key: 'id' }), updateBeds);
+router.post('/:id/bed-upgrade-request', authenticate, authorize('admin', 'superadmin'), requireHospitalScope({ key: 'id' }), createBedUpgradeRequest);
+router.get('/:id/bed-upgrade-requests', authenticate, authorize('admin', 'superadmin'), requireHospitalScope({ key: 'id' }), getHospitalUpgradeRequests);
 router.post('/:id/reserve-bed', reserveBed);
-router.get('/:id/reservations', authenticate, authorize('admin', 'superadmin'), getHospitalReservations);
+router.get('/:id/reservations', authenticate, authorize('admin', 'superadmin'), requireHospitalScope({ key: 'id' }), getHospitalReservations);
 router.patch('/:id/verify', authenticate, authorize('superadmin'), verifyHospital);
 
 

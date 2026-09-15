@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Droplets, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/language-context';
 
 export function MobileBottomNav() {
+  const { t } = useLanguage();
   const location = useLocation();
   const pathname = location.pathname;
 
@@ -12,12 +14,12 @@ export function MobileBottomNav() {
   }
 
   const items = [
-    { href: '/', label: 'Home', icon: Home },
-    { href: '/hospitals', label: 'Hospitals', icon: Search },
+    { href: '/', label: t('navHome') || 'Home', icon: Home },
+    { href: '/hospitals', label: t('navHospitalsShort') || 'Hospitals', icon: Search },
     // Center Floating SOS Button
     { isSos: true, href: '/emergency' },
-    { href: '/blood', label: 'Blood', icon: Droplets },
-    { href: '/admin/login', label: 'Profile', icon: User },
+    { href: '/blood', label: t('navBloodShort') || 'Blood', icon: Droplets },
+    { href: '/admin/login', label: t('navProfile') || 'Profile', icon: User },
   ];
 
   return (

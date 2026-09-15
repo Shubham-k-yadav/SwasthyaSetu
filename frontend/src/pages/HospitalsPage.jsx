@@ -164,7 +164,7 @@ export default function HospitalsPage() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
                 </span>
-                Live Bed Tracker
+                {t('liveBedTracker')}
               </span>
             </div>
             <h1 className="text-xl sm:text-3xl md:text-4xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
@@ -190,21 +190,21 @@ export default function HospitalsPage() {
                   icon={HospitalIcon}
                 />
                 <StatsCard 
-                  title="ICU Beds" 
+                  title={t('icuBeds')} 
                   value={totalICUBeds}
                   subtitle={`of ${totalICUCapacity} total`}
                   icon={Heart}
                   variant={totalICUBeds < 10 ? 'critical' : 'success'}
                 />
                 <StatsCard 
-                  title="General Beds" 
+                  title={t('generalBeds')} 
                   value={totalGenBeds}
                   subtitle={`of ${totalGenCapacity} total`}
                   icon={Bed}
                   variant="success"
                 />
                 <StatsCard 
-                  title="Ventilators" 
+                  title={t('ventilatorBeds')} 
                   value={totalVentBeds}
                   subtitle="Available Units"
                   icon={Wind}
@@ -269,20 +269,20 @@ export default function HospitalsPage() {
               <Button 
                 variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
                 size="sm"
-                className="h-9 px-3 text-xs gap-1.5 font-medium rounded-lg"
+                className="h-9 px-3 text-xs gap-1.5 font-medium rounded-lg cursor-pointer"
                 onClick={() => setViewMode('grid')}
               >
                 <Grid className="h-4 w-4" />
-                Grid
+                {t('grid')}
               </Button>
               <Button 
                 variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
                 size="sm"
-                className="h-9 px-3 text-xs gap-1.5 font-medium rounded-lg"
+                className="h-9 px-3 text-xs gap-1.5 font-medium rounded-lg cursor-pointer"
                 onClick={() => setViewMode('list')}
               >
                 <List className="h-4 w-4" />
-                List
+                {t('list')}
               </Button>
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function HospitalsPage() {
                 )}
               >
                 <MapPin className="h-3.5 w-3.5" />
-                <span>{showMap ? 'Hide Map' : 'Map View'}</span>
+                <span>{showMap ? t('hideMap') : t('mapView')}</span>
               </Button>
             </div>
 
@@ -354,11 +354,11 @@ export default function HospitalsPage() {
 
           {/* Results Count */}
           <div className="flex items-center justify-between mb-3 text-xs text-gray-500 font-medium">
-            <span>Showing <strong className="text-gray-900 dark:text-white font-bold">{filteredHospitals.length}</strong> hospitals</span>
+            <span>{t('showingHospitals')} <strong className="text-gray-900 dark:text-white font-bold">{filteredHospitals.length}</strong> {t('hospitalsText')}</span>
             {filteredHospitals.some(h => h.isVerified) && (
               <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                Verified facilities live
+                {t('verifiedFacilitiesLive')}
               </span>
             )}
           </div>
