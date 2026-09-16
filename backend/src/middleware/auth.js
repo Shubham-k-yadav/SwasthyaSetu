@@ -21,6 +21,15 @@ export const authenticate = async (req, res, next) => {
 
     const decoded = jwt.verify(token, secret);
 
+    if (decoded.role === 'patient_hold') {
+      req.user = {
+        role: 'patient_hold',
+        reservationCode: decoded.reservationCode,
+        hospitalId: decoded.hospitalId
+      };
+      return next();
+    }
+
     const user = (decoded.userId && mongoose.Types.ObjectId.isValid(decoded.userId))
       ? await User.findById(decoded.userId)
       : null;
@@ -39,6 +48,43 @@ export const authenticate = async (req, res, next) => {
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+export const authenticateOptional = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      req.user = null;
+      return next();
+    }
+    const token = authHeader.substring(7);
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      req.user = null;
+      return next();
+    }
+    const decoded = jwt.verify(token, secret);
+    if (decoded.role === 'patient_hold') {
+      req.user = {
+        role: 'patient_hold',
+        reservationCode: decoded.reservationCode,
+        hospitalId: decoded.hospitalId
+      };
+      return next();
+    }
+    const user = (decoded.userId && mongoose.Types.ObjectId.isValid(decoded.userId))
+      ? await User.findById(decoded.userId)
+      : null;
+    if (user && (user.isActive || user.role === 'superadmin')) {
+      req.user = user;
+    } else {
+      req.user = null;
+    }
+    next();
+  } catch (error) {
+    req.user = null;
+    next();
   }
 };
 
@@ -66,11 +112,13 @@ export const generateToken = (userOrId) => {
   const userId = typeof userOrId === 'object' ? userOrId._id : userOrId;
   const email = typeof userOrId === 'object' ? userOrId.email : undefined;
   const role = typeof userOrId === 'object' ? userOrId.role : undefined;
+  const hospitalId = typeof userOrId === 'object' ? (userOrId.hospitalId || userOrId.hospital?._id || userOrId.hospital) : undefined;
   return jwt.sign(
     { 
       userId, 
       email, 
-      role 
+      role,
+      hospitalId: hospitalId ? String(hospitalId) : undefined
     },
     secret,
     { expiresIn: '24h' }

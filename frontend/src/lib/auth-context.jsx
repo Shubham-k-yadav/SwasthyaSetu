@@ -15,13 +15,25 @@ import { api } from './api';
 const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = typeof window !== 'undefined' ? localStorage.getItem('swasthya_setu_user') : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('swasthya_setu_token') : null;
+      if (savedUser && token) {
+        return JSON.parse(savedUser);
+      }
+    } catch (e) {}
+    return null;
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('swasthya_setu_token') : null;
+    return !!token;
+  });
   const navigate = useNavigate();
 
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('swasthya_setu_token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('swasthya_setu_token') : null;
       if (!token) {
         setUser(null);
         setIsLoading(false);
@@ -29,10 +41,17 @@ export function AuthProvider({ children }) {
       }
 
       const response = await api.auth.getMe(token);
-      setUser(response.user);
+      if (response?.user) {
+        setUser(response.user);
+        localStorage.setItem('swasthya_setu_user', JSON.stringify(response.user));
+      }
     } catch (e) {
-      localStorage.removeItem('swasthya_setu_token');
-      setUser(null);
+      // Only clear token if server explicitly rejected auth (e.g. 401 Unauthorized, 403 Forbidden)
+      if (e.status === 401 || e.status === 403 || String(e.message || '').toLowerCase().includes('token') || String(e.message || '').toLowerCase().includes('denied')) {
+        localStorage.removeItem('swasthya_setu_token');
+        localStorage.removeItem('swasthya_setu_user');
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -45,12 +64,16 @@ export function AuthProvider({ children }) {
   const login = async (email, password, portal) => {
     const response = await api.auth.login(email, password, portal);
     localStorage.setItem('swasthya_setu_token', response.token);
-    setUser(response.user);
+    if (response.user) {
+      localStorage.setItem('swasthya_setu_user', JSON.stringify(response.user));
+      setUser(response.user);
+    }
     return true;
   };
 
   const logout = () => {
     localStorage.removeItem('swasthya_setu_token');
+    localStorage.removeItem('swasthya_setu_user');
     setUser(null);
     navigate('/admin/login');
   };

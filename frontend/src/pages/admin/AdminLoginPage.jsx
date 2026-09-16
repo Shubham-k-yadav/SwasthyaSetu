@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Building2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,13 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate('/admin', { replace: true });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
