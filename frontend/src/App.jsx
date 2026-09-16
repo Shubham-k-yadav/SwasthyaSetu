@@ -31,6 +31,7 @@ function AdminDashboardDispatcher() {
 }
 
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { ActiveBedHoldBanner } from '@/components/hospital/ActiveBedHoldBanner';
 import { ScrollToTop } from '@/components/ScrollToTop';
 
 // Robust Error Boundary to catch any page-level rendering issues
@@ -119,6 +120,8 @@ export default function App() {
             </Routes>
 
           </ErrorBoundary>
+          {/* Floating Active Bed Hold recovery banner across all public pages */}
+          <ActiveBedHoldBanner />
           {/* Global Mobile Bottom Navigation Bar on all mobile screens */}
           <MobileBottomNav />
         </AuthProvider>
