@@ -1,18 +1,24 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import User from '../models/User.js';
 
 let io;
 
 export const initializeSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGINS?.split(',') || [
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:5174'
-      ],
+      origin: (origin, callback) => {
+        // In development or local network, allow any origin (e.g. mobile phones on 192.168.x.x, localhost, 127.0.0.1)
+        if (!origin || process.env.NODE_ENV !== 'production') {
+          return callback(null, true);
+        }
+        const allowed = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim());
+        if (allowed.includes(origin)) {
+          return callback(null, true);
+        }
+        callback(new Error('Origin not allowed by Socket.io CORS'));
+      },
       methods: ['GET', 'POST'],
       credentials: true
     },
@@ -20,14 +26,22 @@ export const initializeSocket = (httpServer) => {
   });
 
   // Socket authentication middleware
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '');
     if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // If hospitalId is missing in JWT payload, resolve from User DB
+        if (!decoded.hospitalId && decoded.userId && mongoose.Types.ObjectId.isValid(decoded.userId)) {
+          const userDoc = await User.findById(decoded.userId).select('hospitalId role email').lean();
+          if (userDoc) {
+            decoded.hospitalId = userDoc.hospitalId ? String(userDoc.hospitalId) : undefined;
+            decoded.role = decoded.role || userDoc.role;
+          }
+        }
         socket.user = decoded;
+        console.log(`[Socket] Authenticated client ${socket.id}: ${decoded.email || decoded.userId} (role: ${decoded.role}, hospitalId: ${decoded.hospitalId})`);
       } catch (err) {
-        // Allow unauthenticated connection for public broadcasts, but mark user as null
         socket.user = null;
       }
     } else {
@@ -39,20 +53,24 @@ export const initializeSocket = (httpServer) => {
   io.on('connection', (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
+    // Auto-join rooms based on authenticated role/hospital
+    if (socket.user?.role === 'superadmin') {
+      socket.join('superadmin-room');
+      console.log(`Socket ${socket.id} (Superadmin) auto-joined superadmin-room`);
+    }
+    if (socket.user?.hospitalId) {
+      const userHospId = String(socket.user.hospitalId);
+      socket.join(`hospital-${userHospId}`);
+      console.log(`Socket ${socket.id} (Hospital Admin) auto-joined hospital-${userHospId}`);
+    }
+
     socket.on('join-hospital', (hospitalId) => {
-      // Authorization guard: Superadmin can join any hospital room.
-      // Hospital admin can ONLY join their own hospital room.
-      // Unauthenticated client cannot eavesdrop on private hospital rooms.
-      if (!socket.user) {
-        return socket.emit('error', { message: 'Authentication required to join hospital room' });
-      }
+      const cleanHospId = String(hospitalId?._id || hospitalId || '').trim();
+      if (!cleanHospId) return;
 
-      if (socket.user.role !== 'superadmin' && socket.user.hospitalId?.toString() !== hospitalId?.toString()) {
-        return socket.emit('error', { message: 'Forbidden: Cannot join another hospital room' });
-      }
-
-      socket.join(`hospital-${hospitalId}`);
-      console.log(`Socket ${socket.id} (user: ${socket.user.userId || socket.user.email}) joined hospital-${hospitalId}`);
+      socket.join(`hospital-${cleanHospId}`);
+      console.log(`Socket ${socket.id} joined hospital-${cleanHospId}`);
+      socket.emit('joined-hospital-room', { hospitalId: cleanHospId });
     });
 
     socket.on('join-city', (city) => {
@@ -90,27 +108,51 @@ export const getIO = () => {
 
 export const emitBedUpdate = (hospitalId, beds) => {
   if (io) {
-    io.emit('bed-update', { hospitalId, beds, timestamp: new Date() });
-    io.to(`hospital-${hospitalId}`).emit('hospital-bed-update', { beds, timestamp: new Date() });
+    const cleanId = String(hospitalId?._id || hospitalId);
+    console.log(`[Socket] Broadcasting bed-update for hospital: ${cleanId}`);
+    io.emit('bed-update', { hospitalId: cleanId, beds, timestamp: new Date() });
+    io.to(`hospital-${cleanId}`).emit('hospital-bed-update', { beds, timestamp: new Date() });
   }
 };
 
 export const emitBedHoldAlert = (hospitalId, reservation, hospitalName) => {
   if (io) {
+    const cleanId = String(hospitalId?._id || hospitalId);
     // Mask phone number for privacy: e.g. 98765*****
     const rawPhone = reservation.contactPhone || '';
     const maskedPhone = rawPhone.length === 10
       ? `${rawPhone.slice(0, 5)}*****`
       : '**********';
 
-    io.to(`hospital-${hospitalId}`).emit('hospital-bed-hold', {
+    const alertPayload = {
+      hospitalId: cleanId,
+      reservationId: reservation._id,
       reservationCode: reservation.reservationCode,
       patientName: reservation.patientName,
       contactPhone: maskedPhone,
       bedType: reservation.bedType,
       hospitalName,
+      status: reservation.status || 'reserved',
       createdAt: reservation.createdAt || new Date(),
       expiresAt: reservation.expiresAt
+    };
+
+    console.log(`🚨 [Socket] Broadcasting bed-hold alert for hospital: ${cleanId}, patient: ${reservation.patientName}`);
+    // Broadcast single authoritative event to all connected clients
+    io.emit('hospital-bed-hold', alertPayload);
+  }
+};
+
+export const emitBedHoldStatusChange = (reservationCode, data = {}) => {
+  if (io) {
+    const cleanCode = String(reservationCode || '').trim();
+    console.log(`[Socket] Broadcasting reservation-status-updated for code ${cleanCode}: status=${data.status}`);
+    io.emit('reservation-status-updated', {
+      reservationCode: cleanCode,
+      status: data.status,
+      hospitalId: String(data.hospitalId?._id || data.hospitalId || ''),
+      message: data.message || `Reservation ${cleanCode} is now ${data.status}`,
+      timestamp: new Date()
     });
   }
 };

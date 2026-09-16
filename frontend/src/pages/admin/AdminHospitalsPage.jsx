@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
+import { connectSocket, getSocket } from '@/lib/socket';
 
 import {
   HospitalStatsCards,
@@ -165,6 +166,51 @@ export default function HospitalsAdminPage() {
     if (isSuperAdmin) {
       fetchUpgradeRequests();
     }
+
+    const token = localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token');
+    connectSocket(token);
+    const s = getSocket();
+
+    const handleBedUpdate = (data) => {
+      if (!data || !data.hospitalId) return;
+      const targetId = String(data.hospitalId);
+      setHospitals(prev => prev.map(h => {
+        if (String(h._id || h.id) === targetId && data.beds) {
+          const genTotal = data.beds.general?.total ?? h.beds?.general?.total ?? 0;
+          const genAvail = data.beds.general?.available ?? h.beds?.general?.available ?? 0;
+          const icuTotal = data.beds.icu?.total ?? h.beds?.icu?.total ?? 0;
+          const icuAvail = data.beds.icu?.available ?? h.beds?.icu?.available ?? 0;
+          const ventTotal = data.beds.ventilator?.total ?? h.beds?.ventilator?.total ?? 0;
+          const ventAvail = data.beds.ventilator?.available ?? h.beds?.ventilator?.available ?? 0;
+
+          return {
+            ...h,
+            beds: {
+              ...h.beds,
+              ...data.beds
+            },
+            totalBeds: genTotal + icuTotal + ventTotal,
+            availableBeds: genAvail + icuAvail + ventAvail,
+            icuBeds: icuTotal,
+            icuAvailable: icuAvail,
+            lastUpdated: data.timestamp ? new Date(data.timestamp) : new Date()
+          };
+        }
+        return h;
+      }));
+    };
+
+    s.on('bed-update', handleBedUpdate);
+    s.on('new-bed-hold', () => {
+      if (isSuperAdmin) {
+        fetchHospitals();
+      }
+    });
+
+    return () => {
+      s.off('bed-update', handleBedUpdate);
+      s.off('new-bed-hold');
+    };
   }, [isSuperAdmin]);
 
 

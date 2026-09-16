@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import { connectSocket, getSocket, onBedUpdate } from '@/lib/socket';
 import { useLanguage } from '@/lib/language-context';
 import { HospitalMap } from '@/components/maps/hospital-map';
 import { openHospitalDirections } from '@/lib/navigation';
@@ -107,6 +108,71 @@ export default function HospitalsPage() {
       }
     }
     fetchData();
+
+    connectSocket();
+    const socket = getSocket();
+
+    // 1. Real-Time Socket.io broadcasts from backend
+    const handleBedUpdate = (data) => {
+      if (!data || !data.hospitalId) return;
+      const targetId = String(data.hospitalId);
+      setHospitals((prev) =>
+        prev.map((h) => {
+          if (String(h._id || h.id) === targetId) {
+            return {
+              ...h,
+              beds: {
+                ...h.beds,
+                ...(data.beds || {})
+              },
+              lastUpdated: data.timestamp || new Date()
+            };
+          }
+          return h;
+        })
+      );
+    };
+
+    onBedUpdate(handleBedUpdate);
+
+    // 2. Instant zero-latency optimistic bed count updates
+    const handleLocalBedChange = (event) => {
+      const { hospitalId, bedType, delta, beds } = event.detail || {};
+      if (!hospitalId) return;
+      const targetId = String(hospitalId);
+      setHospitals((prev) =>
+        prev.map((h) => {
+          if (String(h._id || h.id) === targetId) {
+            if (beds) {
+              return { ...h, beds: { ...h.beds, ...beds }, lastUpdated: new Date() };
+            }
+            if (bedType && delta) {
+              const currentAvail = Number(h.beds?.[bedType]?.available || 0);
+              const newAvail = Math.max(0, currentAvail + delta);
+              return {
+                ...h,
+                beds: {
+                  ...h.beds,
+                  [bedType]: {
+                    ...h.beds?.[bedType],
+                    available: newAvail
+                  }
+                },
+                lastUpdated: new Date()
+              };
+            }
+          }
+          return h;
+        })
+      );
+    };
+
+    window.addEventListener('swasthya_bed_updated', handleLocalBedChange);
+
+    return () => {
+      socket.off('bed-update', handleBedUpdate);
+      window.removeEventListener('swasthya_bed_updated', handleLocalBedChange);
+    };
   }, []);
 
   const dynamicCities = ['All Cities', ...Array.from(new Set(hospitals.map(h => h.city).filter(Boolean)))];

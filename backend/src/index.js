@@ -8,7 +8,7 @@ import mongoSanitize from 'express-mongo-sanitize';
 import cron from 'node-cron';
 import { apiLimiter, authLimiter, otpLimiter } from './middleware/rateLimiter.js';
 import connectDB from './config/db.js';
-import { initializeSocket } from './services/socket.js';
+import { initializeSocket, emitBedUpdate, emitBedHoldStatusChange } from './services/socket.js';
 import BedReservation from './models/BedReservation.js';
 import Hospital from './models/Hospital.js';
 
@@ -132,10 +132,19 @@ const startServer = async () => {
           // Only restore bed count if THIS instance successfully transitioned the state
           if (updated) {
             const bedField = `beds.${reservation.bedType}.available`;
-            await Hospital.findByIdAndUpdate(
+            const updatedHosp = await Hospital.findByIdAndUpdate(
               reservation.hospitalId,
-              { $inc: { [bedField]: 1 }, $set: { lastUpdated: now } }
+              { $inc: { [bedField]: 1 }, $set: { lastUpdated: now } },
+              { new: true }
             );
+            if (updatedHosp) {
+              emitBedUpdate(updatedHosp._id, updatedHosp.beds);
+            }
+            emitBedHoldStatusChange(reservation.reservationCode, {
+              status: 'expired',
+              hospitalId: reservation.hospitalId,
+              message: 'Bed hold has expired and bed count restored'
+            });
           }
         }
 

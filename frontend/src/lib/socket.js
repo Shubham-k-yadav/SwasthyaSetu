@@ -6,18 +6,45 @@ let socket = null;
 
 export const getSocket = () => {
   if (!socket) {
+    const token = typeof window !== 'undefined'
+      ? (localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token') || localStorage.getItem('auth_token'))
+      : null;
+
     socket = io(SOCKET_URL, {
-      autoConnect: false,
+      autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      auth: token ? { token } : undefined,
+    });
+
+    socket.on('connect', () => {
+      console.log('⚡ [SwasthyaSetu Socket] Connected to real-time server:', socket.id);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn('⚠️ [SwasthyaSetu Socket] Connection warning:', err.message);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('🔌 [SwasthyaSetu Socket] Disconnected:', reason);
     });
   }
   return socket;
 };
 
-export const connectSocket = () => {
+export const connectSocket = (customToken) => {
   const s = getSocket();
+  const token = customToken || (typeof window !== 'undefined' ? (localStorage.getItem('swasthya_setu_token') || localStorage.getItem('token')) : null);
+  
+  if (token && (!s.auth || s.auth.token !== token)) {
+    s.auth = { token };
+    if (s.connected) {
+      s.disconnect().connect();
+      return;
+    }
+  }
+
   if (!s.connected) {
     s.connect();
   }
@@ -32,6 +59,14 @@ export const disconnectSocket = () => {
 // Event handlers
 export const onBedUpdate = (callback) => {
   getSocket().on('bed-update', callback);
+};
+
+export const onBedHoldAlert = (callback) => {
+  getSocket().on('hospital-bed-hold', callback);
+};
+
+export const onReservationStatusUpdated = (callback) => {
+  getSocket().on('reservation-status-updated', callback);
 };
 
 export const onBloodUpdate = (callback) => {
