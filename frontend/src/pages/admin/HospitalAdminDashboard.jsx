@@ -9,7 +9,8 @@ import {
   Save,
   Siren,
   Zap,
-  QrCode
+  QrCode,
+  UserPlus
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,19 +27,29 @@ import {
   PatientReservationsTable,
   AdmissionQrScannerModal,
   AmbulanceFleetManager,
-  RequestBedUpgradeModal
+  RequestBedUpgradeModal,
+  WalkinAdmissionModal,
+  PatientCaseSheetModal
 } from '@/components/admin/dashboard';
 
 
 export default function HospitalAdminDashboard() {
   const { user } = useAuth();
-  const hospitalId = user?.hospitalId || user?.hospital?._id || user?.hospital;
+  const rawHosp = user?.hospitalId || user?.hospital;
+  const hospitalId = typeof rawHosp === 'object' && rawHosp !== null
+    ? String(rawHosp._id || rawHosp.id || '')
+    : (rawHosp ? String(rawHosp) : '');
   
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'inventory';
+  const rawTab = (searchParams.get('tab') || 'inventory').toLowerCase();
+  const activeTab = (rawTab === 'reservations' || rawTab === 'holds' || rawTab === 'patient-holds')
+    ? 'holds'
+    : (rawTab === 'fleet' || rawTab === 'ambulances')
+      ? 'ambulances'
+      : 'inventory';
 
   const handleTabChange = (newTab) => {
-    setSearchParams({ tab: newTab });
+    setSearchParams({ tab: newTab === 'holds' ? 'reservations' : newTab === 'ambulances' ? 'fleet' : 'inventory' });
   };
   
   const [hospital, setHospital] = useState(() => user?.hospital || null);
@@ -54,6 +65,13 @@ export default function HospitalAdminDashboard() {
   const [scannedCodeInput, setScannedCodeInput] = useState('');
   const [isVerifyingScan, setIsVerifyingScan] = useState(false);
   const [cameraError, setCameraError] = useState('');
+
+  // Direct Walk-In Offline Emergency Admission Modal State
+  const [walkinModalOpen, setWalkinModalOpen] = useState(false);
+
+  // Emergency Patient Case Sheet & Doctor Allotment Modal State
+  const [caseSheetModalOpen, setCaseSheetModalOpen] = useState(false);
+  const [selectedCaseReservation, setSelectedCaseReservation] = useState(null);
 
   // Bed Capacity Upgrade Modal & State
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
@@ -92,12 +110,12 @@ export default function HospitalAdminDashboard() {
     }
   }, [user]);
 
-  const fetchHospitalData = async () => {
+  const fetchHospitalData = async (showLoading = false) => {
     if (!hospitalId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const token = localStorage.getItem('swasthya_setu_token') || user?.token;
       const [hospRes, ambRes, resvRes, upgradesRes] = await Promise.all([
@@ -122,13 +140,14 @@ export default function HospitalAdminDashboard() {
         }
       }
       setAmbulances(ambRes?.ambulances || []);
-      setReservations(resvRes?.reservations || []);
+      if (Array.isArray(resvRes?.reservations)) {
+        setReservations(resvRes.reservations);
+      }
 
       const pendingReq = (upgradesRes?.requests || []).find(r => r.status === 'pending');
       setPendingUpgradeRequest(pendingReq || null);
     } catch (err) {
       console.error('Error fetching hospital admin details:', err);
-      toast.error('Failed to load hospital data');
     } finally {
       setLoading(false);
     }
@@ -137,26 +156,109 @@ export default function HospitalAdminDashboard() {
   const handleSubmitBedUpgrade = async (data) => {
     const token = localStorage.getItem('swasthya_setu_token') || user?.token;
     await api.hospitals.requestBedUpgrade(hospitalId, data, token);
-    fetchHospitalData();
+    fetchHospitalData(false);
   };
 
-
   useEffect(() => {
-    fetchHospitalData();
+    fetchHospitalData(true);
   }, [hospitalId]);
 
   // Real-time WebSocket listening for incoming patient bed holds & ambulance updates
   useEffect(() => {
-    if (!hospitalId) return;
-    connectSocket();
-    joinHospitalRoom(hospitalId);
+    const token = localStorage.getItem('swasthya_setu_token') || user?.token;
+    connectSocket(token);
+
+    if (hospitalId) {
+      joinHospitalRoom(hospitalId);
+    }
 
     const s = getSocket();
+
+    const playAlertChime = () => {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (e) {}
+    };
+
+    const seenAlerts = new Set();
+
     const handleBedHoldAlert = (data) => {
-      toast.warning(`🚨 EMERGENCY BED HOLD: Patient ${data.patientName} (+91-${data.contactPhone}) held a ${data.bedType?.toUpperCase()} bed!`, {
-        duration: 12000
-      });
-      fetchHospitalData();
+      console.log('🚨 [HospitalAdminDashboard] Received live bed hold alert:', data);
+      if (!data) return;
+
+      const code = String(data.reservationCode || data.reservationId || '');
+      if (code) {
+        if (seenAlerts.has(code)) {
+          console.log(`[HospitalAdminDashboard] Skipping duplicate hold alert for ticket ${code}`);
+          return;
+        }
+        seenAlerts.add(code);
+      }
+
+      const cleanIncomingHosp = String(data.hospitalId || '');
+      const cleanMyHosp = String(hospitalId || '');
+
+      // Check if alert belongs to this hospital or if user is superadmin
+      if (!cleanMyHosp || !cleanIncomingHosp || cleanIncomingHosp === cleanMyHosp || user?.role === 'superadmin') {
+        // 1. Instant 0ms optimistic injection of ticket into table!
+        setReservations(prev => {
+          if (prev.some(r => r.reservationCode === code)) return prev;
+          const newReservation = {
+            _id: data.reservationId || `resv_${Date.now()}`,
+            reservationCode: data.reservationCode,
+            patientName: data.patientName || 'Emergency Patient',
+            contactPhone: data.contactPhone || 'N/A',
+            bedType: data.bedType || 'icu',
+            status: data.status || 'reserved',
+            createdAt: data.createdAt || new Date().toISOString(),
+            expiresAt: data.expiresAt || new Date(Date.now() + 600000).toISOString()
+          };
+          return [newReservation, ...prev];
+        });
+
+        // 2. Background server reconciliation (bed counts are updated authoritatively via handleBedUpdate)
+        fetchHospitalData(false);
+      }
+    };
+
+    const handleReservationStatusChange = (data) => {
+      console.log('⚡ [HospitalAdminDashboard] Reservation status change received:', data);
+      if (data?.reservationCode && data?.status) {
+        setReservations(prev => prev.map(r => {
+          if (r.reservationCode === data.reservationCode) {
+            return { ...r, status: data.status };
+          }
+          return r;
+        }));
+      }
+      fetchHospitalData(false);
+    };
+
+    const handleBedUpdate = (data) => {
+      if (!data || !data.hospitalId) return;
+      if (String(data.hospitalId) === String(hospitalId)) {
+        if (data.beds) {
+          setHospital(prev => prev ? { ...prev, beds: { ...prev.beds, ...data.beds } } : prev);
+          setBedsForm({
+            icuAvailable: data.beds.icu?.available ?? 0,
+            icuTotal: data.beds.icu?.total ?? 0,
+            generalAvailable: data.beds.general?.available ?? 0,
+            generalTotal: data.beds.general?.total ?? 0,
+            ventilatorAvailable: data.beds.ventilator?.available ?? 0,
+            ventilatorTotal: data.beds.ventilator?.total ?? 0,
+          });
+        }
+      }
     };
 
     const handleAmbulanceUpdate = (data) => {
@@ -182,16 +284,26 @@ export default function HospitalAdminDashboard() {
       });
     };
 
+    const handleCustomAdminHold = (e) => {
+      if (e?.detail) handleBedHoldAlert(e.detail);
+    };
+    window.addEventListener('swasthya_admin_bed_hold', handleCustomAdminHold);
+
     s.on('hospital-bed-hold', handleBedHoldAlert);
+    s.on('reservation-status-updated', handleReservationStatusChange);
+    s.on('bed-update', handleBedUpdate);
     s.on('ambulance-updates', handleAmbulanceUpdate);
     s.on('hospital-ambulance-update', handleAmbulanceUpdate);
 
     return () => {
+      window.removeEventListener('swasthya_admin_bed_hold', handleCustomAdminHold);
       s.off('hospital-bed-hold', handleBedHoldAlert);
+      s.off('reservation-status-updated', handleReservationStatusChange);
+      s.off('bed-update', handleBedUpdate);
       s.off('ambulance-updates', handleAmbulanceUpdate);
       s.off('hospital-ambulance-update', handleAmbulanceUpdate);
     };
-  }, [hospitalId]);
+  }, [hospitalId, user?.token, user?.role]);
 
   const handleUpdateBeds = async (e) => {
     e.preventDefault();
@@ -309,6 +421,38 @@ export default function HospitalAdminDashboard() {
     }
   };
 
+  const handleWalkinAdmission = async (formData) => {
+    try {
+      const token = localStorage.getItem('swasthya_setu_token') || user?.token;
+      const res = await api.hospitals.createWalkinAdmission(hospitalId, formData, token);
+      if (res?.success) {
+        toast.success(`Direct walk-in admission confirmed for ${formData.patientName}! Slip Code: ${res.reservation?.reservationCode}`);
+        fetchHospitalData();
+      }
+      return res;
+    } catch (err) {
+      toast.error(err.message || err.error || 'Failed to complete direct walk-in admission');
+      throw err;
+    }
+  };
+
+  const handleOpenCaseSheet = (resv) => {
+    setSelectedCaseReservation(resv);
+    setCaseSheetModalOpen(true);
+  };
+
+  const handleSaveCaseSheet = async (code, formData) => {
+    try {
+      const token = localStorage.getItem('swasthya_setu_token') || user?.token;
+      const res = await api.hospitals.updateCaseSheet(code, formData, token);
+      fetchHospitalData();
+      return res;
+    } catch (err) {
+      console.error('Error saving case sheet:', err);
+      throw err;
+    }
+  };
+
   const handleAddAmbulance = async (e) => {
     e.preventDefault();
     if (!ambForm.vehicleNumber || !ambForm.driverName || !ambForm.driverPhone) {
@@ -347,24 +491,32 @@ export default function HospitalAdminDashboard() {
     }
   };
 
-  const copyDriverLink = (driverToken, ambId) => {
-    const fullUrl = `${window.location.origin}/driver/${driverToken || ambId}`;
-    navigator.clipboard.writeText(fullUrl);
-    toast.success('Driver GPS Tracking link copied to clipboard!');
+  const copyDriverLink = (ambId) => {
+    const link = `${window.location.origin}/driver/${ambId}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Driver live GPS tracking link copied to clipboard!');
   };
 
-  const hospitalName = hospital?.name || user?.hospital?.name || user?.name || 'Your Hospital';
+  if (loading && !hospital) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm font-medium text-muted-foreground">Connecting to hospital terminal...</p>
+      </div>
+    );
+  }
+
+  const hospitalName = hospital?.name || user?.name || 'Hospital Terminal';
   const activeHoldsCount = reservations.filter(r => r.status === 'reserved' || r.status === 'active').length;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b pb-5">
+      {/* Top Banner with Hospital Name & Quick Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
         <div>
           <div className="flex items-center gap-2">
-            <Badge className="bg-primary text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-0.5">
-              Hospital Staff Portal
-            </Badge>
+            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">LIVE SYSTEM OPERATIONAL</span>
             <Badge variant="outline" className="text-[10px] font-semibold border-emerald-500/30 text-emerald-600 bg-emerald-500/10">
               Verified Node
             </Badge>
@@ -378,7 +530,15 @@ export default function HospitalAdminDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Button
+            onClick={() => setWalkinModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1.5 shadow-sm text-xs"
+          >
+            <UserPlus className="h-4 w-4" />
+            + Direct Walk-In (ऑफलाइन भर्ती)
+          </Button>
+
           <Button
             onClick={() => setScanModalOpen(true)}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-sm text-xs"
@@ -420,13 +580,13 @@ export default function HospitalAdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-cyan-500/20 shadow-xs">
+        <Card className="bg-card border-purple-500/20 shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Ventilators</p>
-              <h3 className="text-2xl font-extrabold mt-0.5 text-cyan-600">{bedsForm.ventilatorAvailable} <span className="text-xs text-muted-foreground font-normal">/ {bedsForm.ventilatorTotal}</span></h3>
+              <h3 className="text-2xl font-extrabold mt-0.5 text-purple-600">{bedsForm.ventilatorAvailable} <span className="text-xs text-muted-foreground font-normal">/ {bedsForm.ventilatorTotal}</span></h3>
             </div>
-            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-600">
+            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600">
               <Wind className="h-5 w-5" />
             </div>
           </CardContent>
@@ -436,7 +596,7 @@ export default function HospitalAdminDashboard() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Active Patient Holds</p>
-              <h3 className="text-2xl font-extrabold mt-0.5 text-amber-600">{activeHoldsCount}</h3>
+              <h3 className="text-2xl font-extrabold mt-0.5 text-amber-600">{activeHoldsCount} <span className="text-xs text-muted-foreground font-normal">10-min locks</span></h3>
             </div>
             <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600">
               <Zap className="h-5 w-5" />
@@ -445,16 +605,16 @@ export default function HospitalAdminDashboard() {
         </Card>
       </div>
 
-      {/* SUB-TAB NAVIGATION BAR */}
-      <Tabs defaultValue="inventory" value={activeTab} onValueChange={handleTabChange} className="w-full space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-2xl bg-muted/60 p-1 rounded-xl">
+      {/* TABS CONTAINER */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
+        <TabsList className="grid w-full grid-cols-3 max-w-md bg-muted/60 p-1 border">
           <TabsTrigger value="inventory" className="gap-2 font-bold text-xs py-2 data-[state=active]:bg-background shadow-xs">
-            <Save className="h-3.5 w-3.5 text-primary" />
-            Bed Inventory Controls
+            <Bed className="h-3.5 w-3.5 text-primary" />
+            Live Bed Inventory
           </TabsTrigger>
           <TabsTrigger value="holds" className="gap-2 font-bold text-xs py-2 data-[state=active]:bg-background shadow-xs relative">
             <Zap className="h-3.5 w-3.5 text-amber-600" />
-            Patient Bed Holds
+            Patient Holds
             {activeHoldsCount > 0 && (
               <Badge className="ml-1 bg-amber-600 text-white text-[10px] px-1.5 py-0 rounded-full">
                 {activeHoldsCount}
@@ -485,7 +645,10 @@ export default function HospitalAdminDashboard() {
             reservations={reservations}
             activeHoldsCount={activeHoldsCount}
             hospitalName={hospitalName}
+            hospital={hospital}
             onOpenScanModal={() => setScanModalOpen(true)}
+            onOpenWalkinModal={() => setWalkinModalOpen(true)}
+            onOpenCaseSheet={handleOpenCaseSheet}
             onConfirmAdmission={handleConfirmAdmission}
             onReleaseHold={handleReleaseHold}
             onDischargePatient={handleDischargePatient}
@@ -510,6 +673,15 @@ export default function HospitalAdminDashboard() {
         </TabsContent>
       </Tabs>
 
+      {/* DIRECT WALK-IN OFFLINE EMERGENCY ADMISSION MODAL */}
+      <WalkinAdmissionModal
+        open={walkinModalOpen}
+        onOpenChange={setWalkinModalOpen}
+        hospital={hospital}
+        bedsForm={bedsForm}
+        onSubmitWalkin={handleWalkinAdmission}
+      />
+
       {/* INSTANT PATIENT QR PASS SCANNER MODAL */}
       <AdmissionQrScannerModal
         open={scanModalOpen}
@@ -530,7 +702,15 @@ export default function HospitalAdminDashboard() {
         hospital={hospital}
         onSubmitUpgrade={handleSubmitBedUpgrade}
       />
+
+      {/* EMERGENCY PATIENT CASE SHEET & DOCTOR ALLOTMENT MODAL */}
+      <PatientCaseSheetModal
+        open={caseSheetModalOpen}
+        onOpenChange={setCaseSheetModalOpen}
+        reservation={selectedCaseReservation}
+        hospital={hospital}
+        onSaveCaseSheet={handleSaveCaseSheet}
+      />
     </div>
   );
 }
-

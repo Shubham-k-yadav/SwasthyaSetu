@@ -3,4 +3,8 @@ export { PatientReservationsTable } from './PatientReservationsTable';
 export { AdmissionQrScannerModal } from './AdmissionQrScannerModal';
 export { AmbulanceFleetManager } from './AmbulanceFleetManager';
 export { RequestBedUpgradeModal } from './RequestBedUpgradeModal';
+export { WalkinAdmissionModal } from './WalkinAdmissionModal';
+export { PatientCaseSheetModal } from './PatientCaseSheetModal';
+
+
 

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import Hospital from '../models/Hospital.js';
 import BedReservation from '../models/BedReservation.js';
-import { emitBedUpdate, emitBedHoldAlert } from '../services/socket.js';
+import { emitBedUpdate, emitBedHoldAlert, emitBedHoldStatusChange } from '../services/socket.js';
 
 // Bounded in-memory store for OTPs with auto-cleanup
 // phone -> { hash: string, expiresAt: number, attempts: number }
@@ -139,7 +139,16 @@ export const verifyOtp = async (req, res) => {
 // Atomic Concurrency-Safe Bed Reservation (10-minute hold)
 export const reserveBed = async (req, res) => {
   try {
-    const { bedType = 'icu', patientName, contactPhone, holdMinutes = 10, verificationToken } = req.body;
+    const {
+      bedType = 'icu',
+      patientName,
+      contactPhone,
+      holdMinutes = 10,
+      verificationToken,
+      age,
+      gender,
+      emergencyNotes
+    } = req.body;
     const hospitalId = req.params.id;
 
     if (!patientName || !contactPhone) {
@@ -195,12 +204,17 @@ export const reserveBed = async (req, res) => {
       contactPhone: cleanPhone,
       status: 'reserved',
       expiresAt: { $gt: new Date() }
-    });
+    }).populate('hospitalId');
 
     if (activeHold) {
-      return res.status(429).json({
+      const remainingSeconds = Math.max(0, Math.round((new Date(activeHold.expiresAt).getTime() - Date.now()) / 1000));
+      return res.status(409).json({
         error: 'An active bed reservation already exists for this phone number. Please use or release your current hold before creating a new one.',
-        existingReservationCode: activeHold.reservationCode
+        hasActiveHold: true,
+        existingReservationCode: activeHold.reservationCode,
+        existingReservation: activeHold,
+        hospital: activeHold.hospitalId,
+        expiresInSeconds: remainingSeconds
       });
     }
 
@@ -230,8 +244,11 @@ export const reserveBed = async (req, res) => {
     const reservation = new BedReservation({
       hospitalId,
       bedType,
-      patientName,
-      contactPhone,
+      patientName: patientName.trim(),
+      contactPhone: cleanPhone,
+      age: age ? Number(age) : undefined,
+      gender: gender ? String(gender).trim() : '',
+      emergencyNotes: emergencyNotes ? String(emergencyNotes).trim() : '',
       reservationCode,
       status: 'reserved',
       expiresAt
@@ -242,12 +259,26 @@ export const reserveBed = async (req, res) => {
     emitBedUpdate(hospitalId, updatedHospital.beds);
     emitBedHoldAlert(hospitalId, reservation, updatedHospital.name);
 
+    const secret = process.env.JWT_SECRET;
+    const holdToken = secret ? jwt.sign(
+      {
+        reservationCode,
+        hospitalId: hospitalId.toString(),
+        role: 'patient_hold'
+      },
+      secret,
+      { expiresIn: `${holdMinutes + 5}m` }
+    ) : null;
+
     res.status(201).json({
+      success: true,
       message: 'Bed reserved successfully (10-minute hold active)',
       reservation: {
         ...reservation.toObject(),
         hospitalName: updatedHospital.name
       },
+      hospital: updatedHospital,
+      holdToken,
       expiresInSeconds: holdMinutes * 60
     });
   } catch (error) {
@@ -272,6 +303,12 @@ export const confirmReservation = async (req, res) => {
       return res.status(404).json({ error: 'Reservation code not found or already processed' });
     }
 
+    emitBedHoldStatusChange(code, {
+      status: 'confirmed',
+      hospitalId: reservation.hospitalId,
+      message: 'Bed admission confirmed'
+    });
+
     res.json({ message: 'Bed admission confirmed', reservation });
   } catch (error) {
     console.error('Error confirming reservation:', error);
@@ -284,6 +321,33 @@ export const confirmReservation = async (req, res) => {
 export const releaseReservation = async (req, res) => {
   try {
     const { code } = req.params;
+
+    // Scope check: If patient hold token, it must match this specific reservation code
+    if (req.user?.role === 'patient_hold') {
+      if (req.user.reservationCode !== code) {
+        return res.status(403).json({ error: 'Hold token does not match reservation code' });
+      }
+    } else if (req.user?.role === 'admin' && req.user.hospitalId) {
+      // Scope check: If hospital admin, it must match their hospital
+      const checkRes = await BedReservation.findOne({ reservationCode: code }).select('hospitalId');
+      if (checkRes && checkRes.hospitalId?.toString() !== req.user.hospitalId?.toString()) {
+        return res.status(403).json({ error: 'Access forbidden: Hospital mismatch' });
+      }
+    } else if (!req.user) {
+      // If unauthenticated, require matching contact phone number
+      const callerPhone = (req.body?.phone || req.body?.contactPhone || '').replace(/\D/g, '').slice(-10);
+      if (!callerPhone) {
+        return res.status(401).json({ error: 'Authentication required. Please provide a valid hold token, admin credentials, or contact phone.' });
+      }
+      const existing = await BedReservation.findOne({ reservationCode: code, status: 'reserved' });
+      if (!existing) {
+        return res.status(404).json({ error: 'Active reservation not found or already processed' });
+      }
+      const resPhone = existing.contactPhone.replace(/\D/g, '').slice(-10);
+      if (resPhone !== callerPhone) {
+        return res.status(403).json({ error: 'Provided phone number does not match this reservation' });
+      }
+    }
 
     const reservation = await BedReservation.findOneAndUpdate(
       { reservationCode: code, status: 'reserved' },
@@ -308,7 +372,17 @@ export const releaseReservation = async (req, res) => {
       emitBedUpdate(updatedHospital._id, updatedHospital.beds);
     }
 
-    res.json({ message: 'Bed hold released & bed count restored', reservation });
+    emitBedHoldStatusChange(code, {
+      status: 'released',
+      hospitalId: reservation.hospitalId,
+      message: 'Bed hold released & bed count restored'
+    });
+
+    res.json({
+      message: 'Bed hold released & bed count restored',
+      reservation,
+      hospital: updatedHospital
+    });
   } catch (error) {
     console.error('Error releasing reservation:', error);
     res.status(500).json({ error: 'Failed to release reservation hold' });
@@ -344,10 +418,46 @@ export const dischargePatient = async (req, res) => {
       emitBedUpdate(updatedHospital._id, updatedHospital.beds);
     }
 
+    emitBedHoldStatusChange(code, {
+      status: 'discharged',
+      hospitalId: reservation.hospitalId,
+      message: 'Patient discharged & bed restored to live available inventory'
+    });
+
     res.json({ message: 'Patient discharged & bed restored to live available inventory', reservation });
   } catch (error) {
     console.error('Error discharging patient:', error);
     res.status(500).json({ error: 'Failed to discharge patient' });
+  }
+};
+
+// Check status of a bed reservation by reservation code (Used by client to verify if hold is still active)
+export const getReservationStatus = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const reservation = await BedReservation.findOne({ reservationCode: code })
+      .select('reservationCode status expiresAt hospitalId bedType patientName')
+      .lean();
+
+    if (!reservation) {
+      return res.status(404).json({ error: 'Reservation code not found', exists: false });
+    }
+
+    const isExpired = reservation.status === 'reserved' && new Date(reservation.expiresAt) <= new Date();
+
+    res.json({
+      exists: true,
+      reservationCode: reservation.reservationCode,
+      status: isExpired ? 'expired' : reservation.status,
+      bedType: reservation.bedType,
+      hospitalId: reservation.hospitalId,
+      patientName: reservation.patientName,
+      expiresAt: reservation.expiresAt,
+      isExpired
+    });
+  } catch (err) {
+    console.error('Error fetching reservation status:', err);
+    res.status(500).json({ error: 'Failed to fetch reservation status' });
   }
 };
 
@@ -367,3 +477,213 @@ export const getHospitalReservations = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch bed reservations' });
   }
 };
+
+// Lookup active bed reservation by phone number
+export const getActiveHoldByPhone = async (req, res) => {
+  try {
+    const { phone } = req.query;
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required.' });
+    }
+
+    const cleanPhone = String(phone).trim().replace(/[\s\-\+]/g, '').slice(-10);
+    const activeHold = await BedReservation.findOne({
+      contactPhone: new RegExp(`${cleanPhone}$`),
+      status: 'reserved',
+      expiresAt: { $gt: new Date() }
+    }).populate('hospitalId');
+
+    if (!activeHold) {
+      return res.json({ hasActiveHold: false });
+    }
+
+    const remainingSeconds = Math.max(0, Math.round((new Date(activeHold.expiresAt).getTime() - Date.now()) / 1000));
+    res.json({
+      hasActiveHold: true,
+      reservation: activeHold,
+      hospital: activeHold.hospitalId,
+      expiresInSeconds: remainingSeconds
+    });
+  } catch (error) {
+    console.error('Error looking up active hold by phone:', error);
+    res.status(500).json({ error: 'Failed to lookup active hold' });
+  }
+};
+
+// Direct Walk-In / Offline Patient Admission (Hospital Counter Entry)
+export const createWalkinAdmission = async (req, res) => {
+  try {
+    const {
+      patientName,
+      contactPhone,
+      bedType = 'icu',
+      age,
+      gender,
+      notes,
+      emergencyNotes,
+      doctorName
+    } = req.body;
+    const hospitalId = req.params.id;
+
+    if (!patientName?.trim()) {
+      return res.status(400).json({ error: 'Patient name is required for admission' });
+    }
+
+    if (!['icu', 'general', 'ventilator'].includes(bedType)) {
+      return res.status(400).json({ error: 'Invalid bed category specified' });
+    }
+
+    // Verify hospital exists and has available beds
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
+
+    const availableBeds = hospital.beds?.[bedType]?.available || 0;
+    if (availableBeds <= 0) {
+      return res.status(400).json({
+        error: `No ${bedType.toUpperCase()} beds are currently available at ${hospital.name}.`
+      });
+    }
+
+    // Clean phone or fallback for emergency walk-ins
+    const cleanPhone = contactPhone
+      ? String(contactPhone).trim().replace(/[\s\-\+]/g, '')
+      : 'Walk-In Patient';
+
+    // Unique Cryptographic Walk-In Admission Code
+    const randomSuffix = crypto.randomInt(100000, 999999).toString();
+    const reservationCode = `SS-WALKIN-${randomSuffix}`;
+
+    // MONGO DB ATOMIC TRANSACTION CHECK
+    const filter = {
+      _id: hospitalId,
+      [`beds.${bedType}.available`]: { $gt: 0 }
+    };
+    const update = {
+      $inc: { [`beds.${bedType}.available`]: -1 },
+      $set: { lastUpdated: new Date() }
+    };
+
+    const updatedHospital = await Hospital.findOneAndUpdate(filter, update, { new: true });
+    if (!updatedHospital) {
+      return res.status(409).json({
+        error: 'Bed no longer available. All beds in this category are occupied.'
+      });
+    }
+
+    // Walk-in patients are directly admitted (status: 'confirmed')
+    const reservation = new BedReservation({
+      hospitalId,
+      bedType,
+      patientName: patientName.trim(),
+      contactPhone: cleanPhone,
+      age: age ? Number(age) : undefined,
+      gender: gender ? String(gender).trim() : '',
+      emergencyNotes: (emergencyNotes || notes || '').trim(),
+      reservationCode,
+      status: 'confirmed', // DIRECT ADMISSION
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days active until discharge
+    });
+
+    await reservation.save();
+
+    // Broadcast authoritative bed count update to all clients and hospitals in real-time
+    emitBedUpdate(hospitalId, updatedHospital.beds);
+    emitBedHoldStatusChange(reservationCode, {
+      status: 'confirmed',
+      hospitalId,
+      message: `Offline patient ${patientName} directly admitted to ${(bedType).toUpperCase()} Bed`
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Patient ${patientName} admitted successfully to ${(bedType).toUpperCase()} Bed`,
+      reservation: {
+        ...reservation.toObject(),
+        hospitalName: updatedHospital.name
+      },
+      hospital: updatedHospital
+    });
+  } catch (error) {
+    console.error('Error creating walkin admission:', error);
+    res.status(500).json({ error: error.message || 'Failed to process walk-in patient admission' });
+  }
+};
+
+// Update Patient Clinical Case Sheet & Allot Doctor
+export const updatePatientCaseSheet = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const {
+      chiefComplaint,
+      diagnosis,
+      injuryDetails,
+      triagePriority,
+      doctorName,
+      doctorSpecialty,
+      vitals,
+      clinicalNotes,
+      age,
+      gender
+    } = req.body;
+
+    const reservation = await BedReservation.findOne({ reservationCode: code });
+    if (!reservation) {
+      return res.status(404).json({ error: 'Patient reservation record not found' });
+    }
+
+    if (chiefComplaint !== undefined) reservation.chiefComplaint = String(chiefComplaint).trim();
+    if (diagnosis !== undefined) reservation.diagnosis = String(diagnosis).trim();
+    if (injuryDetails !== undefined) reservation.injuryDetails = String(injuryDetails).trim();
+    if (triagePriority !== undefined) reservation.triagePriority = triagePriority;
+    if (clinicalNotes !== undefined) reservation.clinicalNotes = String(clinicalNotes).trim();
+    if (age !== undefined && age !== '') reservation.age = Number(age);
+    if (gender !== undefined && gender !== '') reservation.gender = String(gender).trim();
+
+    if (doctorName !== undefined) {
+      const cleanDoctorName = String(doctorName).trim();
+      reservation.assignedDoctor = {
+        name: cleanDoctorName,
+        specialty: String(doctorSpecialty || reservation.assignedDoctor?.specialty || '').trim(),
+        assignedAt: cleanDoctorName ? (reservation.assignedDoctor?.assignedAt || new Date()) : null
+      };
+    }
+
+    if (vitals && typeof vitals === 'object') {
+      reservation.vitals = {
+        bp: vitals.bp !== undefined ? String(vitals.bp).trim() : (reservation.vitals?.bp || ''),
+        pulse: vitals.pulse !== undefined ? String(vitals.pulse).trim() : (reservation.vitals?.pulse || ''),
+        spO2: vitals.spO2 !== undefined ? String(vitals.spO2).trim() : (reservation.vitals?.spO2 || ''),
+        temperature: vitals.temperature !== undefined ? String(vitals.temperature).trim() : (reservation.vitals?.temperature || ''),
+        recordedAt: new Date()
+      };
+    }
+
+    await reservation.save();
+
+    // Broadcast live update to hospital dashboard
+    emitBedHoldStatusChange(code, {
+      status: reservation.status,
+      hospitalId: reservation.hospitalId,
+      chiefComplaint: reservation.chiefComplaint,
+      diagnosis: reservation.diagnosis,
+      injuryDetails: reservation.injuryDetails,
+      triagePriority: reservation.triagePriority,
+      assignedDoctor: reservation.assignedDoctor,
+      vitals: reservation.vitals,
+      message: `Medical case sheet updated for ${reservation.patientName}`
+    });
+
+    res.json({
+      success: true,
+      message: `Case sheet updated successfully for ${reservation.patientName}`,
+      reservation
+    });
+  } catch (error) {
+    console.error('Error updating patient case sheet:', error);
+    res.status(500).json({ error: 'Failed to update patient case sheet' });
+  }
+};
+
