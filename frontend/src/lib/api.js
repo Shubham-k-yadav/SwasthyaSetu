@@ -28,7 +28,9 @@ async function apiCall(endpoint, options = {}) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Request failed');
+    const errObj = new Error(error.error || 'Request failed');
+    Object.assign(errObj, error);
+    throw errObj;
   }
 
   return response.json();
@@ -85,6 +87,12 @@ export const hospitalApi = {
   reserveBed: (hospitalId, payload) =>
     apiCall(`/api/hospitals/${hospitalId}/reserve-bed`, { method: 'POST', body: payload }),
 
+  createWalkinAdmission: (hospitalId, data, token) =>
+    apiCall(`/api/hospitals/${hospitalId}/walkin-admission`, { method: 'POST', body: data, token }),
+
+  getActiveHold: (phone) =>
+    apiCall(`/api/hospitals/active-hold?phone=${encodeURIComponent(phone)}`),
+
   requestOtp: (phone, extra = {}) =>
     apiCall('/api/hospitals/request-otp', { method: 'POST', body: { phone, ...extra } }),
 
@@ -94,8 +102,17 @@ export const hospitalApi = {
   confirmReservation: (code, token) =>
     apiCall(`/api/hospitals/reservations/${code}/confirm`, { method: 'POST', token }),
 
-  releaseReservation: (code, token) =>
-    apiCall(`/api/hospitals/reservations/${code}/release`, { method: 'POST', token }),
+  updateCaseSheet: (code, data, token) =>
+    apiCall(`/api/hospitals/reservations/${code}/case-sheet`, { method: 'PATCH', body: data, token }),
+
+  releaseReservation: (code, tokenOrOptions) => {
+    const token = typeof tokenOrOptions === 'string' ? tokenOrOptions : tokenOrOptions?.token;
+    const body = typeof tokenOrOptions === 'object' ? tokenOrOptions : undefined;
+    return apiCall(`/api/hospitals/reservations/${code}/release`, { method: 'POST', body, token });
+  },
+
+  getReservationStatus: (code) =>
+    apiCall(`/api/hospitals/reservations/${code}/status`),
 
   dischargeReservation: (code, token) =>
     apiCall(`/api/hospitals/reservations/${code}/discharge`, { method: 'POST', token }),
