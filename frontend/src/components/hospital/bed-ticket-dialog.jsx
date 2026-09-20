@@ -33,11 +33,12 @@ async function getQrDataUrl(code) {
 
 /**
  * Downloads a high-resolution, pixel-perfect, printable PDF document directly to user's device
+ * Includes Provisional Diagnosis, Treatment Orders, Injury Details, and Vitals.
  */
 export async function downloadTicketPdf({ reservation, hospital, patientName, contactPhone, bedType, age, gender }) {
   if (!reservation || !hospital) return;
 
-  const toastId = toast.loading('Generating PDF document...');
+  const toastId = toast.loading('Generating PDF document with clinical records...');
 
   try {
     const isConfirmed = reservation.status === 'confirmed' || reservation.status === 'admitted';
@@ -70,7 +71,7 @@ export async function downloadTicketPdf({ reservation, hospital, patientName, co
     // Outer security border
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.8);
-    doc.roundedRect(10, 10, 190, 277, 4, 4);
+    doc.roundedRect(10, 8, 190, 281, 4, 4);
 
     // Inner accent border
     if (isConfirmed) {
@@ -79,7 +80,7 @@ export async function downloadTicketPdf({ reservation, hospital, patientName, co
       doc.setDrawColor(2, 132, 199);
     }
     doc.setLineWidth(0.4);
-    doc.roundedRect(12, 12, 186, 273, 3, 3);
+    doc.roundedRect(12, 10, 186, 277, 3, 3);
 
     // Top Header Banner
     if (isConfirmed) {
@@ -87,34 +88,34 @@ export async function downloadTicketPdf({ reservation, hospital, patientName, co
     } else {
       doc.setFillColor(2, 132, 199);
     }
-    doc.roundedRect(14, 14, 182, 22, 2, 2, 'F');
+    doc.roundedRect(14, 12, 182, 19, 2, 2, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.text('SWASTHYA SETU  |  HEALTHCARE EMERGENCY NETWORK', 105, 23, { align: 'center' });
+    doc.setFontSize(14);
+    doc.text('SWASTHYA SETU  |  HEALTHCARE EMERGENCY NETWORK', 105, 20, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(7.5);
     doc.text(
       isConfirmed
-        ? 'OFFICIAL EMERGENCY HOSPITAL ADMISSION & CLINICAL CASE RECORD'
+        ? 'OFFICIAL EMERGENCY INPATIENT ADMISSION SLIP & CLINICAL TREATMENT RECORD'
         : 'OFFICIAL 10-MINUTE EMERGENCY BED HOLD RESERVATION PASS',
       105,
-      30,
+      27,
       { align: 'center' }
     );
 
     // Hospital Facility Details
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(hospital.name || 'Emergency Healthcare Center', 105, 43, { align: 'center' });
+    doc.setFontSize(13);
+    doc.text(hospital.name || 'Emergency Healthcare Center', 105, 37, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(71, 85, 105);
     const hospitalSub = [hospitalAddress, `Reg No: ${regNumber}`].filter(Boolean).join(' • ');
-    doc.text(hospitalSub, 105, 49, { align: 'center' });
+    doc.text(hospitalSub, 105, 42, { align: 'center' });
 
     // Document Status Stamp Ribbon
     if (isConfirmed) {
@@ -126,74 +127,74 @@ export async function downloadTicketPdf({ reservation, hospital, patientName, co
       doc.setDrawColor(56, 189, 248);
       doc.setTextColor(3, 105, 161);
     }
-    doc.roundedRect(14, 54, 182, 12, 2, 2, 'FD');
+    doc.roundedRect(14, 46, 182, 9, 2, 2, 'FD');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.text(
       isConfirmed
         ? '★ OFFICIAL HOSPITAL ADMISSION RECORD: CONFIRMED & ALLOCATED ★'
         : '⏳ EMERGENCY BED RESERVATION: 10-MINUTE HOLD ACTIVE ⏳',
       105,
-      61.5,
+      52,
       { align: 'center' }
     );
 
     // Code Box (Left) & QR Code Box (Right)
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(14, 70, 118, 46, 2, 2, 'FD');
+    doc.roundedRect(14, 58, 122, 38, 2, 2, 'FD');
 
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text(isConfirmed ? 'PERMANENT ADMISSION REGISTRATION CODE' : 'HOSPITAL COUNTER CONFIRMATION CODE', 20, 78);
+    doc.text(isConfirmed ? 'PERMANENT ADMISSION REGISTRATION CODE' : 'HOSPITAL COUNTER CONFIRMATION CODE', 18, 64);
 
-    doc.setFontSize(21);
+    doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     if (isConfirmed) {
       doc.setTextColor(21, 128, 61);
     } else {
       doc.setTextColor(3, 105, 161);
     }
-    doc.text(reservation.reservationCode, 20, 88);
+    doc.text(reservation.reservationCode, 18, 73);
 
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
-    doc.text(`Booking / Admission Time: ${formattedDate}`, 20, 97);
-    doc.text(`Status: ${isConfirmed ? 'Officially Admitted (Inpatient Bed Occupied)' : 'Active Hold (Valid 10 Minutes)'}`, 20, 103);
-    doc.text(`Allocated Category: ${(bedType || reservation.bedType || 'ICU').toUpperCase()} BED`, 20, 109);
+    doc.text(`Booking / Admission Time: ${formattedDate}`, 18, 80);
+    doc.text(`Status: ${isConfirmed ? 'Officially Admitted (Inpatient Bed Occupied)' : 'Active Hold (Valid 10 Minutes)'}`, 18, 86);
+    doc.text(`Allocated Category: ${(bedType || reservation.bedType || 'ICU').toUpperCase()} BED`, 18, 92);
 
     // QR Container Box (Right)
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(136, 70, 60, 46, 2, 2, 'FD');
+    doc.roundedRect(140, 58, 56, 38, 2, 2, 'FD');
 
     if (qrDataUrl) {
-      doc.addImage(qrDataUrl, 'PNG', 148, 72, 36, 36);
+      doc.addImage(qrDataUrl, 'PNG', 153, 59.5, 30, 30);
     } else {
       doc.setFillColor(241, 245, 249);
-      doc.rect(148, 72, 36, 36, 'F');
-      doc.setFontSize(7.5);
+      doc.rect(153, 59.5, 30, 30, 'F');
+      doc.setFontSize(7);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 116, 139);
-      doc.text('QR VERIFICATION', 166, 89, { align: 'center' });
-      doc.setFontSize(6.5);
-      doc.text(reservation.reservationCode, 166, 95, { align: 'center' });
+      doc.text('QR VERIFICATION', 168, 73, { align: 'center' });
+      doc.setFontSize(6);
+      doc.text(reservation.reservationCode, 168, 78, { align: 'center' });
     }
 
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text('SCAN TO VERIFY ADMISSION', 166, 113, { align: 'center' });
+    doc.text('SCAN TO VERIFY ADMISSION', 168, 93.5, { align: 'center' });
 
     // Patient Particulars Section Header
     doc.setFillColor(241, 245, 249);
-    doc.roundedRect(14, 122, 182, 7, 1, 1, 'F');
-    doc.setFontSize(8.5);
+    doc.roundedRect(14, 99, 182, 6, 1, 1, 'F');
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 41, 59);
-    doc.text('PATIENT PARTICULARS & ADMISSION DETAILS', 18, 127);
+    doc.text('PATIENT PARTICULARS & ADMISSION DETAILS', 18, 103.5);
 
     // Details Grid Rows
     const doctorDisplay = reservation.assignedDoctor?.name
@@ -212,133 +213,155 @@ export async function downloadTicketPdf({ reservation, hospital, patientName, co
       [
         { label: 'HEALTHCARE FACILITY', val: hospital.name || 'Hospital' },
         { label: 'ATTENDING DOCTOR', val: doctorDisplay }
-      ],
-      [
-        { label: 'FACILITY ADDRESS', val: hospitalAddress || 'Emergency Wing' },
-        { label: 'SECURITY REFERENCE ID', val: `REF: SS-${reservation.reservationCode}-${String(hospital._id || hospital.id || 'IN').slice(-4).toUpperCase()}` }
       ]
     ];
 
-    let currentY = 133;
+    let currentY = 106.5;
     details.forEach((row, rowIndex) => {
       if (rowIndex % 2 === 0) {
         doc.setFillColor(248, 250, 252);
-        doc.rect(14, currentY, 182, 11, 'F');
+        doc.rect(14, currentY, 182, 8.5, 'F');
       }
       doc.setDrawColor(226, 232, 240);
-      doc.line(14, currentY + 11, 196, currentY + 11);
+      doc.line(14, currentY + 8.5, 196, currentY + 8.5);
 
       // Col 1
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 116, 139);
-      doc.text(row[0].label, 18, currentY + 4);
-      doc.setFontSize(8.5);
+      doc.text(row[0].label, 18, currentY + 3.2);
+      doc.setFontSize(8);
       doc.setTextColor(15, 23, 42);
-      doc.text(String(row[0].val).slice(0, 48), 18, currentY + 9);
+      doc.text(String(row[0].val).slice(0, 50), 18, currentY + 7.2);
 
       // Col 2
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(row[1].label, 110, currentY + 4);
-      doc.setFontSize(8.5);
+      doc.text(row[1].label, 110, currentY + 3.2);
+      doc.setFontSize(8);
       doc.setTextColor(15, 23, 42);
-      doc.text(String(row[1].val).slice(0, 48), 110, currentY + 9);
+      doc.text(String(row[1].val).slice(0, 50), 110, currentY + 7.2);
 
-      currentY += 11;
+      currentY += 8.5;
     });
 
-    // Clinical & Case Sheet Section (if diagnosis/injury/vitals exist)
-    if (reservation.diagnosis || reservation.chiefComplaint || reservation.injuryDetails || reservation.vitals) {
-      currentY += 3;
-      doc.setFillColor(239, 246, 255);
-      doc.setDrawColor(191, 219, 254);
-      doc.roundedRect(14, currentY, 182, 34, 2, 2, 'FD');
+    // CLINICAL ASSESSMENT, PROVISIONAL DIAGNOSIS & TREATMENT ORDERS SECTION
+    const diag = reservation.diagnosis || reservation.chiefComplaint || '';
+    const treatmentNotes = reservation.clinicalNotes || reservation.treatmentOrders || '';
+    const injury = reservation.injuryDetails || '';
+    const vitals = reservation.vitals;
 
-      doc.setFontSize(8);
+    currentY += 2.5;
+    const clinicalSectionStartY = currentY;
+
+    doc.setFillColor(239, 246, 255);
+    doc.setDrawColor(191, 219, 254);
+
+    const diagText = diag || 'Awaiting Clinical Assessment / Provisional Diagnosis';
+    const diagLines = doc.splitTextToSize(diagText, 172);
+
+    const notesText = treatmentNotes || (isConfirmed ? 'Standard Inpatient Admission & Emergency Care Orders Active' : 'Emergency Bed Hold - Observation on Arrival');
+    const notesLines = doc.splitTextToSize(notesText, 172);
+
+    const injuryLines = injury ? doc.splitTextToSize(injury, 172) : [];
+
+    // Calculate height dynamically:
+    // Header(6) + DiagLabel(4)+diagLines + NotesLabel(4.5)+notesLines + (injury ? 4+injuryLines : 0) + (vitals ? 7 : 0) + padding(5)
+    let calculatedHeight = 6 + (4 + diagLines.length * 3.8) + (5 + notesLines.length * 3.8) + (injuryLines.length > 0 ? (4 + injuryLines.length * 3.8) : 0) + (vitals ? 7 : 0) + 5;
+    const finalClinicalHeight = Math.min(calculatedHeight, 82);
+
+    doc.roundedRect(14, clinicalSectionStartY, 182, finalClinicalHeight, 2, 2, 'FD');
+
+    let innerY = clinicalSectionStartY + 5;
+
+    // Header Title
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 64, 175);
+    doc.text('CLINICAL ASSESSMENT, PROVISIONAL DIAGNOSIS & TREATMENT ORDERS', 18, innerY);
+    innerY += 4.5;
+
+    // Provisional / Final Diagnosis
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(3, 105, 161);
+    doc.text('PROVISIONAL / FINAL DIAGNOSIS (डॉक्टर द्वारा निदान):', 18, innerY);
+    innerY += 3.5;
+    doc.setFontSize(7.8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(diagLines, 18, innerY);
+    innerY += diagLines.length * 3.8 + 1.5;
+
+    // Treatment Orders & Clinical Notes
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(29, 78, 216);
+    doc.text('TREATMENT ORDERS & CLINICAL NOTES (उपचार, दवाइयां व निर्देश):', 18, innerY);
+    innerY += 3.5;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(30, 41, 59);
+    doc.text(notesLines, 18, innerY);
+    innerY += notesLines.length * 3.8 + 1.5;
+
+    // Injury Details (if present)
+    if (injuryLines.length > 0 && innerY < clinicalSectionStartY + finalClinicalHeight - 9) {
+      doc.setFontSize(6.8);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 64, 175);
-      doc.text('CLINICAL ASSESSMENT & EMERGENCY CASE SHEET', 18, currentY + 6);
-
-      const diag = reservation.diagnosis || reservation.chiefComplaint;
-      if (diag) {
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(71, 85, 105);
-        doc.text('Diagnosis / Problem:', 18, currentY + 12);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(15, 23, 42);
-        doc.text(String(diag).slice(0, 75), 58, currentY + 12);
-      }
-
-      if (reservation.injuryDetails) {
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(180, 83, 9);
-        doc.text('Injury / Trauma Assessment:', 18, currentY + 18);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(180, 83, 9);
-        doc.text(String(reservation.injuryDetails).slice(0, 75), 58, currentY + 18);
-      }
-
-      if (reservation.vitals) {
-        const v = reservation.vitals;
-        const vitalsText = `BP: ${v.bp || '—'}  |  Pulse: ${v.pulse ? v.pulse + ' bpm' : '—'}  |  SpO2: ${v.spO2 ? v.spO2 + '%' : '—'}  |  Temp: ${v.temperature ? v.temperature + ' °F' : '—'}`;
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(71, 85, 105);
-        doc.text('Recorded Vitals:', 18, currentY + 24);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(15, 23, 42);
-        doc.text(vitalsText, 58, currentY + 24);
-      }
-
-      if (reservation.assignedDoctor?.specialty) {
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(71, 85, 105);
-        doc.text('Attending Department:', 18, currentY + 30);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(15, 23, 42);
-        doc.text(`${reservation.assignedDoctor.specialty} Specialist`, 58, currentY + 30);
-      }
-
-      currentY += 36;
+      doc.setTextColor(180, 83, 9);
+      doc.text('INJURY / TRAUMA ASSESSMENT (चोट व घाव का विवरण):', 18, innerY);
+      innerY += 3.5;
+      doc.setFontSize(7.2);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(180, 83, 9);
+      doc.text(injuryLines, 18, innerY);
+      innerY += injuryLines.length * 3.8 + 1.5;
     }
 
+    // Recorded Vitals (if present)
+    if (vitals && (vitals.bp || vitals.pulse || vitals.spO2 || vitals.temperature)) {
+      const vitalsText = `BP: ${vitals.bp || '—'}   |   Pulse: ${vitals.pulse ? vitals.pulse + ' bpm' : '—'}   |   SpO2: ${vitals.spO2 ? vitals.spO2 + '%' : '—'}   |   Temp: ${vitals.temperature ? vitals.temperature + ' °F' : '—'}`;
+      doc.setFontSize(6.8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(71, 85, 105);
+      doc.text(`RECORDED PATIENT VITALS:  ${vitalsText}`, 18, clinicalSectionStartY + finalClinicalHeight - 2.8);
+    }
+
+    currentY = clinicalSectionStartY + finalClinicalHeight + 3;
+
     // Verification & Signatures Box
-    currentY += 4;
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(14, currentY, 182, 30, 2, 2);
+    doc.roundedRect(14, currentY, 182, 25, 2, 2);
 
     // Left stamp
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(21, 128, 61);
-    doc.text('★ DIGITALLY VERIFIED EMERGENCY RECORD', 20, currentY + 8);
-    doc.setFontSize(7);
+    doc.text('★ DIGITALLY VERIFIED EMERGENCY RECORD', 20, currentY + 6);
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text('Generated via SwasthyaSetu Central Coordination Cloud.', 20, currentY + 14);
-    doc.text('Valid at Emergency, ICU & Inpatient counters without physical token.', 20, currentY + 19);
-    doc.text(`Reference ID: SS-AUDIT-${reservation.reservationCode}-${Date.now()}`, 20, currentY + 24);
+    doc.text('Generated via SwasthyaSetu Central Coordination Cloud.', 20, currentY + 11);
+    doc.text('Valid at Emergency, ICU & Inpatient counters without physical token.', 20, currentY + 15);
+    doc.text(`Reference ID: SS-AUDIT-${reservation.reservationCode}-${Date.now()}`, 20, currentY + 19);
 
     // Right Signatures
     doc.setDrawColor(148, 163, 184);
     doc.setLineWidth(0.3);
-    doc.line(125, currentY + 19, 185, currentY + 19);
+    doc.line(125, currentY + 15, 185, currentY + 15);
 
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(71, 85, 105);
-    doc.text('Authorized Medical Officer / Desk In-Charge', 155, currentY + 23, { align: 'center' });
-    doc.setFontSize(6.5);
+    doc.text('Authorized Medical Officer / Desk In-Charge', 155, currentY + 19, { align: 'center' });
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
-    doc.text(hospital.name || 'Hospital Administration', 155, currentY + 27, { align: 'center' });
+    doc.text(hospital.name || 'Hospital Administration', 155, currentY + 22.5, { align: 'center' });
 
     // Footer Disclaimer
     doc.setDrawColor(226, 232, 240);
-    doc.line(14, 268, 196, 268);
+    doc.line(14, 273, 196, 273);
 
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
@@ -346,13 +369,13 @@ export async function downloadTicketPdf({ reservation, hospital, patientName, co
     doc.text(
       'Legal Notice: This digital document is issued under the Emergency Healthcare Service Integration Framework. For 24x7 emergency coordination, dial 108 / 112.',
       105,
-      273,
+      277,
       { align: 'center' }
     );
     doc.text(
       'SwasthyaSetu National Health Portal • Verified E-Record • https://swasthyasetu.gov.in',
       105,
-      277,
+      281,
       { align: 'center' }
     );
 
@@ -369,6 +392,7 @@ export async function downloadTicketPdf({ reservation, hospital, patientName, co
 
 /**
  * Triggers native browser print dialog using an invisible iframe
+ * Includes Provisional Diagnosis, Treatment Orders, Injury Details, and Vitals in the printout.
  */
 export function printOrDownloadTicket({ reservation, hospital, patientName, contactPhone, bedType, age, gender }) {
   if (!reservation || !hospital) return;
@@ -388,6 +412,11 @@ export function printOrDownloadTicket({ reservation, hospital, patientName, cont
   });
   const regNumber = hospital.registrationNumber || hospital.licenseNumber || 'DL-MED-SEC-2026';
 
+  const diag = reservation.diagnosis || reservation.chiefComplaint || '';
+  const treatmentNotes = reservation.clinicalNotes || reservation.treatmentOrders || '';
+  const injury = reservation.injuryDetails || '';
+  const vitals = reservation.vitals;
+
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -395,23 +424,26 @@ export function printOrDownloadTicket({ reservation, hospital, patientName, cont
         <title>${isConfirmed ? 'Admission_Receipt_' : 'Bed_Ticket_'}${reservation.reservationCode}</title>
         <style>
           @page { size: auto; margin: 8mm; }
-          body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; color: #0f172a; background: #fff; }
-          .ticket { max-width: 520px; margin: 0 auto; border: 2px solid ${isConfirmed ? '#16a34a' : '#0284c7'}; border-radius: 16px; padding: 22px; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-          .header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 14px; margin-bottom: 14px; }
-          .logo { font-size: 20px; font-weight: 900; color: ${isConfirmed ? '#16a34a' : '#0284c7'}; margin: 0; }
-          .sub { font-size: 11px; color: #475569; margin-top: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-          .badge { background: ${isConfirmed ? '#dcfce7' : '#dbeafe'}; color: ${isConfirmed ? '#15803d' : '#1d4ed8'}; border: 1px solid ${isConfirmed ? '#86efac' : '#93c5fd'}; padding: 5px 14px; border-radius: 9999px; font-size: 12px; font-weight: 800; display: inline-block; margin-top: 8px; }
-          .stamp { border: 2.5px solid #16a34a; background: #f0fdf4; color: #15803d; border-radius: 10px; padding: 8px 14px; text-align: center; margin: 12px 0; font-weight: 900; font-size: 13px; letter-spacing: 1px; }
-          .code-box { background: ${isConfirmed ? '#f0fdf4' : '#f0f9ff'}; border: 2px solid ${isConfirmed ? '#86efac' : '#38bdf8'}; border-radius: 12px; padding: 10px; text-align: center; margin: 12px 0; }
-          .code-title { font-size: 10px; color: ${isConfirmed ? '#166534' : '#0369a1'}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-          .code { font-family: monospace; font-size: 24px; font-weight: 900; letter-spacing: 2.5px; color: ${isConfirmed ? '#15803d' : '#0369a1'}; margin-top: 4px; }
-          .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; font-size: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
-          .label { color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 700; }
+          body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 14px; color: #0f172a; background: #fff; }
+          .ticket { max-width: 540px; margin: 0 auto; border: 2px solid ${isConfirmed ? '#16a34a' : '#0284c7'}; border-radius: 16px; padding: 20px; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+          .header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px; }
+          .logo { font-size: 19px; font-weight: 900; color: ${isConfirmed ? '#16a34a' : '#0284c7'}; margin: 0; }
+          .sub { font-size: 10.5px; color: #475569; margin-top: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+          .badge { background: ${isConfirmed ? '#dcfce7' : '#dbeafe'}; color: ${isConfirmed ? '#15803d' : '#1d4ed8'}; border: 1px solid ${isConfirmed ? '#86efac' : '#93c5fd'}; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 800; display: inline-block; margin-top: 6px; }
+          .stamp { border: 2px solid #16a34a; background: #f0fdf4; color: #15803d; border-radius: 10px; padding: 7px 12px; text-align: center; margin: 10px 0; font-weight: 900; font-size: 12px; letter-spacing: 0.8px; }
+          .code-box { background: ${isConfirmed ? '#f0fdf4' : '#f0f9ff'}; border: 2px solid ${isConfirmed ? '#86efac' : '#38bdf8'}; border-radius: 12px; padding: 8px 12px; text-align: center; margin: 10px 0; }
+          .code-title { font-size: 9.5px; color: ${isConfirmed ? '#166534' : '#0369a1'}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; }
+          .code { font-family: monospace; font-size: 22px; font-weight: 900; letter-spacing: 2px; color: ${isConfirmed ? '#15803d' : '#0369a1'}; margin-top: 2px; }
+          .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; font-size: 11.5px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; }
+          .label { color: #64748b; font-size: 9.5px; text-transform: uppercase; font-weight: 700; }
           .value { font-weight: 800; color: #0f172a; margin-top: 2px; }
-          .qr-container { text-align: center; margin: 14px 0; }
-          .qr-img { border: 2px solid #cbd5e1; border-radius: 12px; padding: 6px; background: white; width: 130px; height: 130px; }
-          .footer { border-top: 2px dashed #cbd5e1; padding-top: 12px; text-align: center; font-size: 10px; color: #64748b; line-height: 1.5; }
-          .security-tag { font-family: monospace; font-size: 9px; color: #94a3b8; margin-top: 6px; }
+          .clinical-box { background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 12px; padding: 12px; margin: 10px 0; }
+          .clinical-title { font-size: 10.5px; font-weight: 800; color: #0284c7; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+          .treatment-box { background: #ffffff; border: 1px solid #93c5fd; border-radius: 8px; padding: 8px 10px; margin-top: 6px; }
+          .qr-container { text-align: center; margin: 10px 0; }
+          .qr-img { border: 2px solid #cbd5e1; border-radius: 12px; padding: 5px; background: white; width: 120px; height: 120px; }
+          .footer { border-top: 2px dashed #cbd5e1; padding-top: 10px; text-align: center; font-size: 9.5px; color: #64748b; line-height: 1.4; }
+          .security-tag { font-family: monospace; font-size: 8.5px; color: #94a3b8; margin-top: 5px; }
         </style>
       </head>
       <body>
@@ -427,7 +459,7 @@ export function printOrDownloadTicket({ reservation, hospital, patientName, cont
           ${isConfirmed ? `
             <div class="stamp">
               ★ OFFICIAL HOSPITAL ADMISSION RECORD ★<br/>
-              <span style="font-size: 10px; font-weight: 700; letter-spacing: normal;">Certified by ${hospital.name} • Reg No: ${regNumber}</span>
+              <span style="font-size: 9.5px; font-weight: 700; letter-spacing: normal;">Certified by ${hospital.name} • Reg No: ${regNumber}</span>
             </div>
           ` : ''}
 
@@ -473,41 +505,62 @@ export function printOrDownloadTicket({ reservation, hospital, patientName, cont
                 ${isConfirmed ? '✓ CONFIRMED (ADMITTED)' : '⏳ RESERVED (HELD)'}
               </div>
             </div>
-            ${(reservation.diagnosis || reservation.chiefComplaint || reservation.injuryDetails) ? `
-              <div style="grid-column: span 2; background: #f8fafc; border: 1.5px solid #cbd5e1; padding: 10px 12px; border-radius: 10px; margin-top: 4px;">
-                ${(reservation.diagnosis || reservation.chiefComplaint) ? `
-                  <div style="margin-bottom: 4px;">
-                    <span class="label" style="color: #0369a1;">Clinical Diagnosis / Problem:</span>
-                    <strong style="font-size: 12px; color: #0f172a; display: block; margin-top: 2px;">${reservation.diagnosis || reservation.chiefComplaint}</strong>
-                  </div>
-                ` : ''}
-                ${reservation.injuryDetails ? `
-                  <div>
-                    <span class="label" style="color: #b45309;">Injury & Trauma Assessment:</span>
-                    <strong style="font-size: 12px; color: #b45309; display: block; margin-top: 2px;">${reservation.injuryDetails}</strong>
-                  </div>
-                ` : ''}
-              </div>
-            ` : ''}
             <div style="grid-column: span 2;">
               <div class="label">Facility Full Address</div>
               <div class="value">${hospital.address || ''}, ${hospital.city || ''}</div>
             </div>
           </div>
 
+          <!-- PROVISIONAL DIAGNOSIS & TREATMENT ORDERS -->
+          ${(diag || treatmentNotes || injury || vitals) ? `
+            <div class="clinical-box">
+              <div class="clinical-title">🩺 Clinical Assessment, Diagnosis & Treatment Orders</div>
+              
+              ${diag ? `
+                <div style="margin-bottom: 6px;">
+                  <span class="label" style="color: #0369a1;">Provisional / Final Diagnosis (डॉक्टर द्वारा निदान):</span>
+                  <div style="font-size: 12px; font-weight: 800; color: #0f172a; margin-top: 2px;">${diag}</div>
+                </div>
+              ` : ''}
+
+              ${treatmentNotes ? `
+                <div class="treatment-box">
+                  <span class="label" style="color: #1d4ed8;">Treatment Orders & Clinical Notes (उपचार, दवाइयां व निर्देश):</span>
+                  <div style="font-size: 11.5px; font-weight: 600; color: #1e293b; margin-top: 3px; white-space: pre-wrap; line-height: 1.4;">${treatmentNotes}</div>
+                </div>
+              ` : ''}
+
+              ${injury ? `
+                <div style="margin-top: 6px;">
+                  <span class="label" style="color: #b45309;">Injury / Trauma Assessment (चोट व घाव का विवरण):</span>
+                  <div style="font-size: 11.5px; font-weight: 700; color: #b45309; margin-top: 2px;">${injury}</div>
+                </div>
+              ` : ''}
+
+              ${vitals ? `
+                <div style="margin-top: 8px; padding-top: 6px; border-top: 1px dashed #cbd5e1; display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px;">
+                  <span><strong>BP:</strong> ${vitals.bp || '—'}</span>
+                  <span><strong>Pulse:</strong> ${vitals.pulse ? vitals.pulse + ' bpm' : '—'}</span>
+                  <span><strong>SpO2:</strong> ${vitals.spO2 ? vitals.spO2 + '%' : '—'}</span>
+                  <span><strong>Temp:</strong> ${vitals.temperature ? vitals.temperature + ' °F' : '—'}</span>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+
           <div class="qr-container">
-            <div style="font-size: 10px; color: #475569; margin-bottom: 6px; font-weight: 700;">
+            <div style="font-size: 9.5px; color: #475569; margin-bottom: 5px; font-weight: 700;">
               ${isConfirmed ? 'Scan for Digital Admission Verification & Medical Record' : 'Present QR Code at Hospital Desk for Immediate Admission'}
             </div>
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(reservation.reservationCode)}" class="qr-img" alt="Admission Verification QR" />
-            <div style="font-size: 10px; font-family: monospace; color: ${isConfirmed ? '#16a34a' : '#0284c7'}; margin-top: 4px; font-weight: bold;">
+            <div style="font-size: 9.5px; font-family: monospace; color: ${isConfirmed ? '#16a34a' : '#0284c7'}; margin-top: 3px; font-weight: bold;">
               AUTH CODE: ${reservation.reservationCode}
             </div>
           </div>
 
           <div class="footer">
-            <p style="margin: 3px 0;"><strong>Legal Notice:</strong> This digital receipt is generated under the SwasthyaSetu Emergency Healthcare Coordination Framework.</p>
-            <p style="margin: 3px 0;">It serves as official digital proof of bed reservation and inpatient admission verification at <strong>${hospital.name}</strong>.</p>
+            <p style="margin: 2px 0;"><strong>Legal Notice:</strong> This digital receipt is generated under the SwasthyaSetu Emergency Healthcare Coordination Framework.</p>
+            <p style="margin: 2px 0;">It serves as official digital proof of bed reservation and inpatient admission verification at <strong>${hospital.name}</strong>.</p>
             <div class="security-tag">REF: SS-VERIFY-${reservation.reservationCode}-${String(hospital._id || hospital.id || '').slice(-6).toUpperCase()}</div>
           </div>
         </div>
@@ -558,6 +611,11 @@ export function BedTicketDialog({ open, onOpenChange, reservation, hospital, pat
     minute: '2-digit',
     hour12: true
   });
+
+  const diag = reservation.diagnosis || reservation.chiefComplaint || '';
+  const treatmentNotes = reservation.clinicalNotes || reservation.treatmentOrders || '';
+  const injury = reservation.injuryDetails || '';
+  const vitals = reservation.vitals;
 
   const handleDownloadPdf = async () => {
     setIsDownloading(true);
@@ -663,16 +721,49 @@ export function BedTicketDialog({ open, onOpenChange, reservation, hospital, pat
                 {reservation.assignedDoctor?.name ? `Dr. ${reservation.assignedDoctor.name}` : 'Awaiting Allotment'}
               </span>
             </div>
-            {(reservation.diagnosis || reservation.chiefComplaint || reservation.injuryDetails) && (
-              <div className="p-2 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-[11px] space-y-1 my-1">
-                {(reservation.diagnosis || reservation.chiefComplaint) && (
-                  <p><strong>🩺 Condition:</strong> {reservation.diagnosis || reservation.chiefComplaint}</p>
+
+            {/* CLINICAL ASSESSMENT, PROVISIONAL DIAGNOSIS & TREATMENT ORDERS */}
+            {(diag || treatmentNotes || injury || vitals) && (
+              <div className="p-2.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-[11px] space-y-1.5 my-1">
+                <div className="font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider text-[10px]">
+                  🩺 Clinical Assessment & Orders
+                </div>
+
+                {diag && (
+                  <div>
+                    <span className="text-muted-foreground font-bold text-[10px] uppercase block">Provisional / Final Diagnosis:</span>
+                    <strong className="text-foreground text-xs">{diag}</strong>
+                  </div>
                 )}
-                {reservation.injuryDetails && (
-                  <p className="text-amber-700 dark:text-amber-400"><strong>🩹 Injury / Trauma:</strong> {reservation.injuryDetails}</p>
+
+                {treatmentNotes && (
+                  <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-blue-100 dark:border-blue-800">
+                    <span className="text-blue-700 dark:text-blue-400 font-bold text-[10px] uppercase block">Treatment Orders & Rx:</span>
+                    <p className="text-foreground text-xs whitespace-pre-wrap">{treatmentNotes}</p>
+                  </div>
+                )}
+
+                {injury && (
+                  <div>
+                    <span className="text-amber-600 font-bold text-[10px] uppercase block">Injury / Trauma:</span>
+                    <span className="text-amber-700 dark:text-amber-400 font-semibold">{injury}</span>
+                  </div>
+                )}
+
+                {vitals && (
+                  <div className="pt-1 border-t border-blue-200/60 dark:border-blue-800 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                    <span><strong>BP:</strong> {vitals.bp || '—'}</span>
+                    <span>•</span>
+                    <span><strong>Pulse:</strong> {vitals.pulse ? `${vitals.pulse} bpm` : '—'}</span>
+                    <span>•</span>
+                    <span><strong>SpO2:</strong> {vitals.spO2 ? `${vitals.spO2}%` : '—'}</span>
+                    <span>•</span>
+                    <span><strong>Temp:</strong> {vitals.temperature ? `${vitals.temperature} °F` : '—'}</span>
+                  </div>
                 )}
               </div>
             )}
+
             <div className="flex justify-between">
               <span className="text-muted-foreground font-medium">Timestamp:</span>
               <span className="font-medium text-slate-700 dark:text-slate-300">{formattedDate}</span>

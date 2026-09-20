@@ -67,7 +67,12 @@ export function WalkinAdmissionModal({
       // Download official admission PDF slip immediately
       if (result?.reservation) {
         await downloadTicketPdf({
-          reservation: result.reservation,
+          reservation: {
+            ...result.reservation,
+            clinicalNotes: result.reservation.clinicalNotes || payload.notes,
+            treatmentOrders: result.reservation.clinicalNotes || payload.notes,
+            diagnosis: result.reservation.diagnosis || ''
+          },
           hospital: result.hospital || hospital,
           patientName: payload.patientName,
           contactPhone: payload.contactPhone,

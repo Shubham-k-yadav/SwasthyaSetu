@@ -126,13 +126,15 @@ export function PatientCaseSheetModal({
     printOrDownloadTicket({
       reservation: {
         ...reservation,
-        diagnosis,
-        chiefComplaint,
-        injuryDetails,
-        assignedDoctor: { name: doctorName, specialty: doctorSpecialty },
-        vitals: { bp, pulse, spO2, temperature },
-        age,
-        gender
+        diagnosis: diagnosis.trim(),
+        chiefComplaint: chiefComplaint.trim(),
+        injuryDetails: injuryDetails.trim(),
+        clinicalNotes: clinicalNotes.trim(),
+        treatmentOrders: clinicalNotes.trim(),
+        assignedDoctor: { name: doctorName.trim(), specialty: doctorSpecialty.trim() },
+        vitals: { bp: bp.trim(), pulse: pulse ? String(pulse).trim() : '', spO2: spO2 ? String(spO2).trim() : '', temperature: temperature.trim() },
+        age: age || reservation.age,
+        gender: gender || reservation.gender
       },
       hospital: hospital || { name: reservation.hospitalName || 'Hospital' },
       patientName: reservation.patientName,
@@ -147,13 +149,15 @@ export function PatientCaseSheetModal({
     await downloadTicketPdf({
       reservation: {
         ...reservation,
-        diagnosis,
-        chiefComplaint,
-        injuryDetails,
-        assignedDoctor: { name: doctorName, specialty: doctorSpecialty },
-        vitals: { bp, pulse, spO2, temperature },
-        age,
-        gender
+        diagnosis: diagnosis.trim(),
+        chiefComplaint: chiefComplaint.trim(),
+        injuryDetails: injuryDetails.trim(),
+        clinicalNotes: clinicalNotes.trim(),
+        treatmentOrders: clinicalNotes.trim(),
+        assignedDoctor: { name: doctorName.trim(), specialty: doctorSpecialty.trim() },
+        vitals: { bp: bp.trim(), pulse: pulse ? String(pulse).trim() : '', spO2: spO2 ? String(spO2).trim() : '', temperature: temperature.trim() },
+        age: age || reservation.age,
+        gender: gender || reservation.gender
       },
       hospital: hospital || { name: reservation.hospitalName || 'Hospital' },
       patientName: reservation.patientName,
