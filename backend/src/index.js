@@ -11,6 +11,7 @@ import connectDB from './config/db.js';
 import { initializeSocket, emitBedUpdate, emitBedHoldStatusChange } from './services/socket.js';
 import BedReservation from './models/BedReservation.js';
 import Hospital from './models/Hospital.js';
+import { startDataRetentionCron } from './services/dataRetentionService.js';
 
 // Routes
 import hospitalRoutes from './routes/hospitals.js';
@@ -154,6 +155,7 @@ const startServer = async () => {
       }
     });
     console.log('✔ Bed reservation auto-expiry cron scheduled (every 5 min)');
+    startDataRetentionCron();
 
     httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`SwasthyaSetu Server running on port ${PORT}`);

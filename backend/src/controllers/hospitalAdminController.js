@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import BedUpgradeRequest from '../models/BedUpgradeRequest.js';
 import { emitRegistrationRequest, emitBedUpgradeRequest, emitBedUpdate } from '../services/socket.js';
 import { geocodeFullAddress, extractCoordinatesFromGoogleUrl } from '../utils/geo.js';
+import { purgeOldPatientData } from '../services/dataRetentionService.js';
 
 // Public registration request for new hospitals
 export const registerHospitalRequest = async (req, res) => {
@@ -390,4 +391,20 @@ export const handleBedUpgradeRequest = async (req, res) => {
     res.status(500).json({ error: 'Failed to process bed upgrade review: ' + error.message });
   }
 };
+
+// Trigger automated or manual 3-month patient data purge
+export const triggerDataRetentionPurge = async (req, res) => {
+  try {
+    const retentionDays = Number(req.query.days || req.body?.days) || 90;
+    const result = await purgeOldPatientData(retentionDays);
+    res.json({
+      message: `Automated data retention purge completed for records older than ${retentionDays} days (3 months).`,
+      result
+    });
+  } catch (error) {
+    console.error('Error triggering data retention purge:', error);
+    res.status(500).json({ error: 'Failed to execute data retention purge: ' + error.message });
+  }
+};
+
 

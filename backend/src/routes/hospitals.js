@@ -32,7 +32,8 @@ import {
   createBedUpgradeRequest,
   getHospitalUpgradeRequests,
   getAllBedUpgradeRequests,
-  handleBedUpgradeRequest
+  handleBedUpgradeRequest,
+  triggerDataRetentionPurge
 } from '../controllers/hospitalAdminController.js';
 
 const router = Router();
@@ -52,6 +53,7 @@ router.get('/stats/overview', getHospitalStats);
 router.get('/pending/queue', authenticate, authorize('superadmin'), getPendingQueue);
 router.get('/admin/bed-upgrade-requests', authenticate, authorize('superadmin'), getAllBedUpgradeRequests);
 router.patch('/admin/bed-upgrade-requests/:requestId', authenticate, authorize('superadmin'), handleBedUpgradeRequest);
+router.post('/admin/data-retention/purge', authenticate, authorize('admin', 'superadmin'), triggerDataRetentionPurge);
 router.post('/register-request', registerHospitalRequest);
 
 

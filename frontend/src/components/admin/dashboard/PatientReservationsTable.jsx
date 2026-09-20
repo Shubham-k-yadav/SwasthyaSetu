@@ -25,9 +25,12 @@ export function PatientReservationsTable({
             <Zap className="h-5 w-5 text-amber-600 animate-pulse" />
             <CardTitle className="text-lg font-bold">Patient Admissions & Emergency Holds</CardTitle>
             <Badge className="bg-amber-600 text-white text-xs">{activeHoldsCount} Active Holds</Badge>
+            <Badge variant="outline" className="hidden sm:inline-flex text-[10px] font-semibold border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40">
+              🛡️ 3-Mo Data Retention Active
+            </Badge>
           </div>
           <CardDescription className="text-xs mt-0.5">
-            Real-time patient bed holds & emergency walk-in admissions. Scan patient QR code or admit walk-in patients directly.
+            Real-time patient bed holds & emergency walk-in admissions. Records older than 3 months (90 days) are automatically pruned to keep the database optimized.
           </CardDescription>
         </div>
         <div className="flex items-center gap-2 shrink-0">
