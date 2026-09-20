@@ -113,12 +113,14 @@ export const generateToken = (userOrId) => {
   const email = typeof userOrId === 'object' ? userOrId.email : undefined;
   const role = typeof userOrId === 'object' ? userOrId.role : undefined;
   const hospitalId = typeof userOrId === 'object' ? (userOrId.hospitalId || userOrId.hospital?._id || userOrId.hospital) : undefined;
+  const bloodBankId = typeof userOrId === 'object' ? (userOrId.bloodBankId || userOrId.bloodBank?._id || userOrId.bloodBank) : undefined;
   return jwt.sign(
     { 
       userId, 
       email, 
       role,
-      hospitalId: hospitalId ? String(hospitalId) : undefined
+      hospitalId: hospitalId ? String(hospitalId) : undefined,
+      bloodBankId: bloodBankId ? String(bloodBankId) : undefined
     },
     secret,
     { expiresIn: '24h' }

@@ -238,6 +238,7 @@ export const bloodBankApi = {
   getPendingQueue: (token) => apiCall('/api/bloodbanks/pending/queue', { token }),
   verify: (id, token) => apiCall(`/api/bloodbanks/${id}/verify`, { method: 'PATCH', token }),
   updateStock: (id, stockData, token) => apiCall(`/api/bloodbanks/${id}/stock`, { method: 'PUT', body: { bloodGroups: stockData }, token }),
+  getById: (id) => apiCall(`/api/bloodbanks/${id}`),
   getAll: () => apiCall('/api/bloodbanks/all')
 };
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import User from '../models/User.js';
 import Hospital from '../models/Hospital.js';
+import BloodBank from '../models/BloodBank.js';
 import { authenticate, authorize, generateToken } from '../middleware/auth.js';
 import mongoose from 'mongoose';
 
@@ -30,7 +31,13 @@ router.post('/login', async (req, res) => {
     }
 
     // Strict Portal Authorization Guard (Generic error to prevent account/role enumeration)
-    if (portal === 'hospital' && user.role === 'superadmin') {
+    if (portal === 'hospital' && (user.role === 'superadmin' || user.role === 'blood_bank_admin')) {
+      return res.status(401).json({ 
+        error: 'Invalid email or password. Please check your credentials.' 
+      });
+    }
+
+    if (portal === 'bloodbank' && user.role !== 'blood_bank_admin') {
       return res.status(401).json({ 
         error: 'Invalid email or password. Please check your credentials.' 
       });
@@ -58,6 +65,22 @@ router.post('/login', async (req, res) => {
       }
     }
 
+    let bloodBank = null;
+    if (user.bloodBankId) {
+      bloodBank = await BloodBank.findById(user.bloodBankId)
+        .select('name licenseNumber address city state phone adminEmail isVerified linkedBloodStockId coordinates')
+        .lean();
+
+      if (user.role === 'blood_bank_admin' && bloodBank) {
+        if (!bloodBank.isVerified) {
+          return res.status(403).json({ error: 'Your blood bank registration is pending Super Admin verification and approval. Please wait for approval before logging in.' });
+        } else if (!user.isActive) {
+          await User.updateOne({ _id: user._id }, { $set: { isActive: true } });
+          user.isActive = true;
+        }
+      }
+    }
+
     if (!user.isActive && user.role !== 'superadmin') {
       return res.status(403).json({ error: 'Your account is pending Super Admin verification and approval. Please wait for approval before logging in.' });
     }
@@ -72,7 +95,9 @@ router.post('/login', async (req, res) => {
         name: user.name,
         role: user.role,
         hospitalId: user.hospitalId || hospital?._id || null,
-        hospital
+        hospital,
+        bloodBankId: user.bloodBankId || bloodBank?._id || null,
+        bloodBank
       }
     });
   } catch (error) {
@@ -92,7 +117,8 @@ router.post('/refresh', authenticate, async (req, res) => {
         email: req.user.email,
         name: req.user.name,
         role: req.user.role,
-        hospitalId: req.user.hospitalId || null
+        hospitalId: req.user.hospitalId || null,
+        bloodBankId: req.user.bloodBankId || null
       }
     });
   } catch (error) {
@@ -115,6 +141,15 @@ router.get('/me', authenticate, async (req, res) => {
       }
     }
 
+    let bloodBank = null;
+    if (user?.bloodBankId) {
+      if (mongoose.Types.ObjectId.isValid(user.bloodBankId)) {
+        bloodBank = await BloodBank.findById(user.bloodBankId)
+          .select('name licenseNumber address city state phone adminEmail isVerified linkedBloodStockId coordinates')
+          .lean();
+      }
+    }
+
     res.json({
       user: {
         id: user?._id || user?.id,
@@ -122,7 +157,9 @@ router.get('/me', authenticate, async (req, res) => {
         name: user?.name,
         role: user?.role,
         hospitalId: user?.hospitalId || hospital?._id || null,
-        hospital
+        hospital,
+        bloodBankId: user?.bloodBankId || bloodBank?._id || null,
+        bloodBank
       }
     });
   } catch (error) {

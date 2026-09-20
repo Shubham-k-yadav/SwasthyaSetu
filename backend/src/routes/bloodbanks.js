@@ -219,11 +219,20 @@ router.put('/:id/stock', authenticate, authorize('blood_bank_admin', 'superadmin
     }
 
     if (bloodGroups && typeof bloodGroups === 'object') {
+      if (!stockDoc.bloodGroups || typeof stockDoc.bloodGroups !== 'object') {
+        stockDoc.bloodGroups = {};
+      }
       for (const [group, qty] of Object.entries(bloodGroups)) {
-        if (typeof qty === 'number' && qty >= 0) {
-          stockDoc.bloodGroups.set(group, qty);
+        const num = Number(qty);
+        if (!isNaN(num) && num >= 0) {
+          if (typeof stockDoc.bloodGroups.set === 'function') {
+            stockDoc.bloodGroups.set(group, num);
+          } else {
+            stockDoc.bloodGroups[group] = num;
+          }
         }
       }
+      stockDoc.markModified('bloodGroups');
     }
 
     stockDoc.lastUpdated = new Date();
@@ -242,7 +251,33 @@ router.put('/:id/stock', authenticate, authorize('blood_bank_admin', 'superadmin
     });
   } catch (error) {
     console.error('Error updating blood stock:', error);
-    res.status(500).json({ error: 'Failed to update blood stock' });
+    res.status(500).json({ error: 'Failed to update blood stock: ' + error.message });
+  }
+});
+
+/**
+ * GET /api/bloodbanks/:id
+ * Fetches a single blood bank with its current stock
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const bloodBank = await BloodBank.findById(req.params.id)
+      .populate('linkedBloodStockId')
+      .lean();
+
+    if (!bloodBank) {
+      return res.status(404).json({ error: 'Blood bank not found' });
+    }
+
+    let stockDoc = bloodBank.linkedBloodStockId;
+    if (!stockDoc) {
+      stockDoc = await BloodStock.findOne({ bloodBankId: bloodBank._id }).lean();
+    }
+
+    res.json({ bloodBank, stock: stockDoc });
+  } catch (error) {
+    console.error('Error fetching blood bank:', error);
+    res.status(500).json({ error: 'Failed to fetch blood bank' });
   }
 });
 

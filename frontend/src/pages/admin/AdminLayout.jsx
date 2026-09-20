@@ -13,7 +13,8 @@ import {
   Zap,
   Clock,
   ExternalLink,
-  Trash2
+  Trash2,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,6 +44,12 @@ const hospitalStaffNavItems = [
   { href: '/admin?tab=fleet', icon: Building2, label: 'Ambulance Fleet' },
 ];
 
+const bloodBankNavItems = [
+  { href: '/admin', icon: Droplets, label: 'Blood Stock Inventory' },
+  { href: '/admin/blood', icon: Activity, label: 'National Stock View' },
+  { href: '/blood', icon: Globe, label: 'Public Blood Finder' },
+];
+
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -51,7 +58,11 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated, isLoading } = useAuth();
 
-  const navItems = user?.role === 'superadmin' ? superAdminNavItems : hospitalStaffNavItems;
+  const navItems = user?.role === 'superadmin' 
+    ? superAdminNavItems 
+    : user?.role === 'blood_bank_admin' 
+      ? bloodBankNavItems 
+      : hospitalStaffNavItems;
 
   const rawHosp = user?.hospitalId || user?.hospital;
   const myHospitalId = typeof rawHosp === 'object' && rawHosp !== null
@@ -216,7 +227,7 @@ export default function AdminLayout() {
               SwasthyaSetu
             </span>
             <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">
-              {user?.role === 'superadmin' ? 'Super Admin' : 'Hospital Staff'}
+              {user?.role === 'superadmin' ? 'Super Admin' : user?.role === 'blood_bank_admin' ? 'Blood Bank Portal' : 'Hospital Staff'}
             </span>
           </div>
         </div>
@@ -232,7 +243,11 @@ export default function AdminLayout() {
                 {user?.name || 'Admin User'}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 capitalize truncate">
-                {user?.role === 'superadmin' ? 'Super Admin' : (user?.hospital?.name || 'Hospital Admin')}
+                {user?.role === 'superadmin' 
+                  ? 'Super Admin' 
+                  : user?.role === 'blood_bank_admin'
+                    ? (user?.bloodBank?.name || 'Blood Bank Admin')
+                    : (user?.hospital?.name || 'Hospital Admin')}
               </p>
             </div>
           </div>

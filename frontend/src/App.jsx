@@ -20,12 +20,16 @@ import AdminBloodPage from '@/pages/admin/AdminBloodPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 import SuperAdminDashboard from '@/pages/admin/SuperAdminDashboard';
 import HospitalAdminDashboard from '@/pages/admin/HospitalAdminDashboard';
+import BloodBankAdminDashboard from '@/pages/admin/BloodBankAdminDashboard';
 import { useAuth } from '@/lib/auth-context';
 
 function AdminDashboardDispatcher() {
   const { user } = useAuth();
   if (user?.role === 'superadmin') {
     return <SuperAdminDashboard />;
+  }
+  if (user?.role === 'blood_bank_admin') {
+    return <BloodBankAdminDashboard />;
   }
   return <HospitalAdminDashboard />;
 }
