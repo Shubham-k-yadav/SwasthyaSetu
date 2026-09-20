@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { UserPlus, Heart, Bed, Wind, AlertCircle, Printer, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { printOrDownloadTicket } from '@/components/hospital/bed-ticket-dialog';
+import { printOrDownloadTicket, downloadTicketPdf } from '@/components/hospital/bed-ticket-dialog';
 
 export function WalkinAdmissionModal({
   open,
@@ -64,14 +64,16 @@ export function WalkinAdmissionModal({
 
       toast.success(`🎉 Patient ${patientName} admitted successfully to ${bedType.toUpperCase()} Bed!`);
 
-      // Offer immediate print of official admission slip
+      // Download official admission PDF slip immediately
       if (result?.reservation) {
-        printOrDownloadTicket({
+        await downloadTicketPdf({
           reservation: result.reservation,
           hospital: result.hospital || hospital,
           patientName: payload.patientName,
           contactPhone: payload.contactPhone,
-          bedType
+          bedType,
+          age: payload.age,
+          gender: payload.gender
         });
       }
 

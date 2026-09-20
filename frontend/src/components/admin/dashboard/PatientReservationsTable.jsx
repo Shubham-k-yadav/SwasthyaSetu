@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Zap, QrCode, UserCheck, XCircle, CheckCircle2, UserPlus, Printer, Stethoscope, Clock } from 'lucide-react';
+import { Zap, QrCode, UserCheck, XCircle, CheckCircle2, UserPlus, Printer, Stethoscope, Clock, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { printOrDownloadTicket } from '@/components/hospital/bed-ticket-dialog';
+import { printOrDownloadTicket, downloadTicketPdf } from '@/components/hospital/bed-ticket-dialog';
 
 export function PatientReservationsTable({
   reservations,
@@ -210,6 +210,23 @@ export function PatientReservationsTable({
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => downloadTicketPdf({
+                            reservation: resv,
+                            hospital: hospital || { name: hospitalName },
+                            patientName: resv.patientName,
+                            contactPhone: resv.contactPhone,
+                            bedType: resv.bedType,
+                            age: resv.age,
+                            gender: resv.gender
+                          })}
+                          className="text-xs font-bold border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 h-8 gap-1.5"
+                        >
+                          <Download className="h-3.5 w-3.5 text-emerald-600" />
+                          Download PDF
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => printOrDownloadTicket({
                             reservation: resv,
                             hospital: hospital || { name: hospitalName },
@@ -236,9 +253,28 @@ export function PatientReservationsTable({
                       </div>
                     )}
                     {isDischarged && (
-                      <Badge variant="outline" className="text-xs font-bold border-blue-500/30 text-blue-600 bg-blue-50 dark:bg-blue-950/40">
-                        🏥 Cured & Discharged (+1 Bed Restored)
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-bold border-blue-500/30 text-blue-600 bg-blue-50 dark:bg-blue-950/40">
+                          🏥 Cured & Discharged (+1 Bed Restored)
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => downloadTicketPdf({
+                            reservation: resv,
+                            hospital: hospital || { name: hospitalName },
+                            patientName: resv.patientName,
+                            contactPhone: resv.contactPhone,
+                            bedType: resv.bedType,
+                            age: resv.age,
+                            gender: resv.gender
+                          })}
+                          className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-muted h-7 px-2 gap-1"
+                        >
+                          <Download className="h-3 w-3" />
+                          PDF Slip
+                        </Button>
+                      </div>
                     )}
                     {isReleased && (
                       <Badge variant="outline" className="text-xs font-semibold text-slate-500">

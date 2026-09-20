@@ -24,11 +24,12 @@ import {
   CheckCircle2,
   Clock,
   ShieldCheck,
-  Bandage
+  Bandage,
+  Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { printOrDownloadTicket } from '@/components/hospital/bed-ticket-dialog';
+import { printOrDownloadTicket, downloadTicketPdf } from '@/components/hospital/bed-ticket-dialog';
 
 const SPECIALTIES = [
   'Emergency Medicine',
@@ -123,6 +124,27 @@ export function PatientCaseSheetModal({
 
   const handlePrintSlip = () => {
     printOrDownloadTicket({
+      reservation: {
+        ...reservation,
+        diagnosis,
+        chiefComplaint,
+        injuryDetails,
+        assignedDoctor: { name: doctorName, specialty: doctorSpecialty },
+        vitals: { bp, pulse, spO2, temperature },
+        age,
+        gender
+      },
+      hospital: hospital || { name: reservation.hospitalName || 'Hospital' },
+      patientName: reservation.patientName,
+      contactPhone: reservation.contactPhone,
+      bedType: reservation.bedType,
+      age: age || reservation.age,
+      gender: gender || reservation.gender
+    });
+  };
+
+  const handleDownloadPdf = async () => {
+    await downloadTicketPdf({
       reservation: {
         ...reservation,
         diagnosis,
@@ -388,15 +410,26 @@ export function PatientCaseSheetModal({
           </div>
 
           <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handlePrintSlip}
-              className="w-full sm:w-auto h-9 text-xs font-semibold gap-1.5"
-            >
-              <Printer className="h-3.5 w-3.5 text-muted-foreground" />
-              Print Case Slip
-            </Button>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadPdf}
+                className="w-full sm:w-auto h-9 text-xs font-bold gap-1.5 border-blue-500/40 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+              >
+                <Download className="h-3.5 w-3.5 text-blue-600" />
+                Download Case PDF
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrintSlip}
+                className="w-full sm:w-auto h-9 text-xs font-semibold gap-1.5"
+              >
+                <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+                Print Slip
+              </Button>
+            </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button

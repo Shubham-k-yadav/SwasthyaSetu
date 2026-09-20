@@ -7,11 +7,12 @@ import {
   Zap,
   CheckCircle,
   AlertCircle,
-  Printer
+  Printer,
+  Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { hospitalApi } from '@/lib/api';
-import { printOrDownloadTicket } from './bed-ticket-dialog';
+import { printOrDownloadTicket, downloadTicketPdf } from './bed-ticket-dialog';
 import { useLanguage } from '@/lib/language-context';
 import { toast } from 'sonner';
 import { getSocket, connectSocket } from '@/lib/socket';
@@ -38,6 +39,7 @@ export function BedHoldModal({
   const [holdToken, setHoldToken] = useState('');
   const [secondsRemaining, setSecondsRemaining] = useState(600);
   const [error, setError] = useState('');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const icuAvail = Number(hospital?.beds?.icu?.available) || 0;
   const genAvail = Number(hospital?.beds?.general?.available) || 0;
@@ -508,22 +510,48 @@ export function BedHoldModal({
               <p className="col-span-2 truncate">🏥 <strong>{t('hospitalLabel')}</strong> {hospital.name}</p>
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full h-9 sm:h-9 text-xs sm:text-sm rounded-xl gap-2 border-sky-300 text-sky-700 dark:text-sky-300 hover:bg-sky-50 font-medium"
-              onClick={() => printOrDownloadTicket({
-                reservation,
-                hospital,
-                patientName,
-                contactPhone,
-                bedType,
-                age: patientAge || reservation?.age,
-                gender: patientGender || reservation?.gender
-              })}
-            >
-              <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              {t('printTicket')}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                className="h-9 sm:h-9.5 text-xs sm:text-sm rounded-xl gap-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold shadow-xs"
+                disabled={isDownloadingPdf}
+                onClick={async () => {
+                  setIsDownloadingPdf(true);
+                  try {
+                    await downloadTicketPdf({
+                      reservation,
+                      hospital,
+                      patientName,
+                      contactPhone,
+                      bedType,
+                      age: patientAge || reservation?.age,
+                      gender: patientGender || reservation?.gender
+                    });
+                  } finally {
+                    setIsDownloadingPdf(false);
+                  }
+                }}
+              >
+                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                {t('downloadPdfTicket')}
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-9 sm:h-9.5 text-xs sm:text-sm rounded-xl gap-1.5 border-sky-300 text-sky-700 dark:text-sky-300 hover:bg-sky-50 font-medium"
+                onClick={() => printOrDownloadTicket({
+                  reservation,
+                  hospital,
+                  patientName,
+                  contactPhone,
+                  bedType,
+                  age: patientAge || reservation?.age,
+                  gender: patientGender || reservation?.gender
+                })}
+              >
+                <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                {t('printTicket')}
+              </Button>
+            </div>
 
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <Button variant="outline" className="h-9 sm:h-9 text-xs sm:text-sm rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleReleaseHold} disabled={isReleasing}>
