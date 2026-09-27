@@ -6,7 +6,7 @@ import { PlatformStatusBanner } from '@/components/PlatformStatusBanner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Droplets, Search, Heart } from 'lucide-react';
+import { Droplets, Search, Heart, MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useLanguage } from '@/lib/language-context';
 import {
@@ -15,6 +15,7 @@ import {
   DonateInfoCards
 } from '@/components/blood';
 import { BloodBankRegisterModal } from '@/components/BloodBankRegisterModal';
+import { BloodBankMap } from '@/components/maps/blood-bank-map';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const CITIES = ['Noida', 'Delhi', 'New Delhi', 'Greater Noida', 'Ghaziabad', 'Prayagraj', 'Lucknow', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad'];
@@ -26,9 +27,19 @@ export default function BloodPage() {
   const [selectedCity, setSelectedCity] = useState('all');
   const [availableCities, setAvailableCities] = useState(DEFAULT_CITIES);
   const [searchResults, setSearchResults] = useState([]);
+  const [selectedBank, setSelectedBank] = useState(null);
+  const [showMap, setShowMap] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 768 : false));
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+
+  const handleSelectBank = (bank) => {
+    setSelectedBank(bank);
+    const mapViewport = document.getElementById('blood-bank-live-map-viewport');
+    if (mapViewport) {
+      mapViewport.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
 
   // Auto-fetch live blood stock on initial page mount
   useEffect(() => {
@@ -173,12 +184,38 @@ export default function BloodPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground font-medium">
                     <span>{t('foundBloodBanks')} {searchResults.length} {t('bloodBanksCount')}</span>
-                    {selectedBloodGroup !== 'all' && (
-                      <span className="text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full border border-red-200">
-                        {selectedBloodGroup}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {selectedBloodGroup !== 'all' && (
+                        <span className="text-[11px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-full border border-red-200">
+                          {selectedBloodGroup}
+                        </span>
+                      )}
+                      {searchResults.length > 0 && (
+                        <Button
+                          variant={showMap ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowMap(!showMap)}
+                          className={`h-8 px-3 text-xs font-bold gap-1.5 rounded-full transition-all cursor-pointer shadow-xs ${
+                            showMap ? "bg-red-600 text-white hover:bg-red-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span>{showMap ? "Hide Map" : "Live Map View"}</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Interactive Blood Bank Live Map */}
+                  {showMap && searchResults.length > 0 && (
+                    <div id="blood-bank-live-map-viewport" className="rounded-2xl overflow-hidden shadow-xs animate-in fade-in scroll-mt-24">
+                      <BloodBankMap
+                        bloodBanks={searchResults}
+                        selectedBank={selectedBank}
+                        onBankSelect={handleSelectBank}
+                      />
+                    </div>
+                  )}
                   
                   {searchResults.length === 0 ? (
                     <div className="text-center py-16 px-4 bg-muted/30 rounded-2xl border border-dashed my-6 space-y-4">
@@ -203,7 +240,12 @@ export default function BloodPage() {
                   ) : (
                     <div className="grid gap-4 md:grid-cols-2">
                       {searchResults.map(bank => (
-                        <BloodBankCard key={bank.id} bank={bank} />
+                        <BloodBankCard 
+                          key={bank.id} 
+                          bank={bank}
+                          isSelected={Boolean(selectedBank && (selectedBank.id === bank.id || selectedBank._id === bank.id))}
+                          onSelect={() => handleSelectBank(bank)}
+                        />
                       ))}
                     </div>
                   )}

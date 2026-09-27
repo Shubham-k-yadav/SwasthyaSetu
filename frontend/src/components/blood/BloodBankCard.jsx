@@ -1,17 +1,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Phone, Clock } from 'lucide-react';
+import { MapPin, Phone, Clock, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getFreshnessStatus } from '@/lib/freshness';
 import { useLanguage } from '@/lib/language-context';
 
-export function BloodBankCard({ bank }) {
+export function BloodBankCard({ bank, isSelected = false, onSelect }) {
   const { t } = useLanguage();
   const freshness = getFreshnessStatus(bank.lastUpdated);
 
   return (
-    <Card className={cn(freshness.isExpired && 'opacity-75')}>
+    <Card 
+      onClick={() => onSelect?.(bank)}
+      className={cn(
+        'transition-all duration-200 cursor-pointer',
+        freshness.isExpired && 'opacity-75',
+        isSelected 
+          ? 'ring-2 ring-red-600 border-red-500 shadow-md bg-red-50/20 dark:bg-red-950/20' 
+          : 'hover:border-slate-300 dark:hover:border-slate-700'
+      )}
+    >
       <CardHeader className="p-3.5 sm:p-6 pb-3">
         <div className="flex items-start justify-between gap-2 w-full min-w-0">
           <div className="space-y-1 flex-1 min-w-0 pr-1">
@@ -70,20 +79,36 @@ export function BloodBankCard({ bank }) {
         </div>
 
         {/* Actions */}
-        <div className="grid grid-cols-2 sm:flex gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-1 gap-1 cursor-pointer"
-            onClick={() => window.open(`tel:${bank.phone}`, '_self')}
+            className="gap-1 cursor-pointer text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(`tel:${bank.phone}`, '_self');
+            }}
           >
-            <Phone className="h-4 w-4" />
+            <Phone className="h-3.5 w-3.5" />
             {t('call')}
+          </Button>
+          <Button
+            variant={isSelected ? "default" : "outline"}
+            size="sm"
+            className={cn("gap-1 cursor-pointer text-xs", isSelected && "bg-red-600 hover:bg-red-700 text-white")}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect?.(bank);
+            }}
+          >
+            <MapPin className="h-3.5 w-3.5 text-red-600" />
+            Map
           </Button>
           <Button 
             size="sm" 
-            className="flex-1 gap-1 cursor-pointer"
-            onClick={() => {
+            className="gap-1 cursor-pointer text-xs bg-red-600 hover:bg-red-700 text-white font-bold"
+            onClick={(e) => {
+              e.stopPropagation();
               if (bank.googleMapsUrl) {
                 window.open(bank.googleMapsUrl, '_blank');
               } else {
@@ -92,7 +117,7 @@ export function BloodBankCard({ bank }) {
               }
             }}
           >
-            <MapPin className="h-4 w-4" />
+            <Navigation className="h-3.5 w-3.5" />
             {t('directions')}
           </Button>
         </div>

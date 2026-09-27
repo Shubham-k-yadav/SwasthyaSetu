@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { connectSocket, getSocket } from '@/lib/socket';
+import { BloodBankMap } from '@/components/maps/blood-bank-map';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -575,6 +576,51 @@ export default function BloodBankAdminDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Facility GPS Location & Map Preview */}
+      {bloodBank && (
+        <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-red-600" />
+                Facility GPS Location & Dispatch Map
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Real-time geographic position mapped for emergency blood requests and ambulance pickup.
+              </CardDescription>
+            </div>
+            {bloodBank.googleMapsUrl && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs font-semibold gap-1 h-8"
+                onClick={() => window.open(bloodBank.googleMapsUrl, '_blank')}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open Google Maps
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="p-5 pt-0">
+            <BloodBankMap
+              bloodBanks={[
+                {
+                  ...bloodBank,
+                  hospitalName: bloodBank.name,
+                  bloodStock: Object.entries(stock).map(([g, u]) => ({ bloodGroup: g, unitsAvailable: u }))
+                }
+              ]}
+              selectedBank={{
+                ...bloodBank,
+                hospitalName: bloodBank.name,
+                bloodStock: Object.entries(stock).map(([g, u]) => ({ bloodGroup: g, unitsAvailable: u }))
+              }}
+              className="h-[280px] sm:h-[340px]"
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
