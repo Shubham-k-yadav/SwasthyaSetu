@@ -183,7 +183,7 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
       }
 
       toast.success(`Donation Approved! Added ${payload.unitsDonated} unit(s) of ${foundDonor.bloodGroup} to live stock.`, {
-        description: 'Appreciation Certificate and receipt sent to donor email.'
+        description: 'Official Appreciation Certificate generated and ready to download.'
       });
 
       // Show completion certificate
@@ -395,8 +395,8 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
               </div>
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-600 pt-1">
-                <Mail className="w-3.5 h-3.5" />
-                <span>Certificate and receipt dispatched to donor email</span>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Official Life Saver Certificate generated successfully</span>
               </div>
             </div>
 

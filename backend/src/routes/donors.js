@@ -4,7 +4,6 @@ import Donor from '../models/Donor.js';
 import BloodBank from '../models/BloodBank.js';
 import BloodStock from '../models/BloodStock.js';
 import { authenticate, authorize } from '../middleware/auth.js';
-import { sendDonationCertificateEmail } from '../services/emailService.js';
 import { getIO } from '../services/socket.js';
 import mongoose from 'mongoose';
 
@@ -521,19 +520,6 @@ router.post('/record-donation', authenticate, authorize('blood_bank_admin', 'sup
       }
     }
 
-    // Trigger Certificate Email to Donor (asynchronous without blocking)
-    sendDonationCertificateEmail({
-      donorName: donor.name,
-      donorEmail: donor.email,
-      bloodGroup: effectiveBloodGroup,
-      unitsDonated: Number(unitsDonated) || 1,
-      bagId: generatedBagId,
-      bloodBankName,
-      bloodBankCity,
-      donationDate,
-      nextEligibleDate,
-      certificateId
-    }).catch(err => console.error('Email error:', err.message));
 
     res.status(201).json({
       message: `Successfully recorded donation! Added ${unitsDonated} unit(s) of ${effectiveBloodGroup} to stock.`,
