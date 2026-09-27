@@ -17,12 +17,13 @@ import {
 import { BloodBankRegisterModal } from '@/components/BloodBankRegisterModal';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const CITIES = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad'];
+const DEFAULT_CITIES = ['Noida', 'Delhi', 'New Delhi', 'Greater Noida', 'Ghaziabad', 'Prayagraj', 'Lucknow', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad'];
 
 export default function BloodPage() {
   const { t } = useLanguage();
   const [selectedBloodGroup, setSelectedBloodGroup] = useState('all');
   const [selectedCity, setSelectedCity] = useState('all');
+  const [availableCities, setAvailableCities] = useState(DEFAULT_CITIES);
   const [searchResults, setSearchResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -73,7 +74,8 @@ export default function BloodPage() {
         const stockObj = b.linkedBloodStockId?.bloodGroups || {};
         const stockArr = Object.entries(stockObj).map(([group, units]) => ({
           bloodGroup: group,
-          unitsAvailable: Number(units)
+          unitsAvailable: Number(units),
+          isLow: Number(units) < 5
         }));
 
         if (groupParam && groupParam !== 'all') {
@@ -83,22 +85,35 @@ export default function BloodPage() {
           }
         }
 
+        const mapUrl = b.googleMapsUrl || (b.coordinates?.lat && b.coordinates?.lng
+          ? `https://www.google.com/maps/search/?api=1&query=${b.coordinates.lat},${b.coordinates.lng}`
+          : null);
+
         formatted.push({
           id: b._id,
           hospitalName: `${b.name} (Blood Bank)`,
           address: b.address || `${b.city}, ${b.state}`,
           city: b.city || '',
           phone: b.phone || '',
+          googleMapsUrl: mapUrl,
           distance: 1.8,
           bloodStock: stockArr.length > 0 ? stockArr : [
-            { bloodGroup: 'A+', unitsAvailable: 15 },
-            { bloodGroup: 'B+', unitsAvailable: 20 },
-            { bloodGroup: 'O+', unitsAvailable: 25 },
-            { bloodGroup: 'AB+', unitsAvailable: 10 }
+            { bloodGroup: 'A+', unitsAvailable: 15, isLow: false },
+            { bloodGroup: 'B+', unitsAvailable: 20, isLow: false },
+            { bloodGroup: 'O+', unitsAvailable: 25, isLow: false },
+            { bloodGroup: 'AB+', unitsAvailable: 10, isLow: false }
           ],
           lastUpdated: b.lastUpdated || new Date().toISOString()
         });
       });
+
+      // Dynamically populate available cities from actual data
+      const discoveredCities = new Set([
+        ...DEFAULT_CITIES,
+        ...banks.map(b => b.city).filter(Boolean),
+        ...(res?.results?.map(r => r.hospital?.city).filter(Boolean) || [])
+      ]);
+      setAvailableCities(Array.from(discoveredCities));
 
       setSearchResults(formatted);
     } catch (err) {
@@ -149,7 +164,7 @@ export default function BloodPage() {
                 onSearch={handleSearch}
                 isSearching={isSearching}
                 bloodGroups={BLOOD_GROUPS}
-                cities={CITIES}
+                cities={availableCities}
               />
 
               {/* Search Results */}

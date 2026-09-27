@@ -84,8 +84,12 @@ export function BloodBankCard({ bank }) {
             size="sm" 
             className="flex-1 gap-1 cursor-pointer"
             onClick={() => {
-              const query = encodeURIComponent(bank.hospitalName + ' ' + bank.city);
-              window.open(`https://www.google.com/maps/search/${query}`, '_blank');
+              if (bank.googleMapsUrl) {
+                window.open(bank.googleMapsUrl, '_blank');
+              } else {
+                const query = encodeURIComponent(bank.hospitalName + ' ' + (bank.city || bank.address || ''));
+                window.open(`https://www.google.com/maps/search/${query}`, '_blank');
+              }
             }}
           >
             <MapPin className="h-4 w-4" />

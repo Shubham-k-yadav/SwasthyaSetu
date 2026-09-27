@@ -256,11 +256,43 @@ router.put('/:id/stock', authenticate, authorize('blood_bank_admin', 'superadmin
 });
 
 /**
+ * GET /api/bloodbanks/all
+ * Returns all verified blood banks
+ */
+router.get('/all', async (req, res) => {
+  try {
+    const banks = await BloodBank.find({ isVerified: true })
+      .populate('linkedBloodStockId')
+      .lean();
+
+    // Ensure stock is available even if ref was bidirectional
+    const enriched = await Promise.all(banks.map(async (b) => {
+      if (!b.linkedBloodStockId || !b.linkedBloodStockId.bloodGroups) {
+        const stock = await BloodStock.findOne({ bloodBankId: b._id }).lean();
+        if (stock) {
+          b.linkedBloodStockId = stock;
+        }
+      }
+      return b;
+    }));
+
+    res.json({ bloodBanks: enriched });
+  } catch (error) {
+    console.error('Error fetching blood banks:', error);
+    res.status(500).json({ error: 'Failed to fetch blood banks' });
+  }
+});
+
+/**
  * GET /api/bloodbanks/:id
  * Fetches a single blood bank with its current stock
  */
 router.get('/:id', async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ error: 'Invalid blood bank ID' });
+    }
+
     const bloodBank = await BloodBank.findById(req.params.id)
       .populate('linkedBloodStockId')
       .lean();
@@ -278,22 +310,6 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching blood bank:', error);
     res.status(500).json({ error: 'Failed to fetch blood bank' });
-  }
-});
-
-/**
- * GET /api/bloodbanks/all
- * Returns all verified blood banks
- */
-router.get('/all', async (req, res) => {
-  try {
-    const banks = await BloodBank.find({ isVerified: true })
-      .populate('linkedBloodStockId')
-      .lean();
-    res.json({ bloodBanks: banks });
-  } catch (error) {
-    console.error('Error fetching blood banks:', error);
-    res.status(500).json({ error: 'Failed to fetch blood banks' });
   }
 });
 
