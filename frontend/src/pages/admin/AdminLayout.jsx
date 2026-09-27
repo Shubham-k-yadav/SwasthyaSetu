@@ -15,7 +15,8 @@ import {
   ExternalLink,
   Trash2,
   Globe,
-  TrendingUp
+  TrendingUp,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,7 +38,7 @@ const superAdminNavItems = [
   { href: '/admin/hospitals', icon: Building2, label: 'Hospitals' },
   { href: '/admin/bloodbanks', icon: Droplets, label: 'Blood Banks' },
   { href: '/admin/blood', icon: Activity, label: 'Blood Stock' },
-  { href: '/blood?tab=donors', icon: Globe, label: 'Public Blood Finder' },
+  { href: '/blood', icon: Globe, label: 'Public Blood Finder' },
   { href: '/admin/analytics', icon: TrendingUp, label: 'Analytics' },
 ];
 
@@ -49,8 +50,9 @@ const hospitalStaffNavItems = [
 
 const bloodBankNavItems = [
   { href: '/admin', icon: Droplets, label: 'Blood Stock Inventory' },
+  { href: '/admin?tab=donors', icon: Users, label: 'QR Walk-in Donors' },
   { href: '/admin/blood', icon: Activity, label: 'National Stock View' },
-  { href: '/blood?tab=donors', icon: Globe, label: 'Public Blood Finder' },
+  { href: '/blood', icon: Globe, label: 'Public Blood Finder' },
 ];
 
 export default function AdminLayout() {
@@ -259,7 +261,10 @@ export default function AdminLayout() {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href || (item.href !== '/admin' && (location.pathname === item.href || location.pathname.startsWith(item.href + '/')));
+            const currentFullUrl = location.pathname + location.search;
+            const isActive = item.href.includes('?')
+              ? currentFullUrl === item.href
+              : (location.pathname === item.href && !location.search) || (item.href !== '/admin' && location.pathname.startsWith(item.href + '/'));
             const Icon = item.icon;
             return (
               <Link

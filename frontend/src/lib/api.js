@@ -190,6 +190,7 @@ export const donorApi = {
 
   getVerifiedWalkins: (params) => {
     const searchParams = new URLSearchParams();
+    if (params?.bloodBankId && params.bloodBankId !== 'all') searchParams.set('bloodBankId', params.bloodBankId);
     if (params?.bloodGroup && params.bloodGroup !== 'all') searchParams.set('bloodGroup', params.bloodGroup);
     if (params?.city && params.city !== 'all') searchParams.set('city', params.city);
     return apiCall(`/api/donors/verified-walkins?${searchParams}`);

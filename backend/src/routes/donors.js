@@ -287,16 +287,20 @@ router.get('/nearby-banks', async (req, res) => {
 
 /**
  * GET /api/donors/verified-walkins
- * Returns list of all donors who visited a blood bank, had their QR scanned, and completed a donation
+ * Returns list of donors who visited a blood bank, had their QR scanned, and completed a donation
+ * Supports filtering by bloodBankId so each blood bank can view only their walk-in donors
  */
 router.get('/verified-walkins', async (req, res) => {
   try {
-    const { bloodGroup, city, limit = 100 } = req.query;
+    const { bloodGroup, city, bloodBankId, limit = 150 } = req.query;
 
     const filter = {
       'donationHistory.status': 'approved'
     };
 
+    if (bloodBankId && bloodBankId !== 'all') {
+      filter['donationHistory.bloodBankId'] = bloodBankId;
+    }
     if (bloodGroup && bloodGroup !== 'all') {
       filter['donationHistory.bloodGroup'] = bloodGroup;
     }
@@ -306,7 +310,7 @@ router.get('/verified-walkins', async (req, res) => {
     }
 
     const donors = await Donor.find(filter)
-      .select('name bloodGroup city state phone email lastDonation nextEligibleDate totalDonations donationHistory donorCardId age weight')
+      .select('name bloodGroup city state address phone email lastDonation nextEligibleDate totalDonations donationHistory donorCardId age weight')
       .sort({ lastDonation: -1 })
       .limit(Number(limit))
       .lean();
@@ -315,7 +319,11 @@ router.get('/verified-walkins', async (req, res) => {
     donors.forEach(donor => {
       const approved = (donor.donationHistory || []).filter(d => d.status === 'approved');
       approved.forEach(donation => {
-        // If filter applied, ensure match
+        // If bloodBankId filter applied, ensure match
+        if (bloodBankId && bloodBankId !== 'all' && String(donation.bloodBankId) !== String(bloodBankId)) {
+          return;
+        }
+        // If bloodGroup filter applied, ensure match
         if (bloodGroup && bloodGroup !== 'all' && donation.bloodGroup !== bloodGroup) {
           return;
         }
@@ -330,14 +338,19 @@ router.get('/verified-walkins', async (req, res) => {
           bloodGroup: donation.bloodGroup || donor.bloodGroup,
           city: donor.city,
           state: donor.state,
+          address: donor.address,
           age: donor.age,
           weight: donor.weight,
           unitsDonated: donation.unitsDonated || 1,
           bagId: donation.bagId,
           certificateId: donation.certificateId,
+          bloodBankId: donation.bloodBankId,
           bloodBankName: donation.bloodBankName || 'Authorized Blood Bank',
           donationDate: donation.donationDate,
           nextEligibleDate: donor.nextEligibleDate,
+          hemoglobin: donation.hemoglobin,
+          bloodPressure: donation.bloodPressure,
+          recordedBy: donation.recordedBy,
           totalDonations: donor.totalDonations,
           isQrVerified: true
         });
