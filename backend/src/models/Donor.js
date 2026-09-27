@@ -5,13 +5,15 @@ const DonationRecordSchema = new Schema({
   bloodBankId: { type: Schema.Types.ObjectId, ref: 'BloodBank' },
   bloodBankName: { type: String, default: 'SwasthyaSetu Blood Bank' },
   donationDate: { type: Date, default: Date.now },
-  unitsDonated: { type: Number, default: 1, min: 1 },
+  unitsDonated: { type: Number, default: 0, min: 0 },
   bloodGroup: { type: String, required: true },
   bagId: { type: String },
   hemoglobin: { type: Number },
   bloodPressure: { type: String },
   status: { type: String, enum: ['approved', 'deferred'], default: 'approved' },
   deferralReason: { type: String },
+  deferralPeriodDays: { type: Number, default: 14 },
+  nextEligibleDate: { type: Date },
   certificateId: { type: String },
   recordedBy: { type: String, default: 'Blood Bank Administrator' }
 }, { _id: true, timestamps: true });

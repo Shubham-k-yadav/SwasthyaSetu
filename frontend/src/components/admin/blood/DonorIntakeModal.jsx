@@ -52,6 +52,7 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
     bagId: '',
     status: 'approved', // 'approved' | 'deferred'
     deferralReason: '',
+    deferralPeriodDays: '14',
     notes: ''
   });
 
@@ -160,23 +161,26 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
       const token = localStorage.getItem('swasthya_setu_token') || user?.token;
       const targetBloodBankId = user?.bloodBankId || user?.bloodBank?._id;
 
+      const isDeferred = screeningForm.status === 'deferred';
+
       const payload = {
         donorIdentifier: foundDonor.donorCardId || foundDonor.id || foundDonor.phone,
         bloodBankId: targetBloodBankId,
-        unitsDonated: Number(screeningForm.unitsDonated) || 1,
+        unitsDonated: isDeferred ? 0 : (Number(screeningForm.unitsDonated) || 1),
         bloodGroup: foundDonor.bloodGroup,
-        bagId: screeningForm.bagId,
+        bagId: isDeferred ? undefined : screeningForm.bagId,
         hemoglobin: Number(screeningForm.hemoglobin) || 13.5,
         bloodPressure: screeningForm.bloodPressure,
         status: screeningForm.status,
-        deferralReason: screeningForm.deferralReason,
+        deferralReason: isDeferred ? (screeningForm.deferralReason || 'Temporary medical deferral') : undefined,
+        deferralPeriodDays: Number(screeningForm.deferralPeriodDays) || 14,
         notes: screeningForm.notes
       };
 
       const res = await api.donors.recordDonation(payload, token);
 
-      if (screeningForm.status === 'deferred') {
-        toast.info('Donor temporarily deferred. Record updated.');
+      if (isDeferred) {
+        toast.warning(res?.message || 'Donor temporarily deferred. Record updated successfully.');
         handleReset();
         if (onDonationRecorded) onDonationRecorded();
         return;
@@ -589,31 +593,33 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="units" className="text-xs font-semibold">Units Donated *</Label>
-                      <Input
-                        id="units"
-                        type="number"
-                        min="1"
-                        max="2"
-                        required
-                        value={screeningForm.unitsDonated}
-                        onChange={(e) => setScreeningForm({...screeningForm, unitsDonated: e.target.value})}
-                        className="h-9 text-xs mt-1"
-                      />
+                  {screeningForm.status === 'approved' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="units" className="text-xs font-semibold">Units Donated *</Label>
+                        <Input
+                          id="units"
+                          type="number"
+                          min="1"
+                          max="2"
+                          required
+                          value={screeningForm.unitsDonated}
+                          onChange={(e) => setScreeningForm({...screeningForm, unitsDonated: e.target.value})}
+                          className="h-9 text-xs mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="bagId" className="text-xs font-semibold">Blood Bag Reference Barcode *</Label>
+                        <Input
+                          id="bagId"
+                          required
+                          value={screeningForm.bagId}
+                          onChange={(e) => setScreeningForm({...screeningForm, bagId: e.target.value})}
+                          className="h-9 text-xs font-mono mt-1"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="bagId" className="text-xs font-semibold">Blood Bag Reference Barcode *</Label>
-                      <Input
-                        id="bagId"
-                        required
-                        value={screeningForm.bagId}
-                        onChange={(e) => setScreeningForm({...screeningForm, bagId: e.target.value})}
-                        className="h-9 text-xs font-mono mt-1"
-                      />
-                    </div>
-                  </div>
+                  ) : null}
 
                   <div>
                     <Label className="text-xs font-semibold">Intake Decision</Label>
@@ -624,7 +630,7 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
                         size="sm"
                         onClick={() => setScreeningForm({...screeningForm, status: 'approved'})}
                         className={cn(
-                          "h-9 text-xs font-bold gap-1.5",
+                          "h-9 text-xs font-bold gap-1.5 cursor-pointer",
                           screeningForm.status === 'approved' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
                         )}
                       >
@@ -637,7 +643,7 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
                         size="sm"
                         onClick={() => setScreeningForm({...screeningForm, status: 'deferred'})}
                         className={cn(
-                          "h-9 text-xs font-bold gap-1.5",
+                          "h-9 text-xs font-bold gap-1.5 cursor-pointer",
                           screeningForm.status === 'deferred' ? "bg-amber-600 hover:bg-amber-700 text-white" : ""
                         )}
                       >
@@ -648,23 +654,62 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
                   </div>
 
                   {screeningForm.status === 'deferred' && (
-                    <div>
-                      <Label htmlFor="reason" className="text-xs font-semibold text-amber-700">Deferral Reason *</Label>
-                      <Input
-                        id="reason"
-                        placeholder="e.g. Low Hemoglobin (<12.5), Elevated Blood Pressure, Recent Medication"
-                        required
-                        value={screeningForm.deferralReason}
-                        onChange={(e) => setScreeningForm({...screeningForm, deferralReason: e.target.value})}
-                        className="h-9 text-xs mt-1 border-amber-300"
-                      />
+                    <div className="space-y-3 p-3 bg-amber-50/60 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                      <div>
+                        <Label htmlFor="reason" className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                          Deferral Reason *
+                        </Label>
+                        <Input
+                          id="reason"
+                          placeholder="e.g. Low Hemoglobin (<12.5), Elevated Blood Pressure, Recent Medication"
+                          required
+                          value={screeningForm.deferralReason}
+                          onChange={(e) => setScreeningForm({...screeningForm, deferralReason: e.target.value})}
+                          className="h-9 text-xs mt-1 border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-bold text-amber-800 dark:text-amber-300 block mb-1">
+                          Recommended Cooling Period
+                        </Label>
+                        <div className="grid grid-cols-4 gap-1.5 text-center">
+                          {[
+                            { days: '14', label: '14 Days (Mild / BP)' },
+                            { days: '30', label: '30 Days (Hb / Fever)' },
+                            { days: '60', label: '60 Days (Medication)' },
+                            { days: '90', label: '90 Days (Recovery)' }
+                          ].map(opt => (
+                            <button
+                              key={opt.days}
+                              type="button"
+                              onClick={() => setScreeningForm({ ...screeningForm, deferralPeriodDays: opt.days })}
+                              className={cn(
+                                "text-[11px] py-1.5 px-1 rounded-lg border font-bold transition-all cursor-pointer",
+                                String(screeningForm.deferralPeriodDays) === opt.days
+                                  ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
+                                  : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-amber-100"
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  <div className="bg-red-50 dark:bg-red-950/20 p-2.5 rounded-lg border border-red-200 dark:border-red-900/40 text-[11px] text-red-800 dark:text-red-200 flex items-center gap-2">
-                    <Droplets className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>Submitting will automatically increment {foundDonor.bloodGroup} inventory by {screeningForm.unitsDonated || 1} unit(s) and dispatch the digital certificate to the donor.</span>
-                  </div>
+                  {screeningForm.status === 'approved' ? (
+                    <div className="bg-red-50 dark:bg-red-950/20 p-2.5 rounded-lg border border-red-200 dark:border-red-900/40 text-[11px] text-red-800 dark:text-red-200 flex items-center gap-2">
+                      <Droplets className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>Submitting will automatically increment {foundDonor.bloodGroup} inventory by {screeningForm.unitsDonated || 1} unit(s) and generate the official Life Saver Certificate.</span>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 dark:bg-amber-950/20 p-2.5 rounded-lg border border-amber-200 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>⚠️ Donor will be marked as Temporarily Deferred for {screeningForm.deferralPeriodDays} days. Blood stock will NOT be changed.</span>
+                    </div>
+                  )}
                 </div>
 
                 <DialogFooter className="border-t pt-3 flex sm:justify-between items-center gap-2">
@@ -674,14 +719,21 @@ export function DonorIntakeModal({ open, onOpenChange, onDonationRecorded, blood
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs h-9 gap-1.5 shadow-xs"
+                    className={cn(
+                      "text-white font-bold text-xs h-9 gap-1.5 shadow-xs cursor-pointer",
+                      screeningForm.status === 'approved'
+                        ? "bg-emerald-600 hover:bg-emerald-700"
+                        : "bg-amber-600 hover:bg-amber-700"
+                    )}
                   >
                     {isSubmitting ? (
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
+                    ) : screeningForm.status === 'approved' ? (
                       <FileCheck className="w-3.5 h-3.5" />
+                    ) : (
+                      <AlertTriangle className="w-3.5 h-3.5" />
                     )}
-                    {screeningForm.status === 'approved' ? 'Approve & Increment Stock' : 'Record Deferral'}
+                    {screeningForm.status === 'approved' ? 'Approve & Increment Stock' : 'Record Temporary Deferral'}
                   </Button>
                 </DialogFooter>
               </form>

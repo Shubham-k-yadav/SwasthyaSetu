@@ -81,6 +81,7 @@ export default function BloodBankAdminDashboard() {
   const [isLoadingDonors, setIsLoadingDonors] = useState(false);
   const [donorSearch, setDonorSearch] = useState('');
   const [donorBloodGroupFilter, setDonorBloodGroupFilter] = useState('all');
+  const [donorStatusFilter, setDonorStatusFilter] = useState('all'); // 'all' | 'approved' | 'deferred'
   const [selectedDonorForCert, setSelectedDonorForCert] = useState(null);
 
   const bloodBankId = user?.bloodBankId || user?.bloodBank?._id;
@@ -225,25 +226,32 @@ export default function BloodBankAdminDashboard() {
         d.email?.toLowerCase().includes(q) ||
         d.bagId?.toLowerCase().includes(q) ||
         d.donorCardId?.toLowerCase().includes(q) ||
-        d.certificateId?.toLowerCase().includes(q);
+        d.certificateId?.toLowerCase().includes(q) ||
+        d.deferralReason?.toLowerCase().includes(q);
 
       const matchesGroup =
         donorBloodGroupFilter === 'all' || d.bloodGroup === donorBloodGroupFilter;
 
-      return matchesQuery && matchesGroup;
+      const matchesStatus =
+        donorStatusFilter === 'all' || (d.status || 'approved') === donorStatusFilter;
+
+      return matchesQuery && matchesGroup && matchesStatus;
     });
-  }, [donorsList, donorSearch, donorBloodGroupFilter]);
+  }, [donorsList, donorSearch, donorBloodGroupFilter, donorStatusFilter]);
 
   const donorSummary = useMemo(() => {
-    const totalDonations = donorsList.length;
-    const totalUnitsCollected = donorsList.reduce(
+    const approvedDonors = donorsList.filter((d) => (d.status || 'approved') === 'approved');
+    const deferredDonors = donorsList.filter((d) => d.status === 'deferred');
+    const totalDonations = approvedDonors.length;
+    const totalDeferred = deferredDonors.length;
+    const totalUnitsCollected = approvedDonors.reduce(
       (sum, d) => sum + (Number(d.unitsDonated) || 1),
       0
     );
     const uniqueDonorsCount = new Set(
       donorsList.map((d) => d.donorId || d.donorCardId || d.name)
     ).size;
-    return { totalDonations, totalUnitsCollected, uniqueDonorsCount };
+    return { totalDonations, totalDeferred, totalUnitsCollected, uniqueDonorsCount };
   }, [donorsList]);
 
   // Download PDF certificate for a verified donor
@@ -1054,12 +1062,12 @@ export default function BloodBankAdminDashboard() {
           </Card>
 
           {/* Donor Stats Counters */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
               <CardContent className="p-5 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Total Walk-in Donations
+                    Approved Donations
                   </p>
                   <p className="text-3xl font-extrabold text-foreground mt-1">
                     {donorSummary.totalDonations}{' '}
@@ -1067,7 +1075,7 @@ export default function BloodBankAdminDashboard() {
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                    Verified by medical officer
+                    Verified & blood collected
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
@@ -1087,7 +1095,7 @@ export default function BloodBankAdminDashboard() {
                     <span className="text-xs font-normal text-muted-foreground">Units</span>
                   </p>
                   <p className="text-[11px] text-emerald-600 font-medium mt-1">
-                    Auto-added to facility inventory
+                    Live stock auto-synchronized
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-950/50 text-red-600 flex items-center justify-center">
@@ -1100,14 +1108,35 @@ export default function BloodBankAdminDashboard() {
               <CardContent className="p-5 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Unique Voluntary Donors
+                    Temporarily Deferred
+                  </p>
+                  <p className="text-3xl font-extrabold text-amber-600 mt-1">
+                    {donorSummary.totalDeferred}{' '}
+                    <span className="text-xs font-normal text-muted-foreground">Donors</span>
+                  </p>
+                  <p className="text-[11px] text-amber-600 font-medium mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Medical screening deferral
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Total Donors Handled
                   </p>
                   <p className="text-3xl font-extrabold text-blue-600 mt-1">
                     {donorSummary.uniqueDonorsCount}{' '}
                     <span className="text-xs font-normal text-muted-foreground">Donors</span>
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Registered in digital life-saver network
+                    Voluntary walk-in registry
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
@@ -1117,32 +1146,61 @@ export default function BloodBankAdminDashboard() {
             </Card>
           </div>
 
-          {/* Search & Blood Group Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border shadow-2xs">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by Donor Name, Card ID (DONOR-...), Bag Barcode, or Phone..."
-                value={donorSearch}
-                onChange={(e) => setDonorSearch(e.target.value)}
-                className="pl-9 h-9 text-xs"
-              />
+          {/* Search, Status & Blood Group Filter Bar */}
+          <div className="flex flex-col gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border shadow-2xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by Donor Name, Card ID (DONOR-...), Deferral Reason, or Phone..."
+                  value={donorSearch}
+                  onChange={(e) => setDonorSearch(e.target.value)}
+                  className="pl-9 h-9 text-xs"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-xs font-semibold text-muted-foreground">Status:</span>
+                {[
+                  { id: 'all', label: `All (${donorsList.length})` },
+                  { id: 'approved', label: `Approved (${donorSummary.totalDonations})` },
+                  { id: 'deferred', label: `Deferred (${donorSummary.totalDeferred})` }
+                ].map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setDonorStatusFilter(s.id)}
+                    className={cn(
+                      "px-2.5 py-1 text-xs rounded-md font-bold transition-all cursor-pointer",
+                      donorStatusFilter === s.id
+                        ? s.id === 'deferred'
+                          ? "bg-amber-600 text-white"
+                          : s.id === 'approved'
+                          ? "bg-emerald-600 text-white"
+                          : "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex items-center gap-2 overflow-x-auto pt-1 border-t border-dashed">
               <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1 shrink-0">
-                <Filter className="w-3.5 h-3.5" /> Group:
+                <Filter className="w-3.5 h-3.5" /> Blood Group:
               </span>
               <button
                 onClick={() => setDonorBloodGroupFilter('all')}
                 className={cn(
-                  "px-2.5 py-1 text-xs rounded-md font-bold transition-all cursor-pointer",
+                  "px-2 py-0.5 text-xs rounded-md font-bold transition-all cursor-pointer",
                   donorBloodGroupFilter === 'all'
                     ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
                 )}
               >
-                All ({donorsList.length})
+                All Groups
               </button>
               {BLOOD_GROUPS.map((bg) => {
                 const count = donorsList.filter((d) => d.bloodGroup === bg).length;
@@ -1152,7 +1210,7 @@ export default function BloodBankAdminDashboard() {
                     key={bg}
                     onClick={() => setDonorBloodGroupFilter(bg)}
                     className={cn(
-                      "px-2.5 py-1 text-xs rounded-md font-bold transition-all cursor-pointer shrink-0",
+                      "px-2 py-0.5 text-xs rounded-md font-bold transition-all cursor-pointer shrink-0",
                       donorBloodGroupFilter === bg
                         ? "bg-red-600 text-white"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
@@ -1222,7 +1280,12 @@ export default function BloodBankAdminDashboard() {
                     {/* Top Row: Avatar, Name, Group Badge */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-red-100 dark:bg-red-950/50 text-red-600 flex items-center justify-center font-extrabold text-base shrink-0">
+                        <div className={cn(
+                          "w-11 h-11 rounded-xl flex items-center justify-center font-extrabold text-base shrink-0",
+                          donor.status === 'deferred'
+                            ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700"
+                            : "bg-red-100 dark:bg-red-950/50 text-red-600"
+                        )}>
                           {donor.bloodGroup}
                         </div>
                         <div>
@@ -1230,9 +1293,15 @@ export default function BloodBankAdminDashboard() {
                             <h4 className="font-extrabold text-sm text-foreground">
                               {donor.name}
                             </h4>
-                            <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold border-0 px-2 py-0">
-                              QR Scanned
-                            </Badge>
+                            {donor.status === 'deferred' ? (
+                              <Badge className="text-[10px] bg-amber-500/15 text-amber-800 dark:text-amber-400 font-bold border-0 px-2 py-0">
+                                Temporarily Deferred
+                              </Badge>
+                            ) : (
+                              <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold border-0 px-2 py-0">
+                                QR Scanned & Approved
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 font-mono">
                             <span>{donor.donorCardId || 'DONOR-PASS'}</span>
@@ -1242,7 +1311,10 @@ export default function BloodBankAdminDashboard() {
                         </div>
                       </div>
 
-                      <Badge className="bg-red-600 text-white font-black text-xs px-2.5 py-0.5 shadow-2xs">
+                      <Badge className={cn(
+                        "font-black text-xs px-2.5 py-0.5 shadow-2xs text-white",
+                        donor.status === 'deferred' ? "bg-amber-600" : "bg-red-600"
+                      )}>
                         {donor.bloodGroup}
                       </Badge>
                     </div>
@@ -1252,7 +1324,7 @@ export default function BloodBankAdminDashboard() {
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground flex items-center gap-1 font-medium">
                           <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                          Donation Date:
+                          Screening Date:
                         </span>
                         <span className="font-semibold text-foreground">
                           {new Date(donor.donationDate).toLocaleDateString('en-IN', {
@@ -1265,23 +1337,53 @@ export default function BloodBankAdminDashboard() {
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground font-mono text-[11px]">
-                          Blood Bag Barcode:
-                        </span>
-                        <span className="font-mono font-bold text-foreground">
-                          {donor.bagId || 'BAG-VERIFIED'}
-                        </span>
-                      </div>
+                      {donor.status === 'deferred' ? (
+                        <>
+                          <div className="flex items-start justify-between gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200/60">
+                            <span className="text-amber-800 dark:text-amber-300 font-bold text-[11px] shrink-0">
+                              Deferral Reason:
+                            </span>
+                            <span className="font-semibold text-amber-900 dark:text-amber-200 text-right">
+                              {donor.deferralReason || 'Temporary medical screening deferral'}
+                            </span>
+                          </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground font-mono text-[11px]">
-                          Certificate ID:
-                        </span>
-                        <span className="font-mono font-medium text-slate-600 dark:text-slate-300">
-                          {donor.certificateId || 'CERT-ACTIVE'}
-                        </span>
-                      </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground font-medium text-[11px]">
+                              Next Eligible Date:
+                            </span>
+                            <span className="font-bold text-emerald-600">
+                              {donor.nextEligibleDate
+                                ? new Date(donor.nextEligibleDate).toLocaleDateString('en-IN', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })
+                                : 'After cooling period'}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground font-mono text-[11px]">
+                              Blood Bag Barcode:
+                            </span>
+                            <span className="font-mono font-bold text-foreground">
+                              {donor.bagId || 'BAG-VERIFIED'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground font-mono text-[11px]">
+                              Certificate ID:
+                            </span>
+                            <span className="font-mono font-medium text-slate-600 dark:text-slate-300">
+                              {donor.certificateId || 'CERT-ACTIVE'}
+                            </span>
+                          </div>
+                        </>
+                      )}
 
                       {(donor.hemoglobin || donor.bloodPressure) && (
                         <div className="flex items-center justify-between pt-1 border-t border-dashed">
@@ -1298,12 +1400,21 @@ export default function BloodBankAdminDashboard() {
                           <MapPin className="w-3 h-3 text-slate-400" />
                           {donor.city ? `${donor.city}, ${donor.state || 'India'}` : 'Location logged'}
                         </span>
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500/30"
-                        >
-                          {donor.unitsDonated || 1} Unit Collected
-                        </Badge>
+                        {donor.status === 'deferred' ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/30 border-amber-500/30"
+                          >
+                            0 Units Collected (Deferred)
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500/30"
+                          >
+                            {donor.unitsDonated || 1} Unit Collected
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1323,23 +1434,31 @@ export default function BloodBankAdminDashboard() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedDonorForCert(donor)}
-                        className="h-8 text-xs font-semibold gap-1.5"
-                      >
-                        <FileCheck className="w-3.5 h-3.5 text-red-600" />
-                        View Certificate
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleDownloadPDF(donor)}
-                        className="h-8 text-xs font-bold bg-red-600 hover:bg-red-700 text-white gap-1.5 shadow-2xs"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        PDF
-                      </Button>
+                      {donor.status === 'deferred' ? (
+                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 px-2.5 py-1 rounded-lg">
+                          Cooling Period Active
+                        </span>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedDonorForCert(donor)}
+                            className="h-8 text-xs font-semibold gap-1.5"
+                          >
+                            <FileCheck className="w-3.5 h-3.5 text-red-600" />
+                            View Certificate
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleDownloadPDF(donor)}
+                            className="h-8 text-xs font-bold bg-red-600 hover:bg-red-700 text-white gap-1.5 shadow-2xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            PDF
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

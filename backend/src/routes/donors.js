@@ -291,11 +291,14 @@ router.get('/nearby-banks', async (req, res) => {
  */
 router.get('/verified-walkins', async (req, res) => {
   try {
-    const { bloodGroup, city, bloodBankId, limit = 150 } = req.query;
+    const { bloodGroup, city, bloodBankId, status = 'all', limit = 150 } = req.query;
 
-    const filter = {
-      'donationHistory.status': 'approved'
-    };
+    const filter = {};
+    if (status && status !== 'all') {
+      filter['donationHistory.status'] = status;
+    } else {
+      filter['donationHistory.status'] = { $in: ['approved', 'deferred'] };
+    }
 
     if (bloodBankId && bloodBankId !== 'all') {
       filter['donationHistory.bloodBankId'] = bloodBankId;
@@ -316,8 +319,10 @@ router.get('/verified-walkins', async (req, res) => {
 
     const verifiedRecords = [];
     donors.forEach(donor => {
-      const approved = (donor.donationHistory || []).filter(d => d.status === 'approved');
-      approved.forEach(donation => {
+      const records = (donor.donationHistory || []).filter(d => 
+        status === 'all' || !status ? (d.status === 'approved' || d.status === 'deferred') : d.status === status
+      );
+      records.forEach(donation => {
         // If bloodBankId filter applied, ensure match
         if (bloodBankId && bloodBankId !== 'all' && String(donation.bloodBankId) !== String(bloodBankId)) {
           return;
@@ -340,15 +345,18 @@ router.get('/verified-walkins', async (req, res) => {
           address: donor.address,
           age: donor.age,
           weight: donor.weight,
-          unitsDonated: donation.unitsDonated || 1,
+          unitsDonated: donation.unitsDonated || 0,
           bagId: donation.bagId,
           certificateId: donation.certificateId,
           bloodBankId: donation.bloodBankId,
           bloodBankName: donation.bloodBankName || 'Authorized Blood Bank',
           donationDate: donation.donationDate,
-          nextEligibleDate: donor.nextEligibleDate,
+          nextEligibleDate: donation.nextEligibleDate || donor.nextEligibleDate,
           hemoglobin: donation.hemoglobin,
           bloodPressure: donation.bloodPressure,
+          status: donation.status || 'approved',
+          deferralReason: donation.deferralReason,
+          deferralPeriodDays: donation.deferralPeriodDays,
           recordedBy: donation.recordedBy,
           totalDonations: donor.totalDonations,
           isQrVerified: true
@@ -426,6 +434,9 @@ router.post('/record-donation', authenticate, authorize('blood_bank_admin', 'sup
 
     // Handle Temporary Deferral
     if (status === 'deferred') {
+      const days = Number(req.body.deferralPeriodDays) || 14;
+      const nextEligibleDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
       const deferralRecord = {
         bloodBankId: bloodBank?._id,
         bloodBankName,
@@ -436,19 +447,25 @@ router.post('/record-donation', authenticate, authorize('blood_bank_admin', 'sup
         bloodPressure: bloodPressure || undefined,
         status: 'deferred',
         deferralReason: deferralReason || 'Temporary medical deferral',
+        deferralPeriodDays: days,
+        nextEligibleDate,
         recordedBy: req.user?.email || 'Blood Bank Staff'
       };
 
       donor.donationHistory.push(deferralRecord);
       donor.healthStatus = 'temporary_deferral';
+      donor.isAvailable = false;
+      donor.nextEligibleDate = nextEligibleDate;
       await donor.save();
 
       return res.json({
-        message: 'Donor temporarily deferred. Record updated.',
+        message: 'Donor temporarily deferred. Record updated successfully.',
         donor: {
           id: donor._id,
           name: donor.name,
-          healthStatus: donor.healthStatus
+          healthStatus: donor.healthStatus,
+          isAvailable: donor.isAvailable,
+          nextEligibleDate: donor.nextEligibleDate
         },
         record: deferralRecord
       });
