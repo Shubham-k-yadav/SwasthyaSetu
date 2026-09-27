@@ -10,6 +10,16 @@ const getTransporter = async () => {
   const port = Number(process.env.SMTP_PORT) || 587;
   const user = process.env.SMTP_USER || process.env.EMAIL_USER;
   const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+  const service = process.env.EMAIL_SERVICE || (user && user.includes('@gmail.com') ? 'gmail' : undefined);
+
+  if (service && user && pass) {
+    transporter = nodemailer.createTransport({
+      service,
+      auth: { user, pass }
+    });
+    console.log(`📧 [EmailService] Configured via service: ${service} for ${user}`);
+    return transporter;
+  }
 
   if (host && user && pass) {
     transporter = nodemailer.createTransport({
@@ -18,6 +28,8 @@ const getTransporter = async () => {
       secure: port === 465,
       auth: { user, pass }
     });
+    console.log(`📧 [EmailService] Configured via SMTP host ${host}:${port} for ${user}`);
+    return transporter;
   } else {
     // Development fallback (logs to console or creates ethereal test account)
     try {
@@ -31,7 +43,7 @@ const getTransporter = async () => {
           pass: testAccount.pass
         }
       });
-      console.log('📧 [EmailService] Using Ethereal test mailer for development.');
+      console.log('📧 [EmailService] Notice: No real SMTP credentials in .env. Using Ethereal test mailer for development.');
     } catch (e) {
       console.warn('📧 [EmailService] Fallback to mock email transporter:', e.message);
       transporter = {
@@ -164,14 +176,18 @@ export const sendDonationCertificateEmail = async ({
     `;
 
     const info = await mailer.sendMail({
-      from: `"SwasthyaSetu Blood Services" <${process.env.EMAIL_FROM || 'noreply@swasthyasetu.org'}>`,
+      from: `"SwasthyaSetu Blood Services" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@swasthyasetu.org'}>`,
       to: donorEmail,
       subject: `🩸 Thank you for saving lives! Blood Donation Certificate (${certificateId})`,
       html
     });
 
     console.log(`📧 [EmailService] Certificate email sent to ${donorEmail}:`, info.messageId);
-    return { success: true, messageId: info.messageId };
+    const testUrl = nodemailer.getTestMessageUrl(info);
+    if (testUrl) {
+      console.log(`🔗 [EmailService] Test Email Web Preview URL: ${testUrl}`);
+    }
+    return { success: true, messageId: info.messageId, previewUrl: testUrl };
   } catch (error) {
     console.error('📧 [EmailService] Failed to send donation certificate email:', error.message);
     return { success: false, error: error.message };
