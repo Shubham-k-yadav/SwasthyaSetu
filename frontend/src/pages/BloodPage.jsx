@@ -17,7 +17,8 @@ import {
 import { BloodBankRegisterModal } from '@/components/BloodBankRegisterModal';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const DEFAULT_CITIES = ['Noida', 'Delhi', 'New Delhi', 'Greater Noida', 'Ghaziabad', 'Prayagraj', 'Lucknow', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad'];
+const CITIES = ['Noida', 'Delhi', 'New Delhi', 'Greater Noida', 'Ghaziabad', 'Prayagraj', 'Lucknow', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad'];
+const DEFAULT_CITIES = CITIES;
 
 export default function BloodPage() {
   const { t } = useLanguage();
@@ -228,7 +229,7 @@ export default function BloodPage() {
                 registerOpen={registerOpen}
                 setRegisterOpen={setRegisterOpen}
                 bloodGroups={BLOOD_GROUPS}
-                cities={CITIES}
+                cities={availableCities}
               />
             </TabsContent>
           </Tabs>
