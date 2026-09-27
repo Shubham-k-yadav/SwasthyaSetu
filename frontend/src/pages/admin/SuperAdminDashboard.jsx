@@ -15,11 +15,16 @@ import {
   ShieldCheck,
   Eye,
   MapPin,
-  ExternalLink
+  ExternalLink,
+  Search,
+  Phone,
+  Mail,
+  FileText
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -48,43 +53,49 @@ export default function SuperAdminDashboard() {
   const [pendingBloodBanks, setPendingBloodBanks] = useState([]);
   const [pendingAmbulances, setPendingAmbulances] = useState([]);
   const [pendingTab, setPendingTab] = useState('hospitals');
+  const [allBloodBanks, setAllBloodBanks] = useState([]);
+  const [bloodBankSearch, setBloodBankSearch] = useState('');
+  const [bloodBankCityFilter, setBloodBankCityFilter] = useState('all');
   const [selectedHospitalForDetails, setSelectedHospitalForDetails] = useState(null);
+  const [selectedBloodBankForDetails, setSelectedBloodBankForDetails] = useState(null);
 
   const fetchStatusAndQueues = async () => {
     try {
       const token = localStorage.getItem('swasthya_setu_token') || user?.token;
-      const [sysStatus, hospQueue, bbQueue, ambQueue] = await Promise.all([
+      const [sysStatus, hospQueue, bbQueue, ambQueue, allBbRes] = await Promise.all([
         api.system?.getStatus?.().catch(() => null),
         api.hospitals.getPendingQueue(token).catch(() => ({ queue: [] })),
         api.bloodbanks.getPendingQueue(token).catch(() => ({ queue: [] })),
-        api.ambulances.getPendingQueue(token).catch(() => ({ queue: [] }))
+        api.ambulances.getPendingQueue(token).catch(() => ({ queue: [] })),
+        api.bloodbanks.getAll().catch(() => ({ bloodBanks: [] }))
       ]);
 
       const hospList = hospQueue?.queue || hospQueue || [];
       const bbList = bbQueue?.queue || bbQueue || [];
       const ambList = ambQueue?.queue || ambQueue || [];
+      const allBanks = allBbRes?.bloodBanks || allBbRes || [];
 
       setPendingHospitals(hospList);
       setPendingBloodBanks(bbList);
       setPendingAmbulances(ambList);
+      setAllBloodBanks(allBanks);
 
       if (sysStatus) {
         setStats({
           verifiedHospitalsCount: Number(sysStatus.verifiedHospitalsCount || 0),
-          verifiedBloodBanksCount: Number(sysStatus.verifiedBloodBanksCount || 0),
+          verifiedBloodBanksCount: allBanks.length || Number(sysStatus.verifiedBloodBanksCount || 0),
           verifiedAmbulancesCount: Number(sysStatus.verifiedAmbulancesCount || 0),
         });
       } else {
         // Fetch active lists over public API as robust fallback
-        const [hRes, bRes, aRes] = await Promise.all([
+        const [hRes, aRes] = await Promise.all([
           api.hospitals.getAll().catch(() => ({ hospitals: [] })),
-          api.bloodbanks.getAll().catch(() => ({ bloodBanks: [] })),
           api.ambulances.getActive().catch(() => ({ ambulances: [] }))
         ]);
 
         setStats({
           verifiedHospitalsCount: Number((hRes?.hospitals || hRes || []).length || 0),
-          verifiedBloodBanksCount: Number((bRes?.bloodBanks || bRes || []).length || 0),
+          verifiedBloodBanksCount: allBanks.length,
           verifiedAmbulancesCount: Number((aRes?.ambulances || aRes || []).length || 0),
         });
       }
@@ -154,6 +165,21 @@ export default function SuperAdminDashboard() {
 
   const totalPendingCount = pendingHospitals.length + pendingBloodBanks.length + pendingAmbulances.length;
 
+  const bloodBankCities = ['all', ...new Set(allBloodBanks.map(b => b.city).filter(Boolean))];
+
+  const filteredAllBloodBanks = allBloodBanks.filter((bb) => {
+    const q = bloodBankSearch.toLowerCase().trim();
+    const matchesSearch = !q || (
+      bb.name?.toLowerCase().includes(q) ||
+      bb.city?.toLowerCase().includes(q) ||
+      bb.state?.toLowerCase().includes(q) ||
+      bb.licenseNumber?.toLowerCase().includes(q) ||
+      bb.adminEmail?.toLowerCase().includes(q)
+    );
+    const matchesCity = bloodBankCityFilter === 'all' || bb.city?.toLowerCase() === bloodBankCityFilter.toLowerCase();
+    return matchesSearch && matchesCity;
+  });
+
   return (
     <div className="space-y-8">
       {/* Super Admin Header */}
@@ -195,14 +221,22 @@ export default function SuperAdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-emerald-500/20 shadow-xs">
+        <Card 
+          className="bg-card border-emerald-500/20 shadow-xs cursor-pointer hover:border-emerald-500/50 hover:shadow-md transition-all group"
+          onClick={() => {
+            const el = document.getElementById('all-blood-banks-directory-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+        >
           <CardContent className="p-6 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Live Blood Banks</p>
               <h3 className="text-3xl font-extrabold mt-1 text-emerald-600">{stats.verifiedBloodBanksCount}</h3>
-              <p className="text-[11px] text-emerald-600 font-medium mt-0.5">Verified & Active</p>
+              <p className="text-[11px] text-emerald-600 font-medium mt-0.5 group-hover:underline flex items-center gap-1">
+                View All Blood Banks ↓
+              </p>
             </div>
-            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600">
+            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
               <Droplets className="h-6 w-6" />
             </div>
           </CardContent>
@@ -401,6 +435,206 @@ export default function SuperAdminDashboard() {
         </CardContent>
       </Card>
 
+      {/* All Registered Blood Banks Directory */}
+      <Card id="all-blood-banks-directory-section" className="border-slate-200 dark:border-slate-800 shadow-sm scroll-mt-20">
+        <CardHeader className="flex flex-col md:flex-row md:items-center justify-between pb-3 gap-3 border-b">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-red-100 dark:bg-red-950/60 flex items-center justify-center text-red-600">
+                <Droplets className="h-4 w-4" />
+              </div>
+              <CardTitle className="text-lg font-bold">
+                National Blood Banks Directory
+              </CardTitle>
+              <Badge className="bg-red-600 text-white font-bold text-xs">
+                {filteredAllBloodBanks.length} Facilities
+              </Badge>
+            </div>
+            <CardDescription className="text-xs mt-0.5">
+              Live inventory overview and inspection of all approved blood banks and storage facilities
+            </CardDescription>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search blood bank, city, license..."
+                value={bloodBankSearch}
+                onChange={(e) => setBloodBankSearch(e.target.value)}
+                className="pl-8 h-8 w-48 sm:w-60 text-xs rounded-lg"
+              />
+              {bloodBankSearch && (
+                <button
+                  onClick={() => setBloodBankSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs p-0.5"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {bloodBankCities.length > 2 && (
+              <select
+                value={bloodBankCityFilter}
+                onChange={(e) => setBloodBankCityFilter(e.target.value)}
+                className="h-8 text-xs px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-background text-foreground"
+              >
+                <option value="all">All Cities</option>
+                {bloodBankCities.filter(c => c !== 'all').map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            )}
+
+            <Link to="/admin/blood">
+              <Button variant="outline" size="sm" className="h-8 text-xs font-semibold gap-1">
+                <Droplets className="h-3.5 w-3.5 text-red-600" />
+                Stock Table
+              </Button>
+            </Link>
+
+            <a href="/blood" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="h-8 text-xs font-semibold gap-1">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Public Finder
+              </Button>
+            </a>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-4">
+          {filteredAllBloodBanks.length === 0 ? (
+            <div className="py-12 text-center text-xs text-muted-foreground space-y-2">
+              <Droplets className="h-8 w-8 mx-auto text-red-400 opacity-60" />
+              <p className="font-semibold text-foreground text-sm">
+                {allBloodBanks.length === 0 ? "No verified blood banks registered yet." : "No blood banks match your search criteria."}
+              </p>
+              {bloodBankSearch && (
+                <Button variant="ghost" size="sm" onClick={() => setBloodBankSearch('')} className="text-xs text-primary">
+                  Clear Search Filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {filteredAllBloodBanks.map((bb) => {
+                const stockObj = bb.linkedBloodStockId?.bloodGroups || {};
+                const stockEntries = Object.entries(stockObj);
+                const totalUnits = stockEntries.reduce((sum, [, qty]) => sum + (Number(qty) || 0), 0);
+                const mapUrl = bb.googleMapsUrl || (bb.coordinates?.lat && bb.coordinates?.lng
+                  ? `https://www.google.com/maps/search/?api=1&query=${bb.coordinates.lat},${bb.coordinates.lng}`
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((bb.name || '') + ' ' + (bb.city || ''))}`);
+
+                return (
+                  <div key={bb._id || bb.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-card shadow-xs space-y-3 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                    {/* Facility Info Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="space-y-0.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-sm text-foreground truncate">
+                            {bb.name}
+                          </h4>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold">
+                            <ShieldCheck className="w-3 h-3 mr-1" />
+                            Verified
+                          </Badge>
+                          {bb.licenseNumber && (
+                            <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                              Lic: {bb.licenseNumber}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-red-500 shrink-0" />
+                          <span>{bb.address || `${bb.city}, ${bb.state || 'India'}`}</span>
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground pt-0.5">
+                          {bb.phone && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              {bb.phone}
+                            </span>
+                          )}
+                          {bb.adminEmail && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              {bb.adminEmail}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start">
+                        <Badge variant="outline" className="text-xs font-bold px-2 py-0.5 bg-red-50 dark:bg-red-950/40 text-red-600 border-red-200">
+                          {totalUnits} Units Total
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* 8 Blood Groups Inventory Mini-Grid */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        Live Reserves by Blood Group
+                      </span>
+                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((group) => {
+                          const units = Number(stockObj[group] ?? 0);
+                          const isCritical = units < 5;
+                          const isLow = units >= 5 && units < 15;
+                          return (
+                            <div
+                              key={group}
+                              className={`p-1.5 rounded-lg border text-center transition-all ${
+                                isCritical
+                                  ? 'bg-red-50 dark:bg-red-950/40 border-red-200 text-red-700 dark:text-red-300 font-bold'
+                                  : isLow
+                                  ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 text-amber-700 dark:text-amber-300 font-semibold'
+                                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200'
+                              }`}
+                            >
+                              <span className="text-[10px] font-bold block leading-none">{group}</span>
+                              <span className="text-xs font-mono font-extrabold block mt-0.5">{units}u</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Card Actions Footer */}
+                    <div className="flex items-center justify-between pt-2 border-t text-xs">
+                      <span className="text-[10px] text-muted-foreground">
+                        Last synced: {bb.lastUpdated ? new Date(bb.lastUpdated).toLocaleDateString() : 'Live'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={mapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs border rounded-lg hover:bg-muted font-medium text-muted-foreground hover:text-foreground h-7"
+                        >
+                          <MapPin className="h-3 w-3 text-red-500" />
+                          View Map ↗
+                        </a>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedBloodBankForDetails(bb)}
+                          className="h-7 text-xs px-2.5 font-semibold gap-1"
+                        >
+                          <Eye className="h-3 w-3 text-primary" />
+                          Inspect Details
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Hospital Detailed Inspection Modal */}
       <Dialog open={!!selectedHospitalForDetails} onOpenChange={(open) => !open && setSelectedHospitalForDetails(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -576,6 +810,163 @@ export default function SuperAdminDashboard() {
                   <CheckCircle2 className="h-4 w-4" />
                   Verify & Approve Hospital
                 </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Blood Bank Detailed Inspection Modal */}
+      <Dialog open={!!selectedBloodBankForDetails} onOpenChange={(open) => !open && setSelectedBloodBankForDetails(null)}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          {selectedBloodBankForDetails && (
+            <>
+              <DialogHeader className="border-b pb-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-950/60 flex items-center justify-center text-red-600 shrink-0">
+                      <Droplets className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-xl font-bold">
+                        {selectedBloodBankForDetails.name}
+                      </DialogTitle>
+                      <DialogDescription className="text-xs">
+                        Official Blood Bank & Storage Facility Records
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-bold">
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                    Verified
+                  </Badge>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2 text-sm">
+                {/* Facility Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">License / Reg Number</span>
+                    <span className="font-mono font-bold text-foreground">
+                      {selectedBloodBankForDetails.licenseNumber || 'BB-LIC-ACTIVE'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">City & State</span>
+                    <span className="font-semibold text-foreground">
+                      {selectedBloodBankForDetails.city}, {selectedBloodBankForDetails.state || 'India'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">Emergency Contact</span>
+                    <span className="font-semibold text-foreground">
+                      📞 {selectedBloodBankForDetails.phone || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block font-medium">Admin / Official Email</span>
+                    <span className="font-semibold text-foreground">
+                      ✉️ {selectedBloodBankForDetails.adminEmail || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-xs text-muted-foreground block font-medium">Complete Physical Address</span>
+                    <span className="text-foreground font-medium">
+                      📍 {selectedBloodBankForDetails.address || `${selectedBloodBankForDetails.city}, ${selectedBloodBankForDetails.state || 'India'}`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Google Maps Location */}
+                <div className="p-3 rounded-xl border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-red-600" />
+                      Google Maps Location & Navigation:
+                    </span>
+                    {selectedBloodBankForDetails.coordinates && (
+                      <span className="font-mono text-xs text-muted-foreground block">
+                        Lat: {selectedBloodBankForDetails.coordinates.lat}, Lng: {selectedBloodBankForDetails.coordinates.lng}
+                      </span>
+                    )}
+                  </div>
+                  {(() => {
+                    const mapUrl = selectedBloodBankForDetails.googleMapsUrl || (
+                      selectedBloodBankForDetails.coordinates?.lat && selectedBloodBankForDetails.coordinates?.lng
+                        ? `https://www.google.com/maps/search/?api=1&query=${selectedBloodBankForDetails.coordinates.lat},${selectedBloodBankForDetails.coordinates.lng}`
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedBloodBankForDetails.name + ' ' + selectedBloodBankForDetails.city)}`
+                    );
+                    return (
+                      <a
+                        href={mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs transition-colors shrink-0"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open in Google Maps ↗
+                      </a>
+                    );
+                  })()}
+                </div>
+
+                {/* 8-Group Detailed Stock Breakdown */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Current Units Available by Blood Group
+                    </h4>
+                    <span className="text-xs font-bold text-red-600">
+                      Total: {
+                        Object.values(selectedBloodBankForDetails.linkedBloodStockId?.bloodGroups || {})
+                          .reduce((s, q) => s + (Number(q) || 0), 0)
+                      } Units
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((grp) => {
+                      const units = Number(selectedBloodBankForDetails.linkedBloodStockId?.bloodGroups?.[grp] ?? 0);
+                      const isCritical = units < 5;
+                      const isLow = units >= 5 && units < 15;
+                      return (
+                        <div
+                          key={grp}
+                          className={`p-3 rounded-xl border text-center ${
+                            isCritical
+                              ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-900/50'
+                              : isLow
+                              ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-900/50'
+                              : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-900/50'
+                          }`}
+                        >
+                          <span className="text-xs font-extrabold text-foreground block">{grp}</span>
+                          <span className="text-xl font-black font-mono block mt-1">
+                            {units}
+                          </span>
+                          <span className={`text-[10px] font-bold block mt-0.5 ${
+                            isCritical ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-emerald-600'
+                          }`}>
+                            {isCritical ? 'Critical' : isLow ? 'Low Stock' : 'Adequate'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="border-t pt-4 flex sm:justify-between items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedBloodBankForDetails(null)}>
+                  Close
+                </Button>
+                <Link to="/admin/blood" onClick={() => setSelectedBloodBankForDetails(null)}>
+                  <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs gap-1.5">
+                    <Droplets className="h-3.5 w-3.5" />
+                    Manage Blood Inventory ↗
+                  </Button>
+                </Link>
               </DialogFooter>
             </>
           )}
