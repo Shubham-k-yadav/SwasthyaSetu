@@ -37,6 +37,7 @@ const superAdminNavItems = [
   { href: '/admin/hospitals', icon: Building2, label: 'Hospitals' },
   { href: '/admin/bloodbanks', icon: Droplets, label: 'Blood Banks' },
   { href: '/admin/blood', icon: Activity, label: 'Blood Stock' },
+  { href: '/blood?tab=donors', icon: Globe, label: 'Public Blood Finder' },
   { href: '/admin/analytics', icon: TrendingUp, label: 'Analytics' },
 ];
 
@@ -49,7 +50,7 @@ const hospitalStaffNavItems = [
 const bloodBankNavItems = [
   { href: '/admin', icon: Droplets, label: 'Blood Stock Inventory' },
   { href: '/admin/blood', icon: Activity, label: 'National Stock View' },
-  { href: '/blood', icon: Globe, label: 'Public Blood Finder' },
+  { href: '/blood?tab=donors', icon: Globe, label: 'Public Blood Finder' },
 ];
 
 export default function AdminLayout() {

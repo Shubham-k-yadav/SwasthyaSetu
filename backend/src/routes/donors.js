@@ -286,6 +286,78 @@ router.get('/nearby-banks', async (req, res) => {
 });
 
 /**
+ * GET /api/donors/verified-walkins
+ * Returns list of all donors who visited a blood bank, had their QR scanned, and completed a donation
+ */
+router.get('/verified-walkins', async (req, res) => {
+  try {
+    const { bloodGroup, city, limit = 100 } = req.query;
+
+    const filter = {
+      'donationHistory.status': 'approved'
+    };
+
+    if (bloodGroup && bloodGroup !== 'all') {
+      filter['donationHistory.bloodGroup'] = bloodGroup;
+    }
+    if (city && city !== 'all') {
+      const sanitizedCity = String(city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.city = new RegExp(sanitizedCity, 'i');
+    }
+
+    const donors = await Donor.find(filter)
+      .select('name bloodGroup city state phone email lastDonation nextEligibleDate totalDonations donationHistory donorCardId age weight')
+      .sort({ lastDonation: -1 })
+      .limit(Number(limit))
+      .lean();
+
+    const verifiedRecords = [];
+    donors.forEach(donor => {
+      const approved = (donor.donationHistory || []).filter(d => d.status === 'approved');
+      approved.forEach(donation => {
+        // If filter applied, ensure match
+        if (bloodGroup && bloodGroup !== 'all' && donation.bloodGroup !== bloodGroup) {
+          return;
+        }
+
+        verifiedRecords.push({
+          id: donation._id || `${donor._id}-${donation.donationDate}`,
+          donorId: donor._id,
+          donorCardId: donor.donorCardId,
+          name: donor.name,
+          phone: donor.phone,
+          email: donor.email,
+          bloodGroup: donation.bloodGroup || donor.bloodGroup,
+          city: donor.city,
+          state: donor.state,
+          age: donor.age,
+          weight: donor.weight,
+          unitsDonated: donation.unitsDonated || 1,
+          bagId: donation.bagId,
+          certificateId: donation.certificateId,
+          bloodBankName: donation.bloodBankName || 'Authorized Blood Bank',
+          donationDate: donation.donationDate,
+          nextEligibleDate: donor.nextEligibleDate,
+          totalDonations: donor.totalDonations,
+          isQrVerified: true
+        });
+      });
+    });
+
+    verifiedRecords.sort((a, b) => new Date(b.donationDate) - new Date(a.donationDate));
+
+    res.json({
+      verifiedDonors: verifiedRecords,
+      totalCount: verifiedRecords.length,
+      uniqueDonorsCount: donors.length
+    });
+  } catch (error) {
+    console.error('Error fetching verified walk-in donors:', error);
+    res.status(500).json({ error: 'Failed to fetch verified walk-in donors' });
+  }
+});
+
+/**
  * POST /api/donors/record-donation
  * Blood Bank Admin records donation after medical screening
  * 1. Validates donor & screening

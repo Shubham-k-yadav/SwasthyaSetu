@@ -188,6 +188,13 @@ export const donorApi = {
   recordDonation: (data, token) =>
     apiCall('/api/donors/record-donation', { method: 'POST', body: data, token }),
 
+  getVerifiedWalkins: (params) => {
+    const searchParams = new URLSearchParams();
+    if (params?.bloodGroup && params.bloodGroup !== 'all') searchParams.set('bloodGroup', params.bloodGroup);
+    if (params?.city && params.city !== 'all') searchParams.set('city', params.city);
+    return apiCall(`/api/donors/verified-walkins?${searchParams}`);
+  },
+
   search: (params) => {
     const searchParams = new URLSearchParams();
     if (params.bloodGroup) searchParams.set('bloodGroup', params.bloodGroup);
