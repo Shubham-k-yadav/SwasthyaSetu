@@ -100,10 +100,7 @@ export const initializeSocket = (httpServer) => {
 };
 
 export const getIO = () => {
-  if (!io) {
-    throw new Error('Socket.io not initialized');
-  }
-  return io;
+  return io || null;
 };
 
 export const emitBedUpdate = (hospitalId, beds) => {
@@ -208,4 +205,5 @@ export const emitBedUpgradeRequest = (request) => {
     });
   }
 };
+
 

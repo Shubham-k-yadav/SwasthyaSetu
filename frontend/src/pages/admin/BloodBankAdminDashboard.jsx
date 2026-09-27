@@ -15,7 +15,9 @@ import {
   Clock,
   ExternalLink,
   Sparkles,
-  Info
+  Info,
+  QrCode,
+  Heart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +28,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { connectSocket, getSocket } from '@/lib/socket';
 import { BloodBankMap } from '@/components/maps/blood-bank-map';
+import { DonorIntakeModal } from '@/components/admin/blood/DonorIntakeModal';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -35,6 +38,7 @@ const CRITICAL_STOCK_THRESHOLD = 5;
 export default function BloodBankAdminDashboard() {
   const { user } = useAuth();
   const [bloodBank, setBloodBank] = useState(user?.bloodBank || null);
+  const [isDonorIntakeOpen, setIsDonorIntakeOpen] = useState(false);
   const [stock, setStock] = useState({
     'A+': 0,
     'A-': 0,
@@ -217,6 +221,14 @@ export default function BloodBankAdminDashboard() {
 
           <div className="flex items-center gap-2.5 self-start md:self-center">
             <Button
+              onClick={() => setIsDonorIntakeOpen(true)}
+              size="sm"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold h-10 px-4 shadow-md gap-1.5 cursor-pointer"
+            >
+              <QrCode className="w-4 h-4" />
+              Scan Donor QR / Intake
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => fetchBloodBankData(true)}
@@ -324,6 +336,37 @@ export default function BloodBankAdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Donor Walk-in QR Quick Action Card */}
+      <Card className="border-red-200 dark:border-red-900/60 bg-gradient-to-r from-red-50 via-white to-red-50 dark:from-red-950/20 dark:via-slate-900 dark:to-red-950/20 shadow-xs">
+        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <QrCode className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-foreground">
+                  Walk-in Blood Donor Verification & Intake
+                </h3>
+                <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
+                  Auto Stock Sync
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Scan donor digital QR pass or enter Donor ID to verify credentials, log medical screening, auto-increment inventory, and email official appreciation certificates.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setIsDonorIntakeOpen(true)}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs h-10 px-5 gap-2 shrink-0 shadow-sm cursor-pointer"
+          >
+            <QrCode className="w-4 h-4" />
+            Verify & Record Donation
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Unsaved Changes Floating Banner */}
       {hasUnsavedChanges && (
@@ -621,6 +664,14 @@ export default function BloodBankAdminDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Walk-in Donor Intake & QR Verification Modal */}
+      <DonorIntakeModal
+        open={isDonorIntakeOpen}
+        onOpenChange={setIsDonorIntakeOpen}
+        onDonationRecorded={() => fetchBloodBankData(true)}
+        bloodBankName={bloodBank?.name}
+      />
     </div>
   );
 }

@@ -1,11 +1,35 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import Donor from '../models/Donor.js';
+import BloodBank from '../models/BloodBank.js';
+import BloodStock from '../models/BloodStock.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { sendDonationCertificateEmail } from '../services/emailService.js';
+import { getIO } from '../services/socket.js';
 import mongoose from 'mongoose';
 
 const router = Router();
 
-// Register as a donor
+// Haversine distance calculation in kilometers
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
+/**
+ * POST /api/donors/register
+ * Register as a donor & generate digital QR donor pass
+ */
 router.post('/register', async (req, res) => {
   try {
     const {
@@ -22,30 +46,65 @@ router.post('/register', async (req, res) => {
     } = req.body;
 
     if (!name || !phone || !email || !bloodGroup || !city || !state || !age || !weight) {
-      res.status(400).json({ error: 'Missing required fields' });
-      return;
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
     if (age < 18 || age > 65) {
-      res.status(400).json({ error: 'Donors must be between 18 and 65 years old' });
-      return;
+      return res.status(400).json({ error: 'Donors must be between 18 and 65 years old' });
     }
 
     if (weight < 50) {
-      res.status(400).json({ error: 'Donors must weigh at least 50 kg' });
-      return;
+      return res.status(400).json({ error: 'Donors must weigh at least 50 kg' });
     }
 
-    const existingDonor = await Donor.findOne({
+    // Check existing
+    let donor = await Donor.findOne({
       $or: [{ phone }, { email }]
     });
 
-    if (existingDonor) {
-      res.status(409).json({ error: 'Donor with this phone or email already exists' });
-      return;
+    if (donor) {
+      // If already registered, update and return their digital pass
+      donor.name = name;
+      donor.bloodGroup = bloodGroup;
+      donor.city = city;
+      donor.state = state || donor.state;
+      donor.address = address || donor.address;
+      donor.age = age;
+      donor.weight = weight;
+      if (coordinates?.lat && coordinates?.lng) {
+        donor.coordinates = coordinates;
+      }
+      if (!donor.donorCardId) {
+        donor.donorCardId = `DONOR-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+      }
+      await donor.save();
+
+      return res.status(200).json({
+        message: 'Welcome back! Your digital donor pass is ready.',
+        donor: {
+          id: donor._id,
+          donorCardId: donor.donorCardId,
+          name: donor.name,
+          phone: donor.phone,
+          email: donor.email,
+          bloodGroup: donor.bloodGroup,
+          city: donor.city,
+          state: donor.state,
+          coordinates: donor.coordinates,
+          totalDonations: donor.totalDonations,
+          lastDonation: donor.lastDonation,
+          nextEligibleDate: donor.nextEligibleDate,
+          healthStatus: donor.healthStatus,
+          canDonate: donor.canDonate()
+        }
+      });
     }
 
-    const donor = new Donor({
+    // New donor registration
+    const donorCardId = `DONOR-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    donor = new Donor({
+      donorCardId,
       name,
       phone,
       email,
@@ -63,21 +122,365 @@ router.post('/register', async (req, res) => {
     await donor.save();
 
     res.status(201).json({
-      message: 'Successfully registered as a donor',
+      message: 'Successfully registered as a voluntary blood donor',
       donor: {
         id: donor._id,
+        donorCardId: donor.donorCardId,
         name: donor.name,
+        phone: donor.phone,
+        email: donor.email,
         bloodGroup: donor.bloodGroup,
-        city: donor.city
+        city: donor.city,
+        state: donor.state,
+        coordinates: donor.coordinates,
+        totalDonations: donor.totalDonations || 0,
+        lastDonation: null,
+        nextEligibleDate: null,
+        healthStatus: donor.healthStatus,
+        canDonate: true
       }
     });
   } catch (error) {
     if (error.code === 11000) {
-      res.status(409).json({ error: 'Donor with this phone or email already exists' });
-      return;
+      return res.status(409).json({ error: 'Donor with this phone or email already exists' });
     }
     console.error('Error registering donor:', error);
     res.status(500).json({ error: 'Failed to register donor' });
+  }
+});
+
+/**
+ * GET /api/donors/card/:identifier
+ * Lookup donor by donorCardId (e.g. DONOR-XXXXXX), phone, or _id
+ * Used when Blood Bank Admin scans QR code or types ID
+ */
+router.get('/card/:identifier', async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    if (!identifier) {
+      return res.status(400).json({ error: 'Identifier is required' });
+    }
+
+    let query = {
+      $or: [
+        { donorCardId: identifier.toUpperCase().trim() },
+        { phone: identifier.trim() }
+      ]
+    };
+
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      query.$or.push({ _id: identifier });
+    }
+
+    const donor = await Donor.findOne(query).lean();
+
+    if (!donor) {
+      return res.status(404).json({ error: 'Donor not found with this QR Pass / ID' });
+    }
+
+    const canDonate = !donor.nextEligibleDate || new Date(donor.nextEligibleDate) <= new Date();
+
+    res.json({
+      donor: {
+        id: donor._id,
+        donorCardId: donor.donorCardId,
+        name: donor.name,
+        phone: donor.phone,
+        email: donor.email,
+        bloodGroup: donor.bloodGroup,
+        city: donor.city,
+        state: donor.state,
+        address: donor.address,
+        age: donor.age,
+        weight: donor.weight,
+        totalDonations: donor.totalDonations || 0,
+        lastDonation: donor.lastDonation,
+        nextEligibleDate: donor.nextEligibleDate,
+        healthStatus: donor.healthStatus,
+        canDonate,
+        donationHistory: (donor.donationHistory || []).slice(-5).reverse()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching donor card:', error);
+    res.status(500).json({ error: 'Failed to fetch donor card' });
+  }
+});
+
+/**
+ * GET /api/donors/nearby-banks
+ * Returns blood banks within 10 km (or nearest available facilities) based on donor GPS
+ */
+router.get('/nearby-banks', async (req, res) => {
+  try {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    const radiusKm = Number(req.query.radiusKm) || 10;
+    const bloodGroup = req.query.bloodGroup;
+
+    // Fetch all verified blood banks
+    const banks = await BloodBank.find({ isVerified: true })
+      .populate('linkedBloodStockId')
+      .lean();
+
+    const results = [];
+
+    for (const b of banks) {
+      const bLat = b.coordinates?.lat;
+      const bLng = b.coordinates?.lng;
+
+      let distance = null;
+      if (!isNaN(lat) && !isNaN(lng) && bLat && bLng) {
+        distance = calculateDistanceKm(lat, lng, bLat, bLng);
+      }
+
+      // Live stock units
+      const stockObj = b.linkedBloodStockId?.bloodGroups || {};
+      const targetUnits = bloodGroup ? Number(stockObj[bloodGroup] ?? 0) : null;
+      const totalUnits = Object.values(stockObj).reduce((s, q) => s + (Number(q) || 0), 0);
+
+      const mapUrl = b.googleMapsUrl || (bLat && bLng
+        ? `https://www.google.com/maps/search/?api=1&query=${bLat},${bLng}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + ' ' + b.city)}`);
+
+      results.push({
+        id: b._id,
+        name: b.name,
+        city: b.city,
+        state: b.state,
+        address: b.address,
+        phone: b.phone,
+        adminEmail: b.adminEmail,
+        distanceKm: distance,
+        isWithin10Km: distance !== null ? distance <= radiusKm : true,
+        availableUnitsForGroup: targetUnits,
+        totalStockUnits: totalUnits,
+        googleMapsUrl: mapUrl
+      });
+    }
+
+    // Sort: banks with known distance sorted ascending, then others
+    results.sort((a, b) => {
+      if (a.distanceKm !== null && b.distanceKm !== null) {
+        return a.distanceKm - b.distanceKm;
+      }
+      if (a.distanceKm !== null) return -1;
+      if (b.distanceKm !== null) return 1;
+      return 0;
+    });
+
+    // Filter within 10 km if user coordinates were provided and we found matches
+    const within10Km = results.filter(r => r.distanceKm !== null && r.distanceKm <= radiusKm);
+    const finalBanks = within10Km.length > 0 ? within10Km : results.slice(0, 6);
+
+    res.json({
+      bloodBanks: finalBanks,
+      totalFound: finalBanks.length,
+      within10KmCount: within10Km.length,
+      userCoordinates: !isNaN(lat) && !isNaN(lng) ? { lat, lng } : null
+    });
+  } catch (error) {
+    console.error('Error finding nearby blood banks:', error);
+    res.status(500).json({ error: 'Failed to find nearby blood banks' });
+  }
+});
+
+/**
+ * POST /api/donors/record-donation
+ * Blood Bank Admin records donation after medical screening
+ * 1. Validates donor & screening
+ * 2. Increments Blood Bank live stock in database
+ * 3. Sets 90-day cooling period on donor
+ * 4. Triggers appreciation certificate & email to donor
+ */
+router.post('/record-donation', authenticate, authorize('blood_bank_admin', 'superadmin', 'admin'), async (req, res) => {
+  try {
+    const {
+      donorIdentifier,
+      bloodBankId,
+      unitsDonated = 1,
+      bloodGroup,
+      bagId,
+      hemoglobin,
+      bloodPressure,
+      status = 'approved',
+      deferralReason,
+      notes
+    } = req.body;
+
+    if (!donorIdentifier) {
+      return res.status(400).json({ error: 'Donor identifier (ID or Phone) is required' });
+    }
+
+    // Find donor
+    let query = {
+      $or: [
+        { donorCardId: String(donorIdentifier).toUpperCase().trim() },
+        { phone: String(donorIdentifier).trim() }
+      ]
+    };
+    if (mongoose.Types.ObjectId.isValid(donorIdentifier)) {
+      query.$or.push({ _id: donorIdentifier });
+    }
+
+    const donor = await Donor.findOne(query);
+    if (!donor) {
+      return res.status(404).json({ error: 'Donor record not found' });
+    }
+
+    // Identify Blood Bank
+    const targetBloodBankId = bloodBankId || req.user?.bloodBankId || req.user?.bloodBank?._id;
+    let bloodBank = null;
+    if (targetBloodBankId && mongoose.Types.ObjectId.isValid(targetBloodBankId)) {
+      bloodBank = await BloodBank.findById(targetBloodBankId).populate('linkedBloodStockId');
+    }
+    const bloodBankName = bloodBank?.name || req.user?.name || 'Authorized Blood Bank';
+    const bloodBankCity = bloodBank?.city || donor.city || 'India';
+
+    // Effective blood group
+    const effectiveBloodGroup = bloodGroup || donor.bloodGroup;
+
+    // Handle Temporary Deferral
+    if (status === 'deferred') {
+      const deferralRecord = {
+        bloodBankId: bloodBank?._id,
+        bloodBankName,
+        donationDate: new Date(),
+        unitsDonated: 0,
+        bloodGroup: effectiveBloodGroup,
+        hemoglobin: Number(hemoglobin) || undefined,
+        bloodPressure: bloodPressure || undefined,
+        status: 'deferred',
+        deferralReason: deferralReason || 'Temporary medical deferral',
+        recordedBy: req.user?.email || 'Blood Bank Staff'
+      };
+
+      donor.donationHistory.push(deferralRecord);
+      donor.healthStatus = 'temporary_deferral';
+      await donor.save();
+
+      return res.json({
+        message: 'Donor temporarily deferred. Record updated.',
+        donor: {
+          id: donor._id,
+          name: donor.name,
+          healthStatus: donor.healthStatus
+        },
+        record: deferralRecord
+      });
+    }
+
+    // Approved Donation Flow
+    const certificateId = `CERT-${new Date().getFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const generatedBagId = bagId || `BAG-${new Date().getFullYear()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    const donationDate = new Date();
+    const nextEligibleDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days cooling period
+
+    const donationRecord = {
+      bloodBankId: bloodBank?._id,
+      bloodBankName,
+      donationDate,
+      unitsDonated: Number(unitsDonated) || 1,
+      bloodGroup: effectiveBloodGroup,
+      bagId: generatedBagId,
+      hemoglobin: Number(hemoglobin) || undefined,
+      bloodPressure: bloodPressure || undefined,
+      status: 'approved',
+      certificateId,
+      recordedBy: req.user?.email || 'Blood Bank Staff'
+    };
+
+    donor.totalDonations = (donor.totalDonations || 0) + (Number(unitsDonated) || 1);
+    donor.lastDonation = donationDate;
+    donor.nextEligibleDate = nextEligibleDate;
+    donor.healthStatus = 'eligible';
+    donor.donationHistory.push(donationRecord);
+    await donor.save();
+
+    // AUTO-INCREMENT BLOOD BANK INVENTORY STOCK
+    let stockUpdated = false;
+    let newStockUnits = null;
+
+    if (bloodBank) {
+      let bloodStock = bloodBank.linkedBloodStockId;
+      if (!bloodStock) {
+        bloodStock = await BloodStock.findOne({ bloodBankId: bloodBank._id });
+      }
+
+      if (bloodStock) {
+        const groups = bloodStock.bloodGroups || {};
+        const currentQty = Number(groups[effectiveBloodGroup] ?? 0);
+        const updatedQty = currentQty + (Number(unitsDonated) || 1);
+
+        bloodStock.bloodGroups = {
+          ...groups,
+          [effectiveBloodGroup]: updatedQty
+        };
+        bloodStock.lastUpdated = new Date();
+        await bloodStock.save();
+
+        stockUpdated = true;
+        newStockUnits = updatedQty;
+
+        // Broadcast real-time stock update across all connected dashboards
+        const io = getIO();
+        if (io) {
+          io.emit('blood-stock-updated', {
+            bloodBankId: bloodBank._id,
+            bloodBankName: bloodBank.name,
+            bloodGroup: effectiveBloodGroup,
+            newUnits: updatedQty,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    // Trigger Certificate Email to Donor (asynchronous without blocking)
+    sendDonationCertificateEmail({
+      donorName: donor.name,
+      donorEmail: donor.email,
+      bloodGroup: effectiveBloodGroup,
+      unitsDonated: Number(unitsDonated) || 1,
+      bagId: generatedBagId,
+      bloodBankName,
+      bloodBankCity,
+      donationDate,
+      nextEligibleDate,
+      certificateId
+    }).catch(err => console.error('Email error:', err.message));
+
+    res.status(201).json({
+      message: `Successfully recorded donation! Added ${unitsDonated} unit(s) of ${effectiveBloodGroup} to stock.`,
+      donor: {
+        id: donor._id,
+        donorCardId: donor.donorCardId,
+        name: donor.name,
+        email: donor.email,
+        phone: donor.phone,
+        bloodGroup: effectiveBloodGroup,
+        totalDonations: donor.totalDonations,
+        lastDonation: donor.lastDonation,
+        nextEligibleDate: donor.nextEligibleDate
+      },
+      donationRecord,
+      certificate: {
+        certificateId,
+        donorName: donor.name,
+        bloodGroup: effectiveBloodGroup,
+        unitsDonated: Number(unitsDonated) || 1,
+        bagId: generatedBagId,
+        bloodBankName,
+        bloodBankCity,
+        donationDate,
+        nextEligibleDate
+      },
+      stockUpdated,
+      newStockUnits
+    });
+  } catch (error) {
+    console.error('Error recording donation:', error);
+    res.status(500).json({ error: 'Failed to record donation: ' + error.message });
   }
 });
 
@@ -98,7 +501,7 @@ router.get('/search', async (req, res) => {
     }
 
     const eligibleDate = new Date();
-    eligibleDate.setDate(eligibleDate.getDate() - 56);
+    eligibleDate.setDate(eligibleDate.getDate() - 90);
 
     filter.$or = [
       { lastDonation: { $exists: false } },
@@ -106,7 +509,7 @@ router.get('/search', async (req, res) => {
     ];
 
     const donors = await Donor.find(filter)
-      .select('name bloodGroup city state lastDonation totalDonations')
+      .select('name bloodGroup city state lastDonation nextEligibleDate totalDonations')
       .limit(Number(limit))
       .sort({ totalDonations: -1 })
       .lean();
@@ -118,76 +521,17 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Update donor availability (Admin/Superadmin only)
-router.put('/:id/availability', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
-  try {
-    const { isAvailable } = req.body;
-    
-    const donor = await Donor.findByIdAndUpdate(
-      req.params.id,
-      { isAvailable: Boolean(isAvailable) },
-      { new: true }
-    );
-
-    if (!donor) {
-      res.status(404).json({ error: 'Donor not found' });
-      return;
-    }
-
-    res.json({ donor });
-  } catch (error) {
-    console.error('Error updating donor:', error);
-    res.status(500).json({ error: 'Failed to update donor' });
-  }
-});
-
-// Record donation
-router.post('/:id/donate', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
-  try {
-    const donor = await Donor.findById(req.params.id);
-
-    if (!donor) {
-      res.status(404).json({ error: 'Donor not found' });
-      return;
-    }
-
-    if (donor.lastDonation) {
-      const daysSinceLastDonation = Math.floor(
-        (Date.now() - new Date(donor.lastDonation).getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysSinceLastDonation < 56) {
-        res.status(400).json({ 
-          error: `Donor must wait ${56 - daysSinceLastDonation} more days before donating` 
-        });
-        return;
-      }
-    }
-
-    donor.lastDonation = new Date();
-    donor.totalDonations += 1;
-    await donor.save();
-
-    res.json({
-      message: 'Donation recorded successfully',
-      donor: {
-        name: donor.name,
-        totalDonations: donor.totalDonations,
-        nextEligibleDate: new Date(Date.now() + 56 * 24 * 60 * 60 * 1000)
-      }
-    });
-  } catch (error) {
-    console.error('Error recording donation:', error);
-    res.status(500).json({ error: 'Failed to record donation' });
-  }
-});
-
 // Get donor statistics
 router.get('/stats', async (req, res) => {
   try {
     const totalDonors = await Donor.countDocuments();
     const availableDonors = await Donor.countDocuments({ 
       isAvailable: true, 
-      healthStatus: 'eligible' 
+      healthStatus: 'eligible',
+      $or: [
+        { nextEligibleDate: { $exists: false } },
+        { nextEligibleDate: { $lte: new Date() } }
+      ]
     });
 
     const byBloodGroup = await Donor.aggregate([
@@ -212,22 +556,6 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching donor stats:', error);
     res.status(500).json({ error: 'Failed to fetch donor statistics' });
-  }
-});
-
-// Delete donor (Admin/Superadmin only)
-router.delete('/:id', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
-  try {
-    const donor = await Donor.findByIdAndDelete(req.params.id);
-    if (!donor) {
-      res.status(404).json({ error: 'Donor not found' });
-      return;
-    }
-
-    res.json({ message: 'Donor removed successfully' });
-  } catch (error) {
-    console.error('Error deleting donor:', error);
-    res.status(500).json({ error: 'Failed to delete donor' });
   }
 });
 

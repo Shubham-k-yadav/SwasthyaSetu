@@ -23,8 +23,10 @@ import {
   LayoutGrid,
   List,
   Activity,
-  Plus
+  Plus,
+  QrCode
 } from 'lucide-react';
+import { DonorIntakeModal } from '@/components/admin/blood/DonorIntakeModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +64,7 @@ export default function AdminBloodBanksPage() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
   const [selectedBloodBankForDetails, setSelectedBloodBankForDetails] = useState(null);
   const [verifyingId, setVerifyingId] = useState(null);
+  const [isDonorIntakeOpen, setIsDonorIntakeOpen] = useState(false);
 
   // Fetch verified blood banks and pending queue
   const fetchData = async () => {
@@ -220,6 +223,15 @@ export default function AdminBloodBanksPage() {
               Blood Stock View
             </Button>
           </Link>
+
+          <Button
+            size="sm"
+            onClick={() => setIsDonorIntakeOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs font-bold h-9 shadow-xs"
+          >
+            <QrCode className="h-3.5 w-3.5" />
+            Scan Donor QR / Intake
+          </Button>
 
           <BloodBankRegisterModal>
             <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white gap-1.5 text-xs font-bold h-9 shadow-xs">
@@ -905,6 +917,13 @@ export default function AdminBloodBanksPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Walk-in Donor Intake & QR Verification Modal */}
+      <DonorIntakeModal
+        open={isDonorIntakeOpen}
+        onOpenChange={setIsDonorIntakeOpen}
+        onDonationRecorded={fetchData}
+      />
     </div>
   );
 }

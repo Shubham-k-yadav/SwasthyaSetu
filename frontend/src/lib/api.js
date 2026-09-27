@@ -174,6 +174,20 @@ export const donorApi = {
 
 ) => apiCall('/api/donors/register', { method: 'POST', body: data }),
 
+  getCard: (identifier) => apiCall(`/api/donors/card/${encodeURIComponent(identifier)}`),
+
+  getNearbyBanks: (params) => {
+    const searchParams = new URLSearchParams();
+    if (params?.lat) searchParams.set('lat', params.lat);
+    if (params?.lng) searchParams.set('lng', params.lng);
+    if (params?.radiusKm) searchParams.set('radiusKm', params.radiusKm);
+    if (params?.bloodGroup) searchParams.set('bloodGroup', params.bloodGroup);
+    return apiCall(`/api/donors/nearby-banks?${searchParams}`);
+  },
+
+  recordDonation: (data, token) =>
+    apiCall('/api/donors/record-donation', { method: 'POST', body: data, token }),
+
   search: (params) => {
     const searchParams = new URLSearchParams();
     if (params.bloodGroup) searchParams.set('bloodGroup', params.bloodGroup);
