@@ -487,6 +487,13 @@ export default function SuperAdminDashboard() {
               </select>
             )}
 
+            <Link to="/admin/bloodbanks">
+              <Button variant="outline" size="sm" className="h-8 text-xs font-semibold gap-1">
+                <Building2 className="h-3.5 w-3.5 text-red-600" />
+                Blood Banks Page
+              </Button>
+            </Link>
+
             <Link to="/admin/blood">
               <Button variant="outline" size="sm" className="h-8 text-xs font-semibold gap-1">
                 <Droplets className="h-3.5 w-3.5 text-red-600" />

@@ -16,6 +16,7 @@ import ContactPage from '@/pages/ContactPage';
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminLayout from '@/pages/admin/AdminLayout';
 import AdminHospitalsPage from '@/pages/admin/AdminHospitalsPage';
+import AdminBloodBanksPage from '@/pages/admin/AdminBloodBanksPage';
 import AdminBloodPage from '@/pages/admin/AdminBloodPage';
 import AdminAnalyticsPage from '@/pages/admin/AdminAnalyticsPage';
 import SuperAdminDashboard from '@/pages/admin/SuperAdminDashboard';
@@ -115,6 +116,7 @@ export default function App() {
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboardDispatcher />} />
                 <Route path="hospitals" element={<AdminHospitalsPage />} />
+                <Route path="bloodbanks" element={<AdminBloodBanksPage />} />
                 <Route path="blood" element={<AdminBloodPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />
               </Route>

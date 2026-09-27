@@ -14,7 +14,8 @@ import {
   Clock,
   ExternalLink,
   Trash2,
-  Globe
+  Globe,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,8 +35,9 @@ import { connectSocket, getSocket, joinHospitalRoom } from '@/lib/socket';
 const superAdminNavItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Control Room' },
   { href: '/admin/hospitals', icon: Building2, label: 'Hospitals' },
-  { href: '/admin/blood', icon: Droplets, label: 'Blood Stock' },
-  { href: '/admin/analytics', icon: Activity, label: 'Analytics' },
+  { href: '/admin/bloodbanks', icon: Droplets, label: 'Blood Banks' },
+  { href: '/admin/blood', icon: Activity, label: 'Blood Stock' },
+  { href: '/admin/analytics', icon: TrendingUp, label: 'Analytics' },
 ];
 
 const hospitalStaffNavItems = [
@@ -256,7 +258,7 @@ export default function AdminLayout() {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href || (item.href !== '/admin' && location.pathname.startsWith(item.href));
+            const isActive = location.pathname === item.href || (item.href !== '/admin' && (location.pathname === item.href || location.pathname.startsWith(item.href + '/')));
             const Icon = item.icon;
             return (
               <Link
