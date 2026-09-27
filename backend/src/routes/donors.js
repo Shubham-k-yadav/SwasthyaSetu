@@ -163,7 +163,8 @@ router.get('/card/:identifier', async (req, res) => {
     let query = {
       $or: [
         { donorCardId: identifier.toUpperCase().trim() },
-        { phone: identifier.trim() }
+        { phone: identifier.trim() },
+        { email: identifier.toLowerCase().trim() }
       ]
     };
 

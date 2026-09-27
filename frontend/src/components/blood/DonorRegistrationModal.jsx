@@ -35,7 +35,12 @@ import {
   Sparkles,
   ArrowRight,
   RefreshCw,
-  Printer
+  Printer,
+  Search,
+  Check,
+  Copy,
+  BookmarkCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -46,10 +51,17 @@ export function DonorRegistrationModal({
   open,
   onOpenChange,
   bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-  cities = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad', 'Prayagraj', 'Varanasi', 'Lucknow', 'Patna']
+  cities = ['New Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Pune', 'Kolkata', 'Hyderabad', 'Prayagraj', 'Varanasi', 'Lucknow', 'Patna'],
+  initialMode = 'register',
+  initialDonor = null
 }) {
   const { t } = useLanguage();
   const [step, setStep] = useState('form'); // 'form' | 'pass'
+  const [modalMode, setModalMode] = useState(initialMode === 'retrieve' ? 'retrieve' : 'register'); // 'register' | 'retrieve'
+  const [retrieveInput, setRetrieveInput] = useState('');
+  const [isRetrieving, setIsRetrieving] = useState(false);
+  const [savedDonor, setSavedDonor] = useState(null);
+  const [copiedId, setCopiedId] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [donorForm, setDonorForm] = useState({
     name: '',
@@ -70,6 +82,40 @@ export function DonorRegistrationModal({
   const [isLoadingBanks, setIsLoadingBanks] = useState(false);
   const [passActiveTab, setPassActiveTab] = useState('pass'); // 'pass' | 'nearby'
   const passCardRef = useRef(null);
+
+  // Load saved donor from localStorage on mount or modal open
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('swasthya_setu_donor_card');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && (parsed.donorCardId || parsed.phone)) {
+          setSavedDonor(parsed);
+          if (initialMode === 'pass') {
+            displayDonorPass(parsed);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading localStorage donor card:', e);
+    }
+  }, [open, initialMode]);
+
+  // Sync mode if initialMode prop changes
+  useEffect(() => {
+    if (initialMode === 'retrieve') {
+      setModalMode('retrieve');
+    } else if (initialMode === 'register') {
+      setModalMode('register');
+    }
+  }, [initialMode]);
+
+  // Direct load if initialDonor prop is provided
+  useEffect(() => {
+    if (initialDonor) {
+      displayDonorPass(initialDonor);
+    }
+  }, [initialDonor]);
 
   // Detect GPS Location on mount
   useEffect(() => {
@@ -111,6 +157,79 @@ export function DonorRegistrationModal({
     }
   };
 
+  // Reusable helper to display QR pass, persist to localStorage, and fetch 10km blood banks
+  const displayDonorPass = async (donor) => {
+    if (!donor) return;
+    setRegisteredDonor(donor);
+
+    // Save to localStorage immediately so refreshing page or closing never loses it!
+    try {
+      localStorage.setItem('swasthya_setu_donor_card', JSON.stringify(donor));
+      setSavedDonor(donor);
+    } catch (err) {
+      console.warn('LocalStorage save failed:', err);
+    }
+
+    // Generate QR Code data URL containing the Donor Card ID
+    const qrCodeString = donor.donorCardId || donor.id || donor.phone;
+    try {
+      const dataUrl = await QRCode.toDataURL(qrCodeString, {
+        width: 320,
+        margin: 2,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      });
+      setQrDataUrl(dataUrl);
+    } catch (err) {
+      console.error('Failed to generate QR code:', err);
+    }
+
+    // Fetch nearby blood banks within 10 km
+    fetchNearbyBanks(donor);
+
+    // Switch to Pass Step
+    setStep('pass');
+  };
+
+  // Copy Donor ID to clipboard
+  const handleCopyDonorId = () => {
+    if (!registeredDonor?.donorCardId) return;
+    navigator.clipboard.writeText(registeredDonor.donorCardId);
+    setCopiedId(true);
+    toast.success('Donor ID copied to clipboard!');
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  // Handle donor pass retrieval via Mobile, Email, or Donor ID
+  const handleRetrievePass = async (e) => {
+    if (e) e.preventDefault();
+    const query = retrieveInput.trim();
+    if (!query) {
+      toast.error('Please enter your mobile number, email, or Donor ID');
+      return;
+    }
+
+    setIsRetrieving(true);
+    try {
+      const res = await api.donors.getCard(query);
+      if (res?.donor) {
+        await displayDonorPass(res.donor);
+        toast.success(`Welcome back, ${res.donor.name}!`, {
+          description: `Donor ID: ${res.donor.donorCardId}. Your QR pass has been loaded.`
+        });
+      } else {
+        toast.error('No donor record found with this Mobile, Email, or Donor ID');
+      }
+    } catch (err) {
+      console.error('Donor retrieval error:', err);
+      toast.error(err.message || 'Pass not found. Please verify your mobile number or email.');
+    } finally {
+      setIsRetrieving(false);
+    }
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsRegistering(true);
@@ -134,27 +253,9 @@ export function DonorRegistrationModal({
 
       if (!donor) throw new Error('Registration response missing donor details');
 
-      setRegisteredDonor(donor);
+      await displayDonorPass(donor);
 
-      // Generate QR Code data URL containing the Donor Card ID
-      const qrCodeString = donor.donorCardId || donor.id || donor.phone;
-      const dataUrl = await QRCode.toDataURL(qrCodeString, {
-        width: 320,
-        margin: 2,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff'
-        }
-      });
-      setQrDataUrl(dataUrl);
-
-      // Fetch nearby blood banks within 10 km
-      fetchNearbyBanks(donor);
-
-      // Switch to Pass Step
-      setStep('pass');
-
-      toast.success('Congratulations! Digital Donor Pass Issued', {
+      toast.success(res.message || 'Congratulations! Digital Donor Pass Issued', {
         description: `Donor ID: ${donor.donorCardId}. Please show this QR at any blood bank to donate.`
       });
     } catch (err) {
@@ -256,6 +357,8 @@ export function DonorRegistrationModal({
         setQrDataUrl('');
         setNearbyBanks([]);
         setPassActiveTab('pass');
+        setModalMode(initialMode === 'retrieve' ? 'retrieve' : 'register');
+        setRetrieveInput('');
         setDonorForm({
           name: '',
           phone: '',
@@ -293,15 +396,137 @@ export function DonorRegistrationModal({
                   <Droplets className="h-5 w-5" />
                 </div>
                 <div>
-                  <DialogTitle className="text-xl font-bold">{t('registerAsBloodDonor')}</DialogTitle>
+                  <DialogTitle className="text-xl font-bold">
+                    {modalMode === 'register' ? t('registerAsBloodDonor') : 'Retrieve Donor QR Pass'}
+                  </DialogTitle>
                   <DialogDescription className="text-xs">
-                    Get an instant digital QR pass & discover blood banks within 10 km
+                    {modalMode === 'register' 
+                      ? 'Get an instant digital QR pass & discover blood banks within 10 km' 
+                      : 'Recover your QR Pass or PDF anytime using your Mobile, Email, or Donor ID'}
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <form onSubmit={handleRegister} className="space-y-4 mt-3">
+            {/* Quick Access: Saved Donor Pass on This Device */}
+            {savedDonor && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/40 dark:to-orange-950/20 border border-red-200 dark:border-red-900/60 shadow-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-8 w-8 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0">
+                    <BookmarkCheck className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground truncate">
+                      {savedDonor.name} <span className="text-red-600">({savedDonor.bloodGroup})</span>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      {savedDonor.donorCardId || 'Saved Pass'} • {savedDonor.phone}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => displayDonorPass(savedDonor)}
+                  className="h-7 text-xs bg-red-600 hover:bg-red-700 text-white font-bold shrink-0 ml-2 shadow-xs cursor-pointer gap-1"
+                >
+                  <QrCode className="h-3.5 w-3.5" />
+                  Open QR Pass
+                </Button>
+              </div>
+            )}
+
+            {/* Mode Switcher Tabs */}
+            <div className="flex rounded-lg bg-muted p-1 gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setModalMode('register')}
+                className={cn(
+                  "flex-1 py-1.5 px-3 rounded-md font-semibold text-center transition-all cursor-pointer",
+                  modalMode === 'register'
+                    ? "bg-background text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                New Registration
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalMode('retrieve')}
+                className={cn(
+                  "flex-1 py-1.5 px-3 rounded-md font-semibold text-center transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                  modalMode === 'retrieve'
+                    ? "bg-background text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Search className="h-3.5 w-3.5" />
+                Find / Retrieve My Pass
+              </button>
+            </div>
+
+            {modalMode === 'retrieve' ? (
+              /* RETRIEVE PASS MODE */
+              <form onSubmit={handleRetrievePass} className="space-y-4 pt-1">
+                <div className="rounded-xl border border-red-200/60 dark:border-red-900/40 p-3.5 bg-red-50/50 dark:bg-red-950/20 space-y-1.5">
+                  <div className="flex items-center gap-2 text-foreground font-bold text-xs">
+                    <QrCode className="h-4 w-4 text-red-600 shrink-0" />
+                    <span>Forgot to download or refreshed the page?</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    No problem! Enter the <strong>Mobile Number</strong>, <strong>Email</strong>, or <strong>Donor ID</strong> you used during registration. We'll instantly restore your QR code and PDF download.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="retrieveQuery" className="text-xs font-semibold">
+                    Enter Mobile Number / Email / Donor ID *
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="retrieveQuery"
+                      placeholder="e.g. 9876543210 or name@example.com"
+                      value={retrieveInput}
+                      onChange={(e) => setRetrieveInput(e.target.value)}
+                      className="h-10 text-xs pr-10"
+                      required
+                      autoFocus
+                    />
+                    <Search className="h-4 w-4 text-muted-foreground absolute right-3 top-3 pointer-events-none" />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isRetrieving || !retrieveInput.trim()}
+                  className="w-full h-10 font-bold bg-red-600 hover:bg-red-700 text-white cursor-pointer shadow-sm text-xs gap-2"
+                >
+                  {isRetrieving ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Searching Donor Pass...
+                    </>
+                  ) : (
+                    <>
+                      <QrCode className="h-4 w-4" />
+                      Find & Retrieve My QR Pass
+                    </>
+                  )}
+                </Button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setModalMode('register')}
+                    className="text-xs text-red-600 hover:underline font-semibold cursor-pointer"
+                  >
+                    ← Want to register as a new donor? Click here
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* REGISTRATION FORM */
+              <form onSubmit={handleRegister} className="space-y-4 mt-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="donorName" className="text-xs font-semibold">{t('fullName')} *</Label>
@@ -444,8 +669,9 @@ export function DonorRegistrationModal({
                 )}
               </Button>
             </form>
-          </>
-        ) : (
+          )}
+        </>
+      ) : (
           /* STEP 2: DIGITAL DONOR PASS & NEARBY 10 KM BLOOD BANKS */
           <div className="space-y-4">
             <DialogHeader className="border-b pb-3">
@@ -562,22 +788,60 @@ export function DonorRegistrationModal({
                 </div>
 
                 {/* Card Actions */}
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={handleDownloadPDF}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs h-9 gap-1.5 shadow-xs"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download Official Pass (PDF)
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setPassActiveTab('nearby')}
-                    className="flex-1 font-semibold text-xs h-9 gap-1.5"
-                  >
-                    <MapPin className="h-4 w-4 text-red-500" />
-                    Find 10 KM Blood Banks →
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={handleDownloadPDF}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs h-9 gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Official Pass (PDF)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCopyDonorId}
+                      className="font-semibold text-xs h-9 gap-1.5 cursor-pointer"
+                    >
+                      {copiedId ? (
+                        <>
+                          <Check className="h-4 w-4 text-emerald-600" />
+                          Copied ID!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 text-muted-foreground" />
+                          Copy ID
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setPassActiveTab('nearby')}
+                      className="font-semibold text-xs h-9 gap-1.5 cursor-pointer"
+                    >
+                      <MapPin className="h-4 w-4 text-red-500" />
+                      10 KM Banks ({nearbyBanks.length})
+                    </Button>
+                  </div>
+
+                  {/* Device Persistence Notice */}
+                  <div className="flex items-center justify-between text-[11px] p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      Saved on this device! You won't lose this pass on page refresh.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStep('form');
+                        setRegisteredDonor(null);
+                        setQrDataUrl('');
+                      }}
+                      className="text-muted-foreground hover:text-foreground underline ml-2 shrink-0 cursor-pointer text-[10px]"
+                    >
+                      Register Another
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
