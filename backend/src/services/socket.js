@@ -91,6 +91,19 @@ export const initializeSocket = (httpServer) => {
       socket.leave(`city-${city.toLowerCase()}`);
     });
 
+    socket.on('join-emergency', (emergencyId) => {
+      const cleanId = String(emergencyId?._id || emergencyId || '').trim();
+      if (!cleanId) return;
+      socket.join(`emergency-${cleanId}`);
+      console.log(`Socket ${socket.id} joined emergency-${cleanId}`);
+    });
+
+    socket.on('leave-emergency', (emergencyId) => {
+      const cleanId = String(emergencyId?._id || emergencyId || '').trim();
+      if (!cleanId) return;
+      socket.leave(`emergency-${cleanId}`);
+    });
+
     socket.on('disconnect', () => {
       console.log(`Client disconnected: ${socket.id}`);
     });
@@ -203,6 +216,64 @@ export const emitBedUpgradeRequest = (request) => {
       hospitalName: request.hospitalName,
       timestamp: new Date().toISOString()
     });
+  }
+};
+
+export const emitSOSNew = (emergency) => {
+  if (io) {
+    const payload = {
+      id: emergency._id,
+      patientName: emergency.patientName || 'Emergency Patient',
+      contactPhone: emergency.contactPhone,
+      location: emergency.location,
+      emergencyType: emergency.emergencyType,
+      bedType: emergency.bedType,
+      priority: emergency.priority || 'critical',
+      notes: emergency.notes,
+      sosTriggerType: emergency.sosTriggerType || '1_click_sos',
+      recommendedHospitals: emergency.recommendedHospitals,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log(`🚨 [Socket] Broadcasting EMERGENCY SOS NEW: ${payload.id}, Priority: ${payload.priority}`);
+    
+    // Broadcast to all connected clients & control room
+    io.emit('emergency-sos-new', payload);
+    io.to('superadmin-room').emit('emergency-sos-new', payload);
+
+    // Broadcast directly to recommended hospital rooms
+    if (Array.isArray(emergency.recommendedHospitals)) {
+      emergency.recommendedHospitals.forEach(hId => {
+        const cleanHospId = String(hId?._id || hId || '').trim();
+        if (cleanHospId) {
+          io.to(`hospital-${cleanHospId}`).emit('emergency-sos-incoming', payload);
+        }
+      });
+    }
+
+    if (emergency.location?.city) {
+      io.to(`city-${emergency.location.city.toLowerCase()}`).emit('emergency-sos-new', payload);
+    }
+  }
+};
+
+export const emitSOSStatusUpdate = (emergencyId, data) => {
+  if (io) {
+    const cleanId = String(emergencyId || '').trim();
+    const payload = {
+      emergencyId: cleanId,
+      status: data.status,
+      assignedHospital: data.assignedHospital,
+      assignedAmbulance: data.assignedAmbulance,
+      ambulanceDetails: data.ambulanceDetails,
+      etaMinutes: data.etaMinutes,
+      message: data.message || `Emergency status updated to ${data.status}`,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log(`🚨 [Socket] Broadcasting EMERGENCY SOS STATUS UPDATE: ${cleanId} -> ${data.status}`);
+    io.emit('emergency-sos-status-updated', payload);
+    io.to(`emergency-${cleanId}`).emit('emergency-sos-status-updated', payload);
   }
 };
 

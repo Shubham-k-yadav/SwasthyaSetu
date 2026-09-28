@@ -13,7 +13,9 @@ import {
   EmergencyHelplinesBanner,
   EmergencyLocationForm,
   EmergencyDetailsForm,
-  EmergencyResultsList
+  EmergencyResultsList,
+  InstantSOSTrigger,
+  LiveSOSTracker
 } from '@/components/emergency';
 
 const EMERGENCY_TYPES = [
@@ -45,6 +47,21 @@ export default function EmergencyPage() {
   const [patientName, setPatientName] = useState('');
   const [ambulances, setAmbulances] = useState([]);
 
+  // Active SOS Tracking State
+  const [activeEmergency, setActiveEmergency] = useState(() => {
+    try {
+      const stored = localStorage.getItem('swasthya_setu_active_sos');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.status && !['resolved', 'cancelled'].includes(parsed.status)) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return null;
+  });
+  const [isTriggeringSOS, setIsTriggeringSOS] = useState(false);
+
   const emergencyTypes = [
     { value: 'trauma', label: t('traumaAccident') },
     { value: 'cardiac', label: t('cardiacEmergency') },
@@ -66,6 +83,11 @@ export default function EmergencyPage() {
     api.ambulances.getActive()
       .then(res => setAmbulances(res.ambulances || []))
       .catch(() => setAmbulances([]));
+
+    // Join room if active emergency exists
+    if (activeEmergency && s) {
+      s.emit('join-emergency', activeEmergency._id || activeEmergency.id);
+    }
 
     const handleAmbulanceUpdate = (updatedAmb) => {
       setAmbulances(prev => {
@@ -91,12 +113,50 @@ export default function EmergencyPage() {
       });
     };
 
+    const handleSOSStatusUpdate = (update) => {
+      if (!update) return;
+      setActiveEmergency(prev => {
+        if (!prev) return prev;
+        const prevId = String(prev._id || prev.id);
+        const updateId = String(update.emergencyId || update.id);
+        if (prevId === updateId) {
+          const merged = {
+            ...prev,
+            status: update.status || prev.status,
+            assignedHospital: update.assignedHospital || prev.assignedHospital,
+            assignedAmbulance: update.assignedAmbulance || prev.assignedAmbulance,
+            ambulanceDetails: update.ambulanceDetails || prev.ambulanceDetails,
+            estimatedArrival: update.etaMinutes || update.estimatedArrival || prev.estimatedArrival
+          };
+          localStorage.setItem('swasthya_setu_active_sos', JSON.stringify(merged));
+
+          if (update.status === 'dispatched') {
+            playEmergencySiren();
+            toast.success(`🚨 AMBULANCE DISPATCHED!`, {
+              description: `Vehicle: ${update.ambulanceDetails?.vehicleNumber || 'Unit'} is en route. Driver: ${update.ambulanceDetails?.driverName || ''}`
+            });
+          } else if (update.status === 'assigned') {
+            toast.success(`🏥 Hospital Confirmed!`, {
+              description: `${update.assignedHospital?.name || 'Emergency Center'} is preparing your bed.`
+            });
+          } else if (update.status === 'resolved' || update.status === 'admitted') {
+            toast.success('Patient safely reached medical facility.');
+          }
+
+          return merged;
+        }
+        return prev;
+      });
+    };
+
     s.on('ambulance-updates', handleAmbulanceUpdate);
+    s.on('emergency-sos-status-updated', handleSOSStatusUpdate);
 
     return () => {
       s.off('ambulance-updates', handleAmbulanceUpdate);
+      s.off('emergency-sos-status-updated', handleSOSStatusUpdate);
     };
-  }, []);
+  }, [activeEmergency]);
 
   const handleGetLocation = () => {
     setGettingLocation(true);
@@ -198,6 +258,62 @@ export default function EmergencyPage() {
     }
   };
 
+  const handleTriggerInstantSOS = async (sosPayload) => {
+    setIsTriggeringSOS(true);
+    try {
+      const loc = userLocation || { lat: 28.5672, lng: 77.2100 };
+      
+      playEmergencySiren();
+      triggerDesktopNotification(
+        '🚨 SwasthyaSetu Emergency SOS Broadcasted',
+        `Emergency alert sent for patient ${sosPayload.patientName} (${sosPayload.emergencyType?.toUpperCase()})`
+      );
+
+      const res = await api.emergency.createRequest({
+        ...sosPayload,
+        location: { lat: loc.lat, lng: loc.lng, address: locationAddress || 'GPS detected location' }
+      });
+
+      const emergency = res?.emergency;
+      if (!emergency) throw new Error('Missing emergency details in response');
+
+      setActiveEmergency(emergency);
+      localStorage.setItem('swasthya_setu_active_sos', JSON.stringify(emergency));
+
+      const s = getSocket();
+      if (s) {
+        s.emit('join-emergency', emergency._id || emergency.id);
+      }
+
+      toast.success('🚨 Emergency SOS Broadcasted Successfully!', {
+        description: 'Nearest hospitals and response units have been alerted.'
+      });
+
+      if (res?.recommendedHospitals?.length > 0) {
+        setResults(res.recommendedHospitals);
+      }
+    } catch (err) {
+      console.error('Instant SOS failed:', err);
+      toast.error(err.message || 'Failed to broadcast SOS. Please call 108 immediately.');
+    } finally {
+      setIsTriggeringSOS(false);
+    }
+  };
+
+  const handleCancelSOS = async () => {
+    if (!activeEmergency) return;
+    try {
+      const id = activeEmergency._id || activeEmergency.id;
+      await api.emergency.updateRequest(id, { status: 'cancelled' }).catch(() => null);
+      localStorage.removeItem('swasthya_setu_active_sos');
+      setActiveEmergency(null);
+      toast.info('Emergency SOS resolved / cancelled.');
+    } catch (err) {
+      localStorage.removeItem('swasthya_setu_active_sos');
+      setActiveEmergency(null);
+    }
+  };
+
   const handleSelectHospital = (hospital) => {
     setSelectedHospital(hospital);
     toast.success(`Selected ${hospital.name}`, {
@@ -214,6 +330,23 @@ export default function EmergencyPage() {
 
           {/* Emergency Helplines Banner (Desktop & Mobile) */}
           <EmergencyHelplinesBanner />
+
+          {/* 1-Click Instant Emergency SOS Trigger / Live SOS Tracker */}
+          <div className="mb-6 sm:mb-8">
+            {activeEmergency ? (
+              <LiveSOSTracker
+                emergency={activeEmergency}
+                onCancelEmergency={handleCancelSOS}
+              />
+            ) : (
+              <InstantSOSTrigger
+                onTriggerSOS={handleTriggerInstantSOS}
+                isTriggering={isTriggeringSOS}
+                userLocation={userLocation}
+                onGetLocation={handleGetLocation}
+              />
+            )}
+          </div>
 
           {/* Ambulance Dispatch Fleet Module */}
           <div className="mb-4 sm:mb-8">

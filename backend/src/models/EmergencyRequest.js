@@ -20,8 +20,8 @@ const EmergencyRequestSchema = new Schema({
   },
   status: { 
     type: String, 
-    enum: ['pending', 'searching', 'assigned', 'in_transit', 'resolved', 'cancelled'],
-    default: 'pending',
+    enum: ['pending', 'searching', 'assigned', 'dispatched', 'in_transit', 'admitted', 'resolved', 'cancelled'],
+    default: 'searching',
     index: true
   },
   priority: { 
@@ -37,6 +37,24 @@ const EmergencyRequestSchema = new Schema({
     type: Schema.Types.ObjectId, 
     ref: 'Hospital' 
   }],
+  assignedAmbulance: {
+    type: Schema.Types.ObjectId,
+    ref: 'Ambulance'
+  },
+  ambulanceDetails: {
+    vehicleNumber: { type: String },
+    driverName: { type: String },
+    driverPhone: { type: String },
+    currentLat: { type: Number },
+    currentLng: { type: Number },
+    equipmentLevel: { type: String }
+  },
+  dispatchedAt: { type: Date },
+  sosTriggerType: {
+    type: String,
+    enum: ['1_click_sos', 'manual_form'],
+    default: '1_click_sos'
+  },
   notes: { type: String },
   estimatedArrival: { type: Number },
   resolvedAt: { type: Date }

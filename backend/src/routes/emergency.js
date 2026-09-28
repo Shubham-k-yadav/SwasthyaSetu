@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import EmergencyRequest from '../models/EmergencyRequest.js';
 import Hospital from '../models/Hospital.js';
+import Ambulance from '../models/Ambulance.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { emergencySosLimiter } from '../middleware/rateLimiter.js';
-import { emitEmergencyAlert } from '../services/socket.js';
+import { emitEmergencyAlert, emitSOSNew, emitSOSStatusUpdate } from '../services/socket.js';
 import { haversineDistance } from '../utils/geo.js';
 
 import mongoose from 'mongoose';
@@ -19,6 +20,7 @@ router.post('/request', emergencySosLimiter, async (req, res) => {
       location,
       emergencyType,
       bedType,
+      sosTriggerType,
       notes
     } = req.body;
 
@@ -62,7 +64,8 @@ router.post('/request', emergencySosLimiter, async (req, res) => {
       priority,
       notes,
       status: 'searching',
-      recommendedHospitals
+      recommendedHospitals,
+      sosTriggerType: sosTriggerType || '1_click_sos'
     });
 
     await emergency.save();
@@ -86,6 +89,9 @@ router.post('/request', emergencySosLimiter, async (req, res) => {
       .populate('recommendedHospitals', 'name address phone coordinates beds')
       .lean();
 
+    // Authoritative real-time SOS broadcast to hospitals and control room
+    emitSOSNew(populatedEmergency);
+
     res.status(201).json({
       emergency: populatedEmergency,
       recommendedHospitals: hospitalsWithDistance.slice(0, 3).map(h => ({
@@ -94,7 +100,7 @@ router.post('/request', emergencySosLimiter, async (req, res) => {
         address: h.address,
         phone: h.phone,
         distance: h.distance.toFixed(1),
-        availableBeds: h.beds[bedType]?.available || 0,
+        availableBeds: h.beds[selectedBedType]?.available || 0,
         coordinates: h.coordinates
       }))
     });
@@ -161,17 +167,162 @@ router.put('/request/:id', authenticate, authorize('admin', 'superadmin'), async
       req.params.id,
       updateData,
       { new: true }
-    ).populate('assignedHospital', 'name address phone');
+    ).populate('assignedHospital', 'name address phone')
+     .populate('assignedAmbulance', 'vehicleNumber driverName driverPhone currentLat currentLng equipmentLevel status');
 
     if (!emergency) {
       res.status(404).json({ error: 'Emergency request not found' });
       return;
     }
 
+    emitSOSStatusUpdate(emergency._id, {
+      status: emergency.status,
+      assignedHospital: emergency.assignedHospital,
+      assignedAmbulance: emergency.assignedAmbulance,
+      ambulanceDetails: emergency.ambulanceDetails,
+      message: `Emergency status updated to ${emergency.status}`
+    });
+
     res.json({ emergency });
   } catch (error) {
     console.error('Error updating emergency:', error);
     res.status(500).json({ error: 'Failed to update emergency request' });
+  }
+});
+
+// Get active emergencies for hospital or control room
+router.get('/active', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
+  try {
+    const filter = {
+      status: { $in: ['pending', 'searching', 'assigned', 'dispatched', 'in_transit'] }
+    };
+
+    if (req.user?.role !== 'superadmin' && req.user?.hospitalId) {
+      filter.$or = [
+        { assignedHospital: req.user.hospitalId },
+        { recommendedHospitals: req.user.hospitalId }
+      ];
+    }
+
+    const emergencies = await EmergencyRequest.find(filter)
+      .populate('assignedHospital', 'name phone address coordinates')
+      .populate('recommendedHospitals', 'name phone address coordinates')
+      .populate('assignedAmbulance', 'vehicleNumber driverName driverPhone currentLat currentLng equipmentLevel status')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ emergencies });
+  } catch (error) {
+    console.error('Error fetching active emergencies:', error);
+    res.status(500).json({ error: 'Failed to fetch active emergencies' });
+  }
+});
+
+// Dispatch ambulance for emergency
+router.post('/request/:id/dispatch', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
+  try {
+    const { ambulanceId, etaMinutes, notes } = req.body;
+    const emergency = await EmergencyRequest.findById(req.params.id);
+
+    if (!emergency) {
+      return res.status(404).json({ error: 'Emergency request not found' });
+    }
+
+    let ambulance = null;
+    if (ambulanceId) {
+      ambulance = await Ambulance.findById(ambulanceId);
+    } else if (req.user?.hospitalId) {
+      ambulance = await Ambulance.findOne({
+        hospitalId: req.user.hospitalId,
+        status: 'available'
+      });
+    }
+
+    if (!ambulance) {
+      ambulance = await Ambulance.findOne({ status: 'available' });
+    }
+
+    const assignedHospId = req.user?.hospitalId || emergency.recommendedHospitals?.[0] || null;
+    const eta = Number(etaMinutes) || emergency.estimatedArrival || 10;
+
+    emergency.status = 'dispatched';
+    if (assignedHospId) emergency.assignedHospital = assignedHospId;
+    emergency.dispatchedAt = new Date();
+    emergency.estimatedArrival = eta;
+    if (notes) emergency.notes = (emergency.notes ? emergency.notes + ' | ' : '') + String(notes).trim();
+
+    if (ambulance) {
+      emergency.assignedAmbulance = ambulance._id;
+      emergency.ambulanceDetails = {
+        vehicleNumber: ambulance.vehicleNumber,
+        driverName: ambulance.driverName,
+        driverPhone: ambulance.driverPhone,
+        currentLat: ambulance.currentLat,
+        currentLng: ambulance.currentLng,
+        equipmentLevel: ambulance.equipmentLevel
+      };
+
+      ambulance.status = 'en_route';
+      ambulance.lastUpdated = new Date();
+      await ambulance.save();
+    }
+
+    await emergency.save();
+
+    const populated = await EmergencyRequest.findById(emergency._id)
+      .populate('assignedHospital', 'name phone address coordinates')
+      .populate('assignedAmbulance', 'vehicleNumber driverName driverPhone currentLat currentLng equipmentLevel status')
+      .lean();
+
+    emitSOSStatusUpdate(emergency._id, {
+      status: 'dispatched',
+      assignedHospital: populated.assignedHospital,
+      assignedAmbulance: populated.assignedAmbulance,
+      ambulanceDetails: emergency.ambulanceDetails,
+      etaMinutes: eta,
+      message: `Ambulance ${emergency.ambulanceDetails?.vehicleNumber || 'Emergency Unit'} dispatched with ETA ~${eta} mins`
+    });
+
+    res.json({
+      message: 'Ambulance dispatched successfully',
+      emergency: populated
+    });
+  } catch (error) {
+    console.error('Error dispatching ambulance:', error);
+    res.status(500).json({ error: 'Failed to dispatch ambulance' });
+  }
+});
+
+// Acknowledge and prep ER bed for emergency
+router.post('/request/:id/accept-bed', authenticate, authorize('admin', 'superadmin'), async (req, res) => {
+  try {
+    const emergency = await EmergencyRequest.findById(req.params.id);
+    if (!emergency) {
+      return res.status(404).json({ error: 'Emergency request not found' });
+    }
+
+    const hospitalId = req.user?.hospitalId || req.body.hospitalId;
+    emergency.assignedHospital = hospitalId;
+    emergency.status = 'assigned';
+    await emergency.save();
+
+    const populated = await EmergencyRequest.findById(emergency._id)
+      .populate('assignedHospital', 'name phone address coordinates')
+      .lean();
+
+    emitSOSStatusUpdate(emergency._id, {
+      status: 'assigned',
+      assignedHospital: populated.assignedHospital,
+      message: `${populated.assignedHospital?.name || 'Hospital'} accepted emergency request and prepped ER Bed.`
+    });
+
+    res.json({
+      message: 'Hospital accepted emergency patient',
+      emergency: populated
+    });
+  } catch (error) {
+    console.error('Error accepting emergency:', error);
+    res.status(500).json({ error: 'Failed to accept emergency' });
   }
 });
 

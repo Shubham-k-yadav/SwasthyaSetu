@@ -208,23 +208,24 @@ export const donorApi = {
 
 // Emergency APIs
 export const emergencyApi = {
-  createRequest: (data
-
-
-
-
-
-
-) => apiCall('/api/emergency/request', { method: 'POST', body: data }),
+  createRequest: (data) => apiCall('/api/emergency/request', { method: 'POST', body: data }),
 
   getRequest: (id) => apiCall(`/api/emergency/request/${id}`),
 
   getStats: () => apiCall('/api/emergency/stats'),
 
+  getActive: (token) => apiCall('/api/emergency/active', { token }),
+
+  dispatchAmbulance: (id, data, token) =>
+    apiCall(`/api/emergency/request/${id}/dispatch`, { method: 'POST', body: data, token }),
+
+  acceptBed: (id, data, token) =>
+    apiCall(`/api/emergency/request/${id}/accept-bed`, { method: 'POST', body: data, token }),
+
   getAll: (params, token) => {
     const searchParams = new URLSearchParams();
-    if (params.status) searchParams.set('status', params.status);
-    if (params.priority) searchParams.set('priority', params.priority);
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.priority) searchParams.set('priority', params.priority);
     return apiCall(`/api/emergency/admin/all?${searchParams}`, { token });
   },
 

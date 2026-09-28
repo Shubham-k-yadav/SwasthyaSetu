@@ -10,7 +10,8 @@ import {
   Siren,
   Zap,
   QrCode,
-  UserPlus
+  UserPlus,
+  AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,8 +30,11 @@ import {
   AmbulanceFleetManager,
   RequestBedUpgradeModal,
   WalkinAdmissionModal,
-  PatientCaseSheetModal
+  PatientCaseSheetModal,
+  EmergencySOSManager,
+  IncomingSOSModal
 } from '@/components/admin/dashboard';
+import { playEmergencySiren } from '@/lib/audio-notification';
 
 
 export default function HospitalAdminDashboard() {
@@ -46,15 +50,27 @@ export default function HospitalAdminDashboard() {
     ? 'holds'
     : (rawTab === 'fleet' || rawTab === 'ambulances')
       ? 'ambulances'
-      : 'inventory';
+      : (rawTab === 'sos' || rawTab === 'emergency')
+        ? 'sos'
+        : 'inventory';
 
   const handleTabChange = (newTab) => {
-    setSearchParams({ tab: newTab === 'holds' ? 'reservations' : newTab === 'ambulances' ? 'fleet' : 'inventory' });
+    setSearchParams({
+      tab: newTab === 'holds'
+        ? 'reservations'
+        : newTab === 'ambulances'
+          ? 'fleet'
+          : newTab === 'sos'
+            ? 'sos'
+            : 'inventory'
+    });
   };
   
   const [hospital, setHospital] = useState(() => user?.hospital || null);
   const [ambulances, setAmbulances] = useState([]);
   const [reservations, setReservations] = useState([]);
+  const [emergencies, setEmergencies] = useState([]);
+  const [incomingSOS, setIncomingSOS] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updatingBeds, setUpdatingBeds] = useState(false);
   const [addingAmbulance, setAddingAmbulance] = useState(false);
@@ -118,11 +134,12 @@ export default function HospitalAdminDashboard() {
     if (showLoading) setLoading(true);
     try {
       const token = localStorage.getItem('swasthya_setu_token') || user?.token;
-      const [hospRes, ambRes, resvRes, upgradesRes] = await Promise.all([
+      const [hospRes, ambRes, resvRes, upgradesRes, emgRes] = await Promise.all([
         api.hospitals.getById(hospitalId).catch(() => null),
         api.ambulances.getByHospital(hospitalId, token).catch(() => ({ ambulances: [] })),
         api.hospitals.getReservations(hospitalId, token).catch(() => ({ reservations: [] })),
-        api.hospitals.getHospitalBedUpgrades(hospitalId, token).catch(() => ({ requests: [] }))
+        api.hospitals.getHospitalBedUpgrades(hospitalId, token).catch(() => ({ requests: [] })),
+        api.emergency.getActive(token).catch(() => ({ emergencies: [] }))
       ]);
 
       const h = hospRes?.hospital || hospRes;
@@ -143,6 +160,9 @@ export default function HospitalAdminDashboard() {
       if (Array.isArray(resvRes?.reservations)) {
         setReservations(resvRes.reservations);
       }
+      if (Array.isArray(emgRes?.emergencies)) {
+        setEmergencies(emgRes.emergencies);
+      }
 
       const pendingReq = (upgradesRes?.requests || []).find(r => r.status === 'pending');
       setPendingUpgradeRequest(pendingReq || null);
@@ -157,6 +177,44 @@ export default function HospitalAdminDashboard() {
     const token = localStorage.getItem('swasthya_setu_token') || user?.token;
     await api.hospitals.requestBedUpgrade(hospitalId, data, token);
     fetchHospitalData(false);
+  };
+
+  const handleDispatchAmbulance = async (emergencyId, dispatchData) => {
+    const token = localStorage.getItem('swasthya_setu_token') || user?.token;
+    try {
+      const res = await api.emergency.dispatchAmbulance(emergencyId, dispatchData, token);
+      toast.success(res.message || 'Ambulance dispatched successfully!');
+      fetchHospitalData(false);
+      setIncomingSOS(null);
+    } catch (err) {
+      console.error('Dispatch ambulance error:', err);
+      toast.error(err.message || 'Failed to dispatch ambulance');
+    }
+  };
+
+  const handleAcceptBed = async (emergencyId) => {
+    const token = localStorage.getItem('swasthya_setu_token') || user?.token;
+    try {
+      const res = await api.emergency.acceptBed(emergencyId, { hospitalId }, token);
+      toast.success(res.message || 'Hospital accepted emergency patient!');
+      fetchHospitalData(false);
+      setIncomingSOS(null);
+    } catch (err) {
+      console.error('Accept bed error:', err);
+      toast.error(err.message || 'Failed to accept bed');
+    }
+  };
+
+  const handleResolveEmergency = async (emergencyId, status = 'admitted') => {
+    const token = localStorage.getItem('swasthya_setu_token') || user?.token;
+    try {
+      await api.emergency.updateRequest(emergencyId, { status }, token);
+      toast.success('Emergency marked as resolved / patient admitted');
+      fetchHospitalData(false);
+    } catch (err) {
+      console.error('Resolve emergency error:', err);
+      toast.error(err.message || 'Failed to update emergency');
+    }
   };
 
   useEffect(() => {
@@ -284,6 +342,45 @@ export default function HospitalAdminDashboard() {
       });
     };
 
+    const handleIncomingSOS = (sosData) => {
+      console.log('🚨 [HospitalAdminDashboard] Received live SOS alert:', sosData);
+      if (!sosData) return;
+
+      playEmergencySiren();
+      setIncomingSOS(sosData);
+      setEmergencies(prev => {
+        const id = sosData.id || sosData._id;
+        const exists = prev.some(e => (e._id || e.id) === id);
+        if (exists) {
+          return prev.map(e => ((e._id || e.id) === id ? { ...e, ...sosData } : e));
+        }
+        return [sosData, ...prev];
+      });
+
+      toast.error(`🚨 CRITICAL EMERGENCY SOS: ${sosData.patientName || 'Patient'}`, {
+        description: `${sosData.emergencyType?.toUpperCase()} • Bed: ${sosData.bedType?.toUpperCase()} • Phone: ${sosData.contactPhone}`
+      });
+    };
+
+    const handleSOSStatusUpdate = (update) => {
+      if (!update) return;
+      setEmergencies(prev => {
+        return prev.map(e => {
+          if ((e._id || e.id) === (update.emergencyId || update.id)) {
+            return {
+              ...e,
+              status: update.status || e.status,
+              assignedHospital: update.assignedHospital || e.assignedHospital,
+              assignedAmbulance: update.assignedAmbulance || e.assignedAmbulance,
+              ambulanceDetails: update.ambulanceDetails || e.ambulanceDetails,
+              estimatedArrival: update.etaMinutes || e.estimatedArrival
+            };
+          }
+          return e;
+        });
+      });
+    };
+
     const handleCustomAdminHold = (e) => {
       if (e?.detail) handleBedHoldAlert(e.detail);
     };
@@ -294,6 +391,9 @@ export default function HospitalAdminDashboard() {
     s.on('bed-update', handleBedUpdate);
     s.on('ambulance-updates', handleAmbulanceUpdate);
     s.on('hospital-ambulance-update', handleAmbulanceUpdate);
+    s.on('emergency-sos-new', handleIncomingSOS);
+    s.on('emergency-sos-incoming', handleIncomingSOS);
+    s.on('emergency-sos-status-updated', handleSOSStatusUpdate);
 
     return () => {
       window.removeEventListener('swasthya_admin_bed_hold', handleCustomAdminHold);
@@ -302,6 +402,9 @@ export default function HospitalAdminDashboard() {
       s.off('bed-update', handleBedUpdate);
       s.off('ambulance-updates', handleAmbulanceUpdate);
       s.off('hospital-ambulance-update', handleAmbulanceUpdate);
+      s.off('emergency-sos-new', handleIncomingSOS);
+      s.off('emergency-sos-incoming', handleIncomingSOS);
+      s.off('emergency-sos-status-updated', handleSOSStatusUpdate);
     };
   }, [hospitalId, user?.token, user?.role]);
 
@@ -508,6 +611,7 @@ export default function HospitalAdminDashboard() {
 
   const hospitalName = hospital?.name || user?.name || 'Hospital Terminal';
   const activeHoldsCount = reservations.filter(r => r.status === 'reserved' || r.status === 'active').length;
+  const activeSOSCount = emergencies.filter(e => ['pending', 'searching', 'assigned', 'dispatched', 'in_transit'].includes(e.status)).length;
 
   return (
     <div className="space-y-6">
@@ -607,7 +711,16 @@ export default function HospitalAdminDashboard() {
 
       {/* TABS CONTAINER */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-4">
-        <TabsList className="grid w-full grid-cols-3 max-w-md bg-muted/60 p-1 border">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl bg-muted/60 p-1 border">
+          <TabsTrigger value="sos" className="gap-2 font-bold text-xs py-2 data-[state=active]:bg-background shadow-xs relative">
+            <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+            Emergency SOS
+            {activeSOSCount > 0 && (
+              <Badge className="ml-1 bg-red-600 animate-pulse text-white text-[10px] px-1.5 py-0 rounded-full">
+                {activeSOSCount}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="inventory" className="gap-2 font-bold text-xs py-2 data-[state=active]:bg-background shadow-xs">
             <Bed className="h-3.5 w-3.5 text-primary" />
             Live Bed Inventory
@@ -626,6 +739,19 @@ export default function HospitalAdminDashboard() {
             Ambulance Fleet ({ambulances.length})
           </TabsTrigger>
         </TabsList>
+
+        {/* TAB 0: EMERGENCY SOS CONTROL */}
+        <TabsContent value="sos" className="space-y-4">
+          <EmergencySOSManager
+            emergencies={emergencies}
+            ambulances={ambulances}
+            hospital={hospital}
+            onDispatchAmbulance={handleDispatchAmbulance}
+            onAcceptBed={handleAcceptBed}
+            onResolveEmergency={handleResolveEmergency}
+            onRefresh={fetchHospitalData}
+          />
+        </TabsContent>
 
         {/* TAB 1: BED INVENTORY CONTROLS */}
         <TabsContent value="inventory" className="space-y-4">
@@ -710,6 +836,22 @@ export default function HospitalAdminDashboard() {
         reservation={selectedCaseReservation}
         hospital={hospital}
         onSaveCaseSheet={handleSaveCaseSheet}
+      />
+
+      {/* INCOMING SOS SIREN ALERT & RAPID DISPATCH MODAL */}
+      <IncomingSOSModal
+        open={Boolean(incomingSOS)}
+        emergency={incomingSOS}
+        ambulances={ambulances}
+        onClose={() => setIncomingSOS(null)}
+        onDispatch={(emergencyId, ambulanceId, etaMinutes) => {
+          handleDispatchAmbulance(emergencyId, ambulanceId, etaMinutes);
+          setIncomingSOS(null);
+        }}
+        onAcceptBed={(emergencyId) => {
+          handleAcceptBed(emergencyId);
+          setIncomingSOS(null);
+        }}
       />
     </div>
   );
